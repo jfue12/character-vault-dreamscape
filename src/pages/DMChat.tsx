@@ -244,6 +244,23 @@ export default function DMChat() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'direct_messages',
+          filter: `friendship_id=eq.${friendshipId}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as any;
+          setMessages(prev => prev.map(msg => 
+            msg.id === updatedMessage.id 
+              ? { ...msg, is_read: updatedMessage.is_read }
+              : msg
+          ));
+        }
+      )
       .subscribe();
 
     // Presence for typing
@@ -409,6 +426,8 @@ export default function DMChat() {
                   isOwnMessage={isOwn}
                   timestamp={msg.created_at}
                   attachmentUrl={msg.attachment_url}
+                  isRead={msg.is_read}
+                  showReadReceipt={true}
                 />
               );
             })

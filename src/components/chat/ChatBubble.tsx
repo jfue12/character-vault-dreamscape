@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import { Check, CheckCheck } from 'lucide-react';
 
 interface ChatBubbleProps {
   messageId: string;
@@ -16,6 +17,8 @@ interface ChatBubbleProps {
   bubbleColor?: string;
   textColor?: string;
   bubbleAlignment?: 'auto' | 'left' | 'right';
+  isRead?: boolean;
+  showReadReceipt?: boolean;
 }
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
@@ -33,7 +36,9 @@ export const ChatBubble = ({
   onReact,
   bubbleColor,
   textColor,
-  bubbleAlignment = 'auto'
+  bubbleAlignment = 'auto',
+  isRead = false,
+  showReadReceipt = false
 }: ChatBubbleProps) => {
   const [showReactions, setShowReactions] = useState(false);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
@@ -196,6 +201,23 @@ export const ChatBubble = ({
               {emoji} {count}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Read Receipt for own messages */}
+      {showReadReceipt && isOwnMessage && (
+        <div className={`flex items-center gap-1 mt-0.5 ${isRightAligned ? 'mr-11 justify-end' : 'ml-11'}`}>
+          {isRead ? (
+            <span className="flex items-center gap-0.5 text-[10px] text-primary">
+              <CheckCheck className="w-3 h-3" />
+              <span>Seen</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <Check className="w-3 h-3" />
+              <span>Sent</span>
+            </span>
+          )}
         </div>
       )}
     </motion.div>
