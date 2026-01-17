@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { TopHeader } from '@/components/layout/TopHeader';
 import { RoomScroller } from '@/components/chat/RoomScroller';
 import { PersonaSwitcher } from '@/components/chat/PersonaSwitcher';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Room {
   id: string;
@@ -53,6 +53,7 @@ export default function RoomChat() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRoomScroller, setShowRoomScroller] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -89,7 +90,6 @@ export default function RoomChat() {
   const fetchWorldData = async () => {
     if (!worldId) return;
 
-    // Fetch world
     const { data: worldData, error: worldError } = await supabase
       .from('worlds')
       .select('id, name')
@@ -104,7 +104,6 @@ export default function RoomChat() {
 
     setWorld(worldData);
 
-    // Fetch rooms
     const { data: roomsData, error: roomsError } = await supabase
       .from('world_rooms')
       .select('*')
@@ -113,7 +112,6 @@ export default function RoomChat() {
 
     if (!roomsError && roomsData) {
       setRooms(roomsData);
-      // If no roomId in URL, navigate to first room
       if (!roomId && roomsData.length > 0) {
         navigate(`/worlds/${worldId}/rooms/${roomsData[0].id}`, { replace: true });
       }
@@ -155,7 +153,6 @@ export default function RoomChat() {
       .limit(100);
 
     if (!error && data) {
-      // Fetch character info for each message
       const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id))];
       let characterMap: Record<string, Character> = {};
       
@@ -194,7 +191,6 @@ export default function RoomChat() {
         async (payload) => {
           const newMessage = payload.new as any;
           
-          // Fetch character info if needed
           let character: Character | undefined;
           if (newMessage.character_id) {
             const { data } = await supabase
@@ -245,8 +241,6 @@ export default function RoomChat() {
     );
   }
 
-  const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Background */}
@@ -258,26 +252,61 @@ export default function RoomChat() {
       )}
 
       {/* Header */}
-      <TopHeader
-        title={world?.name || 'World'}
-        subtitle={currentRoom?.name}
-        leftIcon="back"
-        onLeftAction={() => navigate(`/worlds/${worldId}`)}
-        variant="room"
-        onTitleClick={() => {/* TODO: Room dropdown */}}
-      />
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="flex items-center justify-between px-4 h-14">
+          <button 
+            onClick={() => navigate(`/worlds/${worldId}`)} 
+            className="p-2 -ml-2"
+          >
+            <ChevronLeft className="w-6 h-6 text-foreground" />
+          </button>
+          
+          <div className="flex flex-col items-center">
+            <h1 className="font-semibold text-foreground">{world?.name}</h1>
+            <button 
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+              onClick={() => {/* TODO: Room dropdown */}}
+            >
+              {currentRoom?.name}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
 
-      {/* Room Scroller */}
-      <div className="fixed top-14 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border py-2">
-        <RoomScroller
-          rooms={rooms}
-          selectedId={currentRoom?.id || null}
-          onSelect={handleRoomChange}
-        />
-      </div>
+          <button 
+            onClick={() => setShowRoomScroller(!showRoomScroller)}
+            className="p-2 -mr-2"
+          >
+            {showRoomScroller ? (
+              <ChevronUp className="w-6 h-6 text-foreground" />
+            ) : (
+              <ChevronDown className="w-6 h-6 text-foreground" />
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Collapsible Room Scroller */}
+      <AnimatePresence>
+        {showRoomScroller && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="z-40 bg-background/80 backdrop-blur-sm border-b border-border overflow-hidden"
+          >
+            <div className="py-2">
+              <RoomScroller
+                rooms={rooms}
+                selectedId={currentRoom?.id || null}
+                onSelect={handleRoomChange}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Messages Area */}
-      <main className="flex-1 pt-32 pb-40 px-4 overflow-y-auto relative z-10">
+      <main className="flex-1 pb-40 px-4 overflow-y-auto relative z-10 pt-4">
         <div className="max-w-lg mx-auto space-y-4">
           {messages.length === 0 ? (
             <motion.div
@@ -296,6 +325,7 @@ export default function RoomChat() {
                 content={message.content}
                 type={message.type}
                 isOwnMessage={message.sender_id === user?.id}
+                timestamp={message.created_at}
               />
             ))
           )}
