@@ -146,16 +146,22 @@ export default function UserProfile() {
       .from('friendships')
       .select('id, status')
       .or(`and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`)
-      .single();
+      .maybeSingle();
 
     if (existingFriendship) {
       if (existingFriendship.status === 'accepted') {
         navigate(`/dm/${existingFriendship.id}`);
-      } else {
+      } else if (existingFriendship.status === 'pending') {
         toast({ title: 'Friend request pending', description: 'Wait for them to accept your request' });
+      } else {
+        toast({ title: 'Unable to message', description: 'This connection was previously declined' });
       }
     } else {
-      toast({ title: 'Send a friend request first', description: 'You can only message friends' });
+      // Navigate to discovery to send a friend request
+      toast({ 
+        title: 'Send a friend request first', 
+        description: 'Use the Discovery tab to find and connect with users' 
+      });
     }
   };
 

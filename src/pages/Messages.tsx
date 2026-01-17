@@ -25,9 +25,9 @@ export default function Messages() {
   return (
     <AppLayout 
       title="Messages"
-      headerLeftIcon="add-friend"
+      headerLeftIcon="back"
       headerRightIcon="notifications"
-      onHeaderLeftAction={() => navigate('/')}
+      onHeaderLeftAction={() => navigate('/hub')}
       showFab
     >
       <div className="max-w-lg mx-auto">

@@ -458,14 +458,12 @@ export default function DMChat() {
       {/* Character Switcher + Input */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border">
         <div className="max-w-lg mx-auto">
-          {characters.length > 0 && (
-            <PersonaSwitcher
-              characters={characters}
-              selectedId={selectedCharacterId}
-              onSelect={handleCharacterSelect}
-              baseProfileName={userProfile?.username || 'You'}
-            />
-          )}
+          <PersonaSwitcher
+            characters={characters}
+            selectedId={selectedCharacterId}
+            onSelect={handleCharacterSelect}
+            baseProfileName={userProfile?.username || 'You'}
+          />
           
           <DMChatInput
             onSend={handleSendMessage}

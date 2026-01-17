@@ -37,7 +37,6 @@ export const WorldCard = ({
   const isOwner = currentUserId === world.owner_id;
 
   const handleClick = () => {
-    if (showJoinButton) return; // Don't navigate on discover cards
     if (onClick) {
       onClick();
     } else {
@@ -56,9 +55,7 @@ export const WorldCard = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       onClick={handleClick}
-      className={`glass-card overflow-hidden group transition-all ${
-        showJoinButton ? '' : 'cursor-pointer hover:neon-border'
-      }`}
+      className="glass-card overflow-hidden group transition-all cursor-pointer hover:neon-border"
     >
       {/* Cover Image */}
       <div className="h-40 bg-gradient-to-br from-neon-purple/20 to-neon-blue/20 relative overflow-hidden">

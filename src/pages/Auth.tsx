@@ -40,7 +40,14 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/profile');
+      // Check if there's a pending invite from before auth
+      const pendingInvite = sessionStorage.getItem('pendingInvite');
+      if (pendingInvite) {
+        sessionStorage.removeItem('pendingInvite');
+        navigate(`/invite/${pendingInvite}`);
+      } else {
+        navigate('/profile');
+      }
     }
   }, [user, navigate]);
 

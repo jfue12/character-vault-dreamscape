@@ -12,7 +12,7 @@ interface AppLayoutProps {
   fabTo?: string;
   fabOnClick?: () => void;
   headerVariant?: 'default' | 'worlds' | 'profile' | 'simple';
-  headerLeftIcon?: 'grid' | 'avatar' | 'add-friend' | 'none';
+  headerLeftIcon?: 'grid' | 'avatar' | 'add-friend' | 'back' | 'none';
   headerRightIcon?: 'search' | 'notifications' | 'menu' | 'more' | 'none';
   onHeaderLeftAction?: () => void;
   onHeaderRightAction?: () => void;
