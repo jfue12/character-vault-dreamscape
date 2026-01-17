@@ -7,9 +7,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
 import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
-import { Globe, MessageCircle, Compass, Search } from 'lucide-react';
+import { UserSearchPanel } from '@/components/hub/UserSearchPanel';
+import { Globe, MessageCircle, Compass, Search, UserSearch } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface World {
   id: string;
@@ -34,6 +36,7 @@ export default function Hub() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -387,6 +390,22 @@ export default function Hub() {
           </>
         ) : (
           <div className="space-y-4">
+            {/* User Search Button */}
+            <Button
+              variant="outline"
+              onClick={() => setShowUserSearch(!showUserSearch)}
+              className="w-full justify-start gap-2"
+            >
+              <UserSearch className="w-4 h-4" />
+              Find Users
+            </Button>
+
+            {/* User Search Panel */}
+            <UserSearchPanel 
+              isOpen={showUserSearch}
+              onClose={() => setShowUserSearch(false)}
+            />
+
             {/* Friend Requests Lobby */}
             <FriendRequestsLobby 
               key={refreshKey}

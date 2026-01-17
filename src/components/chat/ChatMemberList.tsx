@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Crown, Shield, LogOut } from 'lucide-react';
+import { X, Crown, Shield, LogOut, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 interface Member {
@@ -17,7 +18,9 @@ interface ChatMemberListProps {
   members: Member[];
   memberCount: number;
   currentUserRole?: 'owner' | 'admin' | 'member';
+  currentUserId?: string;
   onLeaveWorld?: () => void;
+  onInviteFriends?: () => void;
 }
 
 export const ChatMemberList = ({ 
@@ -26,8 +29,19 @@ export const ChatMemberList = ({
   members, 
   memberCount,
   currentUserRole = 'member',
-  onLeaveWorld
+  currentUserId,
+  onLeaveWorld,
+  onInviteFriends
 }: ChatMemberListProps) => {
+  const navigate = useNavigate();
+
+  const handleViewProfile = (userId: string) => {
+    if (userId !== currentUserId) {
+      navigate(`/user/${userId}`);
+      onClose();
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -59,12 +73,29 @@ export const ChatMemberList = ({
               </button>
             </div>
 
+            {/* Invite Friends Button */}
+            {onInviteFriends && (
+              <div className="p-4 border-b border-border">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={onInviteFriends}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Invite Friends
+                </Button>
+              </div>
+            )}
+
             {/* Member List */}
             <div className="flex-1 p-4 space-y-3 overflow-y-auto">
               {members.map((member) => (
-                <div
+                <button
                   key={member.userId}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                  onClick={() => handleViewProfile(member.userId)}
+                  className={`flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors w-full text-left ${
+                    member.userId !== currentUserId ? 'cursor-pointer' : 'cursor-default'
+                  }`}
                 >
                   {/* Avatar */}
                   <div className="relative">
@@ -110,7 +141,7 @@ export const ChatMemberList = ({
                       @{member.username}
                     </span>
                   </div>
-                </div>
+                </button>
               ))}
 
               {members.length === 0 && (
