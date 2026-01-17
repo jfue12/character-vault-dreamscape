@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronDown, ChevronUp, Users, Bot } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Users, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,12 +10,16 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { ChatMemberList } from '@/components/chat/ChatMemberList';
+import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
 import { usePhantomAI } from '@/hooks/usePhantomAI';
 import { useSpamDetection } from '@/hooks/useSpamDetection';
 import { motion, AnimatePresence } from 'framer-motion';
+
 interface Room {
   id: string;
   name: string;
+  description: string | null;
   background_url: string | null;
   is_staff_only: boolean;
   world_id: string;
@@ -24,12 +28,15 @@ interface Room {
 interface World {
   id: string;
   name: string;
+  owner_id: string;
 }
 
 interface Character {
   id: string;
   name: string;
   avatar_url: string | null;
+  bubble_color: string | null;
+  text_color: string | null;
 }
 
 interface Message {
@@ -59,6 +66,22 @@ interface TypingUser {
   odId: string;
 }
 
+interface ChatMember {
+  userId: string;
+  username: string;
+  characterName: string;
+  characterAvatar: string | null;
+  role: 'owner' | 'admin' | 'member';
+  isOnline?: boolean;
+}
+
+interface WorldMember {
+  user_id: string;
+  role: string;
+  profiles: { username: string | null } | null;
+  active_character: { name: string; avatar_url: string | null } | null;
+}
+
 export default function RoomChat() {
   const { worldId, roomId } = useParams();
   const { user, loading: authLoading } = useAuth();
@@ -77,7 +100,11 @@ export default function RoomChat() {
   const [showRoomScroller, setShowRoomScroller] = useState(true);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showMemberList, setShowMemberList] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [hasAI, setHasAI] = useState(false);
+  const [members, setMembers] = useState<ChatMember[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('member');
 
   // Get current character
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
@@ -144,7 +171,7 @@ export default function RoomChat() {
 
     const { data: worldData, error: worldError } = await supabase
       .from('worlds')
-      .select('id, name')
+      .select('id, name, owner_id')
       .eq('id', worldId)
       .single();
 
@@ -155,6 +182,20 @@ export default function RoomChat() {
     }
 
     setWorld(worldData);
+
+    // Check user's role in this world
+    if (user) {
+      const { data: memberData } = await supabase
+        .from('world_members')
+        .select('role')
+        .eq('world_id', worldId)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (memberData) {
+        setUserRole(memberData.role as 'owner' | 'admin' | 'member');
+      }
+    }
 
     const { data: roomsData, error: roomsError } = await supabase
       .from('world_rooms')
@@ -169,7 +210,37 @@ export default function RoomChat() {
       }
     }
 
+    // Fetch world members
+    fetchWorldMembers();
+
     setLoading(false);
+  };
+
+  const fetchWorldMembers = async () => {
+    if (!worldId) return;
+
+    const { data } = await supabase
+      .from('world_members')
+      .select(`
+        user_id,
+        role,
+        profiles(username),
+        active_character:characters!world_members_active_character_id_fkey(name, avatar_url)
+      `)
+      .eq('world_id', worldId)
+      .eq('is_banned', false);
+
+    if (data) {
+      const processedMembers: ChatMember[] = data.map((m: any) => ({
+        userId: m.user_id,
+        username: m.profiles?.username || 'Unknown',
+        characterName: m.active_character?.name || m.profiles?.username || 'Unknown',
+        characterAvatar: m.active_character?.avatar_url || null,
+        role: m.role as 'owner' | 'admin' | 'member',
+        isOnline: onlineUsers.has(m.user_id)
+      }));
+      setMembers(processedMembers);
+    }
   };
 
   const fetchUserCharacters = async () => {
@@ -177,7 +248,7 @@ export default function RoomChat() {
 
     const { data, error } = await supabase
       .from('characters')
-      .select('id, name, avatar_url')
+      .select('id, name, avatar_url, bubble_color, text_color')
       .eq('owner_id', user.id)
       .eq('is_hidden', false);
 
@@ -204,7 +275,7 @@ export default function RoomChat() {
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
           .from('characters')
-          .select('id, name, avatar_url')
+          .select('id, name, avatar_url, bubble_color, text_color')
           .in('id', characterIds);
         
         if (charData) {
@@ -255,7 +326,7 @@ export default function RoomChat() {
           if (newMessage.character_id) {
             const { data } = await supabase
               .from('characters')
-              .select('id, name, avatar_url')
+              .select('id, name, avatar_url, bubble_color, text_color')
               .eq('id', newMessage.character_id)
               .single();
             if (data) character = data;
@@ -427,6 +498,65 @@ export default function RoomChat() {
     navigate(`/worlds/${worldId}/rooms/${roomId}`);
   };
 
+  const handleLeaveWorld = async () => {
+    if (!worldId || !user || userRole === 'owner') return;
+
+    // Fetch username for system message before leaving
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    // Get first room for system message
+    const { data: worldRooms } = await supabase
+      .from('world_rooms')
+      .select('id')
+      .eq('world_id', worldId);
+
+    const { error } = await supabase
+      .from('world_members')
+      .delete()
+      .eq('world_id', worldId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast({ title: 'Failed to leave', variant: 'destructive' });
+    } else {
+      // Send "left" system message
+      if (worldRooms && worldRooms.length > 0) {
+        await supabase.from('system_messages').insert({
+          room_id: worldRooms[0].id,
+          message_type: 'leave',
+          user_id: user.id,
+          username: profile?.username || 'Someone'
+        });
+      }
+
+      toast({ title: 'Left world' });
+      navigate('/hub');
+    }
+  };
+
+  const handleCreateRoom = () => {
+    setShowSettings(true);
+  };
+
+  const handleRoomCreated = () => {
+    fetchWorldData();
+  };
+
+  const handleRoomDeleted = (roomId: string) => {
+    // If current room was deleted, navigate to first room
+    if (currentRoom?.id === roomId && rooms.length > 1) {
+      const nextRoom = rooms.find(r => r.id !== roomId);
+      if (nextRoom) {
+        navigate(`/worlds/${worldId}/rooms/${nextRoom.id}`);
+      }
+    }
+    fetchWorldData();
+  };
+
   // Merge and sort messages with system messages
   const allMessages = [
     ...messages.map(m => ({ ...m, isSystem: false })),
@@ -436,6 +566,10 @@ export default function RoomChat() {
       created_at: s.created_at 
     }))
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  const isOwner = userRole === 'owner';
+  const isAdmin = userRole === 'admin';
+  const onlineMemberCount = members.filter(m => m.isOnline).length || members.length;
 
   if (loading || authLoading) {
     return (
@@ -459,7 +593,7 @@ export default function RoomChat() {
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
           <button 
-            onClick={() => navigate(`/worlds/${worldId}`)} 
+            onClick={() => navigate('/hub')} 
             className="p-2 -ml-2"
           >
             <ChevronLeft className="w-6 h-6 text-foreground" />
@@ -476,12 +610,25 @@ export default function RoomChat() {
             </button>
           </div>
 
-          <button 
-            onClick={() => setShowMemberList(!showMemberList)}
-            className="p-2 -mr-2"
-          >
-            <Users className="w-5 h-5 text-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setShowMemberList(true)}
+              className="p-2 relative"
+            >
+              <Users className="w-5 h-5 text-foreground" />
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-primary text-primary-foreground text-[10px] font-medium rounded-full flex items-center justify-center px-1">
+                {members.length}
+              </span>
+            </button>
+            {(isOwner || isAdmin) && (
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="p-2"
+              >
+                <Settings className="w-5 h-5 text-foreground" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -499,6 +646,7 @@ export default function RoomChat() {
                 rooms={rooms}
                 selectedId={currentRoom?.id || null}
                 onSelect={handleRoomChange}
+                onCreateRoom={isOwner ? handleCreateRoom : undefined}
               />
             </div>
           </motion.div>
@@ -579,6 +727,31 @@ export default function RoomChat() {
           roomId={currentRoom?.id || ''}
         />
       </div>
+
+      {/* Member List Panel */}
+      <ChatMemberList
+        isOpen={showMemberList}
+        onClose={() => setShowMemberList(false)}
+        members={members}
+        memberCount={members.length}
+        currentUserRole={userRole}
+        onLeaveWorld={handleLeaveWorld}
+      />
+
+      {/* Settings Panel */}
+      <ChatSettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        worldId={worldId || ''}
+        worldName={world?.name || ''}
+        rooms={rooms}
+        isOwner={isOwner}
+        isAdmin={isAdmin}
+        members={members.map(m => ({ userId: m.userId, username: m.username, role: m.role }))}
+        onLeaveWorld={handleLeaveWorld}
+        onRoomCreated={handleRoomCreated}
+        onRoomDeleted={handleRoomDeleted}
+      />
     </div>
   );
 }
