@@ -81,7 +81,7 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           .from('profiles')
           .select('username, active_character_id')
           .eq('id', friendId)
-          .single();
+          .maybeSingle();
 
         // Get friend's active character if available
         let friendCharName = requesterChar?.name || null;
@@ -92,7 +92,7 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
             .from('characters')
             .select('name, avatar_url')
             .eq('id', friendProfile.active_character_id)
-            .single();
+            .maybeSingle();
           
           if (activeChar) {
             friendCharName = activeChar.name;

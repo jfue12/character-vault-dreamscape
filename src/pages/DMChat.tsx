@@ -89,11 +89,11 @@ export default function DMChat() {
       .select('id, requester_id, addressee_id, status')
       .eq('id', friendshipId)
       .eq('status', 'accepted')
-      .single();
+      .maybeSingle();
 
     if (error || !friendship) {
       toast({ title: 'Conversation not found', variant: 'destructive' });
-      navigate('/messages');
+      navigate('/hub');
       return;
     }
 
@@ -105,7 +105,7 @@ export default function DMChat() {
       .from('profiles')
       .select('id, username, active_character_id')
       .eq('id', friendId)
-      .single();
+      .maybeSingle();
 
     let activeChar: Character | null = null;
     if (profile?.active_character_id) {
@@ -113,7 +113,7 @@ export default function DMChat() {
         .from('characters')
         .select('id, name, avatar_url')
         .eq('id', profile.active_character_id)
-        .single();
+        .maybeSingle();
       if (charData) activeChar = charData;
     }
 
@@ -210,7 +210,7 @@ export default function DMChat() {
               .from('characters')
               .select('id, name, avatar_url')
               .eq('id', newMessage.sender_character_id)
-              .single();
+              .maybeSingle();
             if (data) character = data;
           }
 
