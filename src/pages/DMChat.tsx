@@ -137,7 +137,8 @@ export default function DMChat() {
 
     if (!error && data) {
       setCharacters(data);
-      if (data.length > 0) {
+      // Only set default if no character is currently selected
+      if (data.length > 0 && !selectedCharacterId) {
         setSelectedCharacterId(data[0].id);
       }
     }
