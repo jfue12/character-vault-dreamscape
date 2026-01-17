@@ -23,6 +23,7 @@ export type Database = {
           dislikes: string[] | null
           gender: string | null
           id: string
+          identity_tags: Json | null
           is_hidden: boolean
           likes: string[] | null
           name: string
@@ -39,6 +40,7 @@ export type Database = {
           dislikes?: string[] | null
           gender?: string | null
           id?: string
+          identity_tags?: Json | null
           is_hidden?: boolean
           likes?: string[] | null
           name: string
@@ -55,6 +57,7 @@ export type Database = {
           dislikes?: string[] | null
           gender?: string | null
           id?: string
+          identity_tags?: Json | null
           is_hidden?: boolean
           likes?: string[] | null
           name?: string
@@ -225,6 +228,7 @@ export type Database = {
           following_count: number | null
           id: string
           is_minor: boolean
+          stories_count: number | null
           updated_at: string
           username: string | null
         }
@@ -236,6 +240,7 @@ export type Database = {
           following_count?: number | null
           id: string
           is_minor?: boolean
+          stories_count?: number | null
           updated_at?: string
           username?: string | null
         }
@@ -247,6 +252,7 @@ export type Database = {
           following_count?: number | null
           id?: string
           is_minor?: boolean
+          stories_count?: number | null
           updated_at?: string
           username?: string | null
         }

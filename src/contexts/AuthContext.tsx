@@ -10,6 +10,7 @@ interface Profile {
   is_minor: boolean;
   followers_count: number;
   following_count: number;
+  stories_count: number;
 }
 
 interface AuthContextType {
