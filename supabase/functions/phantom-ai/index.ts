@@ -488,34 +488,49 @@ If the scene calls for drama, CREATE it!`;
       }
     }
 
-    // Insert AI messages
+    // Insert AI messages - always use world owner as sender, match character by name
     if (parsed.shouldRespond && parsed.responses?.length > 0) {
-      for (const resp of parsed.responses) {
-        let characterId = resp.characterId;
-        let senderId = resp.characterId;
+      const ownerId = world?.owner_id;
+      
+      if (!ownerId) {
+        console.error("No world owner found, cannot insert AI messages");
+      } else {
+        for (const resp of parsed.responses) {
+          let characterId: string | null = null;
 
-        if (resp.isNewCharacter && newTempCharId) {
-          characterId = newTempCharId;
-          senderId = world?.owner_id;
-        } else if (!characterId) {
-          const matchingChar = allAiCharacters.find(ai => 
-            ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
-          );
-          if (matchingChar) {
-            characterId = matchingChar.characterId;
-            senderId = matchingChar.isTemp ? world?.owner_id : characterId;
+          // If this is a new character, use the newly created temp character ID
+          if (resp.isNewCharacter && newTempCharId) {
+            characterId = newTempCharId;
+          } else {
+            // Try to match by character name to find existing AI character
+            const matchingChar = allAiCharacters.find(ai => 
+              ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
+            );
+            if (matchingChar?.characterId) {
+              characterId = matchingChar.characterId;
+            }
           }
-        }
 
-        if (senderId) {
-          await supabase.from("messages").insert({
-            room_id: roomId,
-            sender_id: senderId,
-            character_id: characterId || null,
-            content: sanitizeInput(resp.content || '').slice(0, 5000),
-            type: resp.type || "dialogue",
-            is_ai: true,
-          });
+          // Insert the message - sender_id is always the world owner for AI messages
+          // character_id can be null if no matching character found (narrator-style)
+          try {
+            const { error: insertError } = await supabase.from("messages").insert({
+              room_id: roomId,
+              sender_id: ownerId,
+              character_id: characterId,
+              content: sanitizeInput(resp.content || '').slice(0, 5000),
+              type: resp.type || "dialogue",
+              is_ai: true,
+            });
+
+            if (insertError) {
+              console.error("Failed to insert AI message:", insertError.message, "characterId:", characterId);
+            } else {
+              console.log("Inserted AI message from:", resp.characterName, "characterId:", characterId);
+            }
+          } catch (err) {
+            console.error("Error inserting AI message:", err);
+          }
         }
       }
     }
