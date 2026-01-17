@@ -116,11 +116,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Ambient glow effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-purple/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-neon-pink/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
