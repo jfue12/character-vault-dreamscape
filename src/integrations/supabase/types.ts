@@ -1248,6 +1248,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_ai_rate_limit: { Args: { _world_id: string }; Returns: boolean }
       clean_expired_timeouts: { Args: never; Returns: undefined }
       get_world_role: {
         Args: { _user_id: string; _world_id: string }
