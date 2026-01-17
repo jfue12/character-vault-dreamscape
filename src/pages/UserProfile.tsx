@@ -116,6 +116,22 @@ export default function UserProfile() {
         .from('follows')
         .insert({ follower_id: user.id, following_id: userId });
       setIsFollowing(true);
+      
+      // Get current user's profile for notification
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+      
+      // Create notification for the followed user
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        type: 'follow',
+        title: 'New Follower',
+        body: `${myProfile?.username || 'Someone'} started following you!`,
+        data: { follower_id: user.id }
+      });
     }
     
     // Refresh profile to get updated counts
