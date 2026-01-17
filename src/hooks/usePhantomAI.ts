@@ -12,11 +12,15 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
   const lastTriggerRef = useRef<number>(0);
   const cooldownMs = 3000; // 3 second cooldown between AI triggers
 
+  type PhantomAIResult =
+    | { ok: true; data: any }
+    | { ok: false; error: string };
+
   const triggerPhantomAI = useCallback(async (
     message: string,
     characterId: string,
     messageHistory: MessageContext[]
-  ) => {
+  ): Promise<PhantomAIResult | undefined> => {
     const now = Date.now();
     if (now - lastTriggerRef.current < cooldownMs) {
       return; // Still in cooldown
@@ -25,7 +29,7 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
 
     try {
       console.log('Triggering Phantom AI for world:', worldId, 'room:', roomId);
-      
+
       const { data, error } = await supabase.functions.invoke('phantom-ai', {
         body: {
           worldId,
@@ -37,14 +41,17 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
       });
 
       if (error) {
-        console.error('Phantom AI error:', error.message || error);
-      } else {
-        console.log('Phantom AI response:', data);
+        const msg = error.message || String(error);
+        console.error('Phantom AI error:', msg);
+        return { ok: false, error: msg };
       }
 
-      return data;
+      console.log('Phantom AI response:', data);
+      return { ok: true, data };
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to trigger Phantom AI';
       console.error('Failed to trigger Phantom AI:', err);
+      return { ok: false, error: msg };
     }
   }, [worldId, roomId]);
 

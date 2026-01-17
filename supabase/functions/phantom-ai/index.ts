@@ -278,8 +278,9 @@ serve(async (req) => {
     const randomNPC = generateRandomNPC();
 
     // Combine AI characters
+    // NOTE: messages.character_id has a FK to public.characters.id, so TEMP NPCs must reference a real character UUID.
     const allAiCharacters = [
-      ...(aiCharacters || []).map(ai => ({
+      ...(aiCharacters || []).map((ai) => ({
         id: ai.id,
         characterId: ai.character?.id,
         name: ai.character?.name || "Unknown",
@@ -289,9 +290,10 @@ serve(async (req) => {
         spawnKeywords: ai.spawn_keywords,
         isTemp: false,
       })),
-      ...(tempAiCharacters || []).map(temp => ({
+      ...(tempAiCharacters || []).map((temp) => ({
         id: temp.id,
-        characterId: temp.id,
+        // saved_character_id (when present) points to a hidden row in public.characters
+        characterId: temp.saved_character_id || null,
         name: temp.name,
         bio: temp.bio || "A passing stranger",
         socialRank: temp.social_rank,
@@ -466,25 +468,60 @@ If the scene calls for drama, CREATE it!`;
     }
 
     // Create new temporary character if specified
-    let newTempCharId = null;
+    // IMPORTANT: messages.character_id has a FK to public.characters.id, so TEMP NPCs must also have a hidden row in public.characters.
+    let newTempCharId: string | null = null; // this will be a public.characters.id
     if (parsed.newCharacter && parsed.responses?.some((r: any) => r.isNewCharacter)) {
-      const { data: newTemp, error: tempError } = await supabase
-        .from("temp_ai_characters")
-        .insert({
-          world_id: worldId,
-          room_id: roomId,
-          name: sanitizeInput(parsed.newCharacter.name || randomNPC.name).slice(0, 100),
-          bio: sanitizeInput(parsed.newCharacter.bio || '').slice(0, 500),
-          social_rank: parsed.newCharacter.socialRank || randomNPC.socialRank,
-          personality_traits: parsed.newCharacter.personalityTraits || randomNPC.personalityTraits,
-          avatar_description: sanitizeInput(parsed.newCharacter.avatarDescription || randomNPC.avatarDescription).slice(0, 300),
-        })
-        .select("id")
-        .single();
+      const ownerId = world?.owner_id;
 
-      if (!tempError && newTemp) {
-        newTempCharId = newTemp.id;
-        console.log("Created new temp AI character:", newTemp.id, parsed.newCharacter.name);
+      if (!ownerId) {
+        console.error("No world owner found, cannot create temp NPC character row");
+      } else {
+        const npcName = sanitizeInput(parsed.newCharacter.name || randomNPC.name).slice(0, 100);
+        const npcBio = sanitizeInput(parsed.newCharacter.bio || "").slice(0, 500);
+        const npcSocialRank = parsed.newCharacter.socialRank || randomNPC.socialRank;
+        const npcTraits = parsed.newCharacter.personalityTraits || randomNPC.personalityTraits;
+        const npcAvatarDesc = sanitizeInput(parsed.newCharacter.avatarDescription || randomNPC.avatarDescription).slice(0, 300);
+
+        // 1) Create a hidden character row (satisfies FK for messages + memory store)
+        const { data: createdChar, error: charError } = await supabase
+          .from("characters")
+          .insert({
+            owner_id: ownerId,
+            name: npcName,
+            bio: npcBio,
+            is_private: true,
+            is_hidden: true,
+          })
+          .select("id")
+          .single();
+
+        if (charError || !createdChar?.id) {
+          console.error("Failed to create temp NPC character row:", charError?.message || charError);
+        } else {
+          newTempCharId = createdChar.id;
+
+          // 2) Store temp NPC metadata
+          const { data: newTemp, error: tempError } = await supabase
+            .from("temp_ai_characters")
+            .insert({
+              world_id: worldId,
+              room_id: roomId,
+              name: npcName,
+              bio: npcBio,
+              social_rank: npcSocialRank,
+              personality_traits: npcTraits,
+              avatar_description: npcAvatarDesc,
+              saved_character_id: newTempCharId,
+            })
+            .select("id")
+            .single();
+
+          if (!tempError && newTemp) {
+            console.log("Created new temp AI character:", newTemp.id, npcName, "-> character", newTempCharId);
+          } else if (tempError) {
+            console.error("Failed to insert temp_ai_characters row:", tempError.message);
+          }
+        }
       }
     }
 
