@@ -68,11 +68,10 @@ export default function Index() {
 
   return (
     <AppLayout 
-      title="Discovery"
       headerLeftIcon="add-friend"
       headerRightIcon="notifications"
       showFab
-      fabTo="/create-world"
+      showActiveOC
     >
       <div className="max-w-lg mx-auto">
         {loadingWorlds ? (

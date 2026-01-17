@@ -1,7 +1,8 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { BottomNav } from './BottomNav';
 import { TopHeader } from './TopHeader';
-import { FloatingActionButton } from './FloatingActionButton';
+import { FloatingActionMenu } from './FloatingActionMenu';
+import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ interface AppLayoutProps {
   headerRightIcon?: 'search' | 'notifications' | 'menu' | 'more' | 'none';
   onHeaderLeftAction?: () => void;
   onHeaderRightAction?: () => void;
+  showActiveOC?: boolean;
 }
 
 export const AppLayout = ({ 
@@ -22,14 +24,15 @@ export const AppLayout = ({
   title, 
   showNav = true,
   showFab = false,
-  fabTo,
-  fabOnClick,
   headerVariant = 'default',
   headerLeftIcon = 'none',
   headerRightIcon = 'none',
   onHeaderLeftAction,
-  onHeaderRightAction
+  onHeaderRightAction,
+  showActiveOC = false
 }: AppLayoutProps) => {
+  const [showCreateOC, setShowCreateOC] = useState(false);
+
   return (
     <div className="min-h-screen bg-background">
       <TopHeader 
@@ -39,17 +42,21 @@ export const AppLayout = ({
         rightIcon={headerRightIcon}
         onLeftAction={onHeaderLeftAction}
         onRightAction={onHeaderRightAction}
+        showActiveOC={showActiveOC}
       />
       
       <main className="relative pt-16 pb-20 px-4">
         {children}
       </main>
 
-      {showFab && (fabTo || fabOnClick) && (
-        <FloatingActionButton to={fabTo} onClick={fabOnClick} />
-      )}
+      {showFab && <FloatingActionMenu onCreateOC={() => setShowCreateOC(true)} />}
 
       {showNav && <BottomNav />}
+
+      <CreateCharacterModal 
+        open={showCreateOC} 
+        onOpenChange={setShowCreateOC}
+      />
     </div>
   );
 };
