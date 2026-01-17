@@ -41,7 +41,7 @@ interface TypingUser {
 
 export default function DMChat() {
   const { friendshipId } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile: userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -202,12 +202,22 @@ export default function DMChat() {
   const markMessagesAsRead = async () => {
     if (!friendshipId || !user) return;
 
+    // Mark direct messages as read
     await supabase
       .from('direct_messages')
       .update({ is_read: true })
       .eq('friendship_id', friendshipId)
       .neq('sender_id', user.id)
       .eq('is_read', false);
+    
+    // Also mark related DM notifications as read
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('type', 'dm')
+      .eq('is_read', false)
+      .filter('data->>friendship_id', 'eq', friendshipId);
   };
 
   const subscribeToMessages = () => {
@@ -271,7 +281,8 @@ export default function DMChat() {
         
         Object.values(state).forEach((presences: any) => {
           presences.forEach((presence: any) => {
-            if (presence.isTyping && presence.odId !== selectedCharacterId) {
+            // Only show others who are typing, not ourselves
+            if (presence.isTyping && presence.odId !== user?.id) {
               typing.push({
                 name: presence.characterName,
                 avatar: presence.characterAvatar,
@@ -284,11 +295,12 @@ export default function DMChat() {
         setTypingUsers(typing);
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && currentCharacter) {
+        if (status === 'SUBSCRIBED' && user) {
+          const charOrProfile = currentCharacter || { id: user.id, name: 'Me', avatar_url: null };
           await presenceChannel.track({
-            odId: currentCharacter.id,
-            characterName: currentCharacter.name,
-            characterAvatar: currentCharacter.avatar_url,
+            odId: user.id, // Always use user.id for presence tracking in DMs
+            characterName: charOrProfile.name || 'Me',
+            characterAvatar: charOrProfile.avatar_url || null,
             isTyping: false
           });
         }
@@ -301,19 +313,20 @@ export default function DMChat() {
   };
 
   const handleTypingChange = useCallback(async (isTyping: boolean) => {
-    if (!friendshipId || !currentCharacter) return;
+    if (!friendshipId || !user) return;
     
+    const charOrProfile = currentCharacter || { id: user.id, name: 'Me', avatar_url: null };
     const channel = supabase.channel(`dm-presence-${friendshipId}`);
     await channel.track({
-      odId: currentCharacter.id,
-      characterName: currentCharacter.name,
-      characterAvatar: currentCharacter.avatar_url,
+      odId: user.id, // Always use user.id for DM presence
+      characterName: charOrProfile.name || 'Me',
+      characterAvatar: charOrProfile.avatar_url || null,
       isTyping
     });
-  }, [friendshipId, currentCharacter]);
+  }, [friendshipId, currentCharacter, user]);
 
   const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
-    if (!user || !friendshipId || !selectedCharacterId) return;
+    if (!user || !friendshipId) return;
 
     // Combine content based on type for DMs
     let finalContent = content;
@@ -328,7 +341,7 @@ export default function DMChat() {
       .insert({
         friendship_id: friendshipId,
         sender_id: user.id,
-        sender_character_id: selectedCharacterId,
+        sender_character_id: selectedCharacterId || null, // Allow null for base profile
         content: finalContent,
         attachment_url: attachmentUrl || null,
       });
@@ -400,7 +413,7 @@ export default function DMChat() {
           ) : (
             messages.map((msg) => {
               const isOwn = msg.sender_id === user?.id;
-              const charName = msg.character?.name || 'Unknown';
+              const charName = msg.character?.name || (isOwn ? (userProfile?.username || 'You') : (friend?.username || 'Friend'));
               const charAvatar = msg.character?.avatar_url || null;
               
               // Detect message type from content
@@ -456,7 +469,7 @@ export default function DMChat() {
           <DMChatInput
             onSend={handleSendMessage}
             onTypingChange={handleTypingChange}
-            disabled={!selectedCharacterId}
+            disabled={false}
             friendshipId={friendshipId || ''}
           />
         </div>

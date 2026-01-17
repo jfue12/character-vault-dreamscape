@@ -86,7 +86,7 @@ interface WorldMember {
 
 export default function RoomChat() {
   const { worldId, roomId } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -401,7 +401,8 @@ export default function RoomChat() {
         
         Object.values(state).forEach((presences: any) => {
           presences.forEach((presence: any) => {
-            if (presence.isTyping && presence.odId !== selectedCharacterId) {
+            // Only show others who are typing, not ourselves
+            if (presence.isTyping && presence.odId !== (currentCharacter?.id || user?.id)) {
               typing.push({
                 name: presence.characterName,
                 avatar: presence.characterAvatar,
@@ -414,11 +415,12 @@ export default function RoomChat() {
         setTypingUsers(typing);
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && currentCharacter) {
+        if (status === 'SUBSCRIBED') {
+          const charOrProfile = currentCharacter || { id: user?.id, name: profile?.username || 'User', avatar_url: null };
           await presenceChannel.track({
-            odId: currentCharacter.id,
-            characterName: currentCharacter.name,
-            characterAvatar: currentCharacter.avatar_url,
+            odId: charOrProfile.id,
+            characterName: charOrProfile.name || 'User',
+            characterAvatar: charOrProfile.avatar_url || null,
             isTyping: false
           });
         }
@@ -432,16 +434,17 @@ export default function RoomChat() {
   };
 
   const handleTypingChange = useCallback(async (isTyping: boolean) => {
-    if (!roomId || !currentCharacter) return;
+    if (!roomId || !user) return;
     
+    const charOrProfile = currentCharacter || { id: user.id, name: profile?.username || 'User', avatar_url: null };
     const channel = supabase.channel(`room-presence-${roomId}`);
     await channel.track({
-      odId: currentCharacter.id,
-      characterName: currentCharacter.name,
-      characterAvatar: currentCharacter.avatar_url,
+      odId: charOrProfile.id,
+      characterName: charOrProfile.name || 'User',
+      characterAvatar: charOrProfile.avatar_url || null,
       isTyping
     });
-  }, [roomId, currentCharacter]);
+  }, [roomId, currentCharacter, user, profile]);
 
   const sendSystemMessage = async (type: string) => {
     if (!currentRoom || !user || !currentCharacter) return;
@@ -455,7 +458,7 @@ export default function RoomChat() {
   };
 
   const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
-    if (!user || !currentRoom || !selectedCharacterId) return;
+    if (!user || !currentRoom) return;
 
     // Validate against spam
     const isValid = await validateMessage(content);
@@ -466,7 +469,7 @@ export default function RoomChat() {
       .insert({
         room_id: currentRoom.id,
         sender_id: user.id,
-        character_id: selectedCharacterId,
+        character_id: selectedCharacterId || null, // Allow null for base profile
         content,
         type,
         attachment_url: attachmentUrl || null,
@@ -701,22 +704,24 @@ export default function RoomChat() {
               }
               
               const msg = item as Message & { isSystem: boolean };
+              const isOwnMessage = msg.sender_id === user?.id;
+              const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone');
               return (
                 <ChatBubble
                   key={msg.id}
                   messageId={msg.id}
-                  characterName={msg.character?.name || 'Unknown'}
+                  characterName={displayName}
                   characterAvatar={msg.character?.avatar_url || null}
                   content={msg.content}
                   type={msg.type}
-                  isOwnMessage={msg.sender_id === user?.id}
+                  isOwnMessage={isOwnMessage}
                   timestamp={msg.created_at}
                   attachmentUrl={msg.attachment_url}
                   emojiReactions={msg.emoji_reactions || {}}
                   onReact={handleReaction}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
-                  bubbleAlignment={(msg.character?.bubble_alignment as 'auto' | 'left' | 'right') || 'auto'}
+                  bubbleAlignment="auto"
                 />
               );
             })
@@ -749,7 +754,7 @@ export default function RoomChat() {
         <ChatInput
           onSend={handleSendMessage}
           onTypingChange={handleTypingChange}
-          disabled={!selectedCharacterId}
+          disabled={false}
           roomId={currentRoom?.id || ''}
         />
       </div>
