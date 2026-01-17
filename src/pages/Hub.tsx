@@ -88,6 +88,23 @@ export default function Hub() {
     setLoadingWorlds(false);
   };
 
+  // Navigate directly to the first room of a world
+  const handleWorldClick = async (worldId: string) => {
+    const { data: rooms } = await supabase
+      .from('world_rooms')
+      .select('id')
+      .eq('world_id', worldId)
+      .order('sort_order', { ascending: true })
+      .limit(1);
+
+    if (rooms && rooms.length > 0) {
+      navigate(`/worlds/${worldId}/rooms/${rooms[0].id}`);
+    } else {
+      // Fallback to world detail if no rooms exist
+      navigate(`/worlds/${worldId}`);
+    }
+  };
+
   const handleConversationSelect = (friendshipId: string) => {
     navigate(`/dm/${friendshipId}`);
   };
@@ -195,7 +212,7 @@ export default function Hub() {
                   >
                     <WorldCard
                       world={world}
-                      onClick={() => navigate(`/worlds/${world.id}`)}
+                      onClick={() => handleWorldClick(world.id)}
                     />
                   </motion.div>
                 ))}
