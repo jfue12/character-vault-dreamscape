@@ -129,6 +129,13 @@ export default function DMChat() {
   const fetchUserCharacters = async () => {
     if (!user) return;
 
+    // First get user's saved active character
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_character_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
     const { data, error } = await supabase
       .from('characters')
       .select('id, name, avatar_url')
@@ -137,10 +144,24 @@ export default function DMChat() {
 
     if (!error && data) {
       setCharacters(data);
-      // Only set default if no character is currently selected
-      if (data.length > 0 && !selectedCharacterId) {
+      // Use saved active character if it exists and is in the list, otherwise default to first
+      const savedCharId = profile?.active_character_id;
+      if (savedCharId && data.some(c => c.id === savedCharId)) {
+        setSelectedCharacterId(savedCharId);
+      } else if (data.length > 0 && !selectedCharacterId) {
         setSelectedCharacterId(data[0].id);
       }
+    }
+  };
+
+  // Save character selection to profile
+  const handleCharacterSelect = async (characterId: string | null) => {
+    setSelectedCharacterId(characterId);
+    if (user && characterId) {
+      await supabase
+        .from('profiles')
+        .update({ active_character_id: characterId })
+        .eq('id', user.id);
     }
   };
 
@@ -409,7 +430,7 @@ export default function DMChat() {
             <PersonaSwitcher
               characters={characters}
               selectedId={selectedCharacterId}
-              onSelect={setSelectedCharacterId}
+              onSelect={handleCharacterSelect}
             />
           )}
           
