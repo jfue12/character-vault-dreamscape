@@ -125,7 +125,7 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           friend_character_name: friendCharName,
           friend_avatar_url: friendAvatarUrl,
           last_message: lastMsg?.content || 'Start chatting!',
-          last_message_at: lastMsg?.created_at || f.id,
+          last_message_at: lastMsg?.created_at || new Date().toISOString(),
           unread_count: count || 0,
         };
       })
