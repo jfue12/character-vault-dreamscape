@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Crown, Shield } from 'lucide-react';
+import { X, Crown, Shield, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Member {
   userId: string;
@@ -15,9 +16,18 @@ interface ChatMemberListProps {
   onClose: () => void;
   members: Member[];
   memberCount: number;
+  currentUserRole?: 'owner' | 'admin' | 'member';
+  onLeaveWorld?: () => void;
 }
 
-export const ChatMemberList = ({ isOpen, onClose, members, memberCount }: ChatMemberListProps) => {
+export const ChatMemberList = ({ 
+  isOpen, 
+  onClose, 
+  members, 
+  memberCount,
+  currentUserRole = 'member',
+  onLeaveWorld
+}: ChatMemberListProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -37,7 +47,7 @@ export const ChatMemberList = ({ isOpen, onClose, members, memberCount }: ChatMe
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 shadow-xl"
+            className="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 shadow-xl flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
@@ -50,7 +60,7 @@ export const ChatMemberList = ({ isOpen, onClose, members, memberCount }: ChatMe
             </div>
 
             {/* Member List */}
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(100vh-80px)]">
+            <div className="flex-1 p-4 space-y-3 overflow-y-auto">
               {members.map((member) => (
                 <div
                   key={member.userId}
@@ -109,6 +119,20 @@ export const ChatMemberList = ({ isOpen, onClose, members, memberCount }: ChatMe
                 </p>
               )}
             </div>
+
+            {/* Footer - Leave Button for non-owners */}
+            {currentUserRole !== 'owner' && onLeaveWorld && (
+              <div className="p-4 border-t border-border">
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={onLeaveWorld}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Leave World
+                </Button>
+              </div>
+            )}
           </motion.div>
         </>
       )}

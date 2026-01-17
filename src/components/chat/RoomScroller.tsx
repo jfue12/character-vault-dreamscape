@@ -50,20 +50,22 @@ export const RoomScroller = ({ rooms, selectedId, onSelect, onCreateRoom }: Room
         </motion.button>
       ))}
 
-      {/* Create Room Button */}
-      <motion.button
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={onCreateRoom}
-        className="flex flex-col items-center gap-1 flex-shrink-0"
-      >
-        <div className="w-14 h-14 rounded-lg border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
-          <Plus className="w-5 h-5 text-muted-foreground" />
-        </div>
-        <span className="text-[10px] text-muted-foreground">
-          Create
-        </span>
-      </motion.button>
+      {/* Create Room Button - Only show if owner */}
+      {onCreateRoom && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={onCreateRoom}
+          className="flex flex-col items-center gap-1 flex-shrink-0"
+        >
+          <div className="w-14 h-14 rounded-lg border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
+            <Plus className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            Create
+          </span>
+        </motion.button>
+      )}
 
       {/* Remaining rooms */}
       {rooms.slice(1).map((room, index) => (
