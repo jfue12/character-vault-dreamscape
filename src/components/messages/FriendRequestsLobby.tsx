@@ -1,0 +1,194 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, X, MessageSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+
+interface FriendRequest {
+  id: string;
+  requester_id: string;
+  starter_message: string;
+  created_at: string;
+  requester_character?: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+  } | null;
+  requester_profile?: {
+    username: string | null;
+  } | null;
+}
+
+interface FriendRequestsLobbyProps {
+  onRequestHandled: () => void;
+}
+
+export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchRequests();
+    }
+  }, [user]);
+
+  const fetchRequests = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('friendships')
+      .select(`
+        id,
+        requester_id,
+        starter_message,
+        created_at,
+        requester_character:characters!friendships_requester_character_id_fkey(id, name, avatar_url)
+      `)
+      .eq('addressee_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      // Fetch requester profiles separately
+      const requestsWithProfiles = await Promise.all(
+        data.map(async (req) => {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', req.requester_id)
+            .single();
+          
+          return {
+            ...req,
+            requester_character: Array.isArray(req.requester_character) 
+              ? req.requester_character[0] 
+              : req.requester_character,
+            requester_profile: profileData,
+          };
+        })
+      );
+      setRequests(requestsWithProfiles);
+    }
+    setLoading(false);
+  };
+
+  const handleAccept = async (requestId: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', requestId);
+
+    if (error) {
+      toast({ title: 'Failed to accept request', variant: 'destructive' });
+    } else {
+      toast({ title: 'Friend request accepted!' });
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      onRequestHandled();
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'rejected' })
+      .eq('id', requestId);
+
+    if (error) {
+      toast({ title: 'Failed to decline request', variant: 'destructive' });
+    } else {
+      toast({ title: 'Friend request declined' });
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      onRequestHandled();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (requests.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4 mb-6">
+      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+        <MessageSquare className="w-5 h-5 text-primary" />
+        Friend Requests ({requests.length})
+      </h3>
+      
+      <AnimatePresence>
+        {requests.map((request) => (
+          <motion.div
+            key={request.id}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            className="glass-card p-4 space-y-3"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                {request.requester_character?.avatar_url ? (
+                  <img 
+                    src={request.requester_character.avatar_url} 
+                    alt={request.requester_character.name || 'User'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+                    <span className="text-lg font-bold text-white">
+                      {request.requester_character?.name?.[0] || request.requester_profile?.username?.[0] || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground">
+                    {request.requester_character?.name || 'Unknown'}
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    @{request.requester_profile?.username || 'anonymous'}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {request.starter_message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleDecline(request.id)}
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Decline
+              </Button>
+              <Button
+                onClick={() => handleAccept(request.id)}
+                size="sm"
+                className="flex-1 bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Accept
+              </Button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};

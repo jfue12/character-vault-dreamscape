@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Share2, Image, Gamepad2, BookOpen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { differenceInDays } from 'date-fns';
+import { CharacterRelationships } from './CharacterRelationships';
 
 interface Character {
   id: string;
@@ -16,7 +17,11 @@ interface Character {
   dislikes: string[] | null;
   is_hidden: boolean;
   created_at: string;
-  identity_tags?: unknown;
+  identity_tags?: {
+    sexuality?: string;
+    rp_style?: string;
+    zodiac?: string;
+  } | null;
 }
 
 interface CharacterDetailViewProps {
@@ -44,33 +49,14 @@ export const CharacterDetailView = ({
 }: CharacterDetailViewProps) => {
   const daysActive = differenceInDays(new Date(), new Date(character.created_at));
 
-  // Zodiac mapping
-  const zodiacData: Record<string, { emoji: string }> = {
-    'aries': { emoji: '♈' },
-    'taurus': { emoji: '♉' },
-    'gemini': { emoji: '♊' },
-    'cancer': { emoji: '♋' },
-    'leo': { emoji: '♌' },
-    'virgo': { emoji: '♍' },
-    'libra': { emoji: '♎' },
-    'scorpio': { emoji: '♏' },
-    'sagittarius': { emoji: '♐' },
-    'capricorn': { emoji: '♑' },
-    'aquarius': { emoji: '♒' },
-    'pisces': { emoji: '♓' }
-  };
+  const identityTags = character.identity_tags as { sexuality?: string; rp_style?: string; zodiac?: string } | null;
   
-  const zodiacOrder = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
-  const identityTags = character.identity_tags as Record<string, string> | null | undefined;
-  const zodiacKey = identityTags?.zodiac?.toLowerCase() || zodiacOrder[new Date(character.created_at).getMonth()];
-  const zodiac = zodiacData[zodiacKey] || { emoji: '♌' };
-
-  // Gender emoji
-  const genderEmoji: Record<string, string> = {
-    'male': '🚹',
-    'female': '🚺',
-    'non-binary': '⚧️',
-  };
+  // Build identity line: Pronouns | Sexuality | RP Style
+  const identityParts = [
+    character.pronouns,
+    identityTags?.sexuality,
+    identityTags?.rp_style,
+  ].filter(Boolean);
 
   const subNavItems = [
     { icon: Image, label: 'Gallery' },
@@ -103,7 +89,7 @@ export const CharacterDetailView = ({
       </div>
 
       {/* Action Buttons Row */}
-      {isOwnProfile && (
+      {isOwnProfile ? (
         <div className="flex gap-2 justify-center items-center px-4">
           <Button 
             variant="outline" 
@@ -118,6 +104,29 @@ export const CharacterDetailView = ({
             className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
           >
             Edit Character
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-2 justify-center items-center px-4">
+          <Button 
+            onClick={onFollow}
+            className="flex-1 bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground rounded-lg h-10"
+          >
+            Follow
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={onMessage}
+            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+          >
+            Message
           </Button>
           <Button
             variant="outline"
@@ -154,22 +163,14 @@ export const CharacterDetailView = ({
         </div>
       </div>
 
-      {/* Identity Row */}
-      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-        {character.pronouns && (
-          <span>{character.pronouns}</span>
-        )}
-        <span className="text-primary">{zodiac.emoji}</span>
-        {character.age && (
-          <span>{character.age}</span>
-        )}
-        {character.gender && (
-          <>
-            <span>{genderEmoji[character.gender.toLowerCase()] || ''}</span>
-            <span>{character.gender}</span>
-          </>
-        )}
-      </div>
+      {/* Identity Row: Pronouns | Sexuality | RP Style */}
+      {identityParts.length > 0 && (
+        <div className="flex items-center justify-center">
+          <span className="text-sm text-primary font-medium">
+            {identityParts.join(' | ')}
+          </span>
+        </div>
+      )}
 
       {/* Bio */}
       {character.bio && (
@@ -177,6 +178,42 @@ export const CharacterDetailView = ({
           {character.bio}
         </p>
       )}
+
+      {/* Likes & Dislikes */}
+      <div className="px-4 space-y-3">
+        {character.likes && character.likes.length > 0 && (
+          <div>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">Likes</span>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {character.likes.map((like, i) => (
+                <span key={i} className="px-2 py-1 rounded-full bg-green-500/10 text-green-400 text-xs">
+                  {like}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {character.dislikes && character.dislikes.length > 0 && (
+          <div>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">Dislikes</span>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {character.dislikes.map((dislike, i) => (
+                <span key={i} className="px-2 py-1 rounded-full bg-red-500/10 text-red-400 text-xs">
+                  {dislike}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Relationships Section */}
+      <div className="px-4">
+        <CharacterRelationships 
+          characterId={character.id} 
+          isOwner={isOwnProfile} 
+        />
+      </div>
 
       {/* Sub-Nav Icons */}
       <div className="flex justify-around items-center py-3 border-t border-border">
