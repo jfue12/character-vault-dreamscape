@@ -12,6 +12,7 @@ import CreateWorld from "./pages/CreateWorld";
 import WorldDetail from "./pages/WorldDetail";
 import RoomDetail from "./pages/RoomDetail";
 import Messages from "./pages/Messages";
+import Plots from "./pages/Plots";
 import Create from "./pages/Create";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/worlds/:worldId" element={<WorldDetail />} />
             <Route path="/worlds/:worldId/rooms/:roomId" element={<RoomDetail />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/plots" element={<Plots />} />
             <Route path="/create" element={<Create />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

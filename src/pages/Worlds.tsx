@@ -5,9 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus, Globe, Filter } from 'lucide-react';
+import { Globe } from 'lucide-react';
 
 interface World {
   id: string;
@@ -21,15 +19,14 @@ interface World {
   created_at: string;
 }
 
-const POPULAR_TAGS = ['Fantasy', 'Sci-Fi', 'Romance', 'Horror', 'Slice of Life', 'Action', 'Mystery'];
+type TabType = 'worlds' | 'dms';
 
 export default function Worlds() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [worlds, setWorlds] = useState<World[]>([]);
   const [loadingWorlds, setLoadingWorlds] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('worlds');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -65,24 +62,6 @@ export default function Worlds() {
     setLoadingWorlds(false);
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag)
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const filteredWorlds = worlds.filter(world => {
-    const matchesSearch = world.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      world.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesTags = selectedTags.length === 0 ||
-      selectedTags.some(tag => world.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase()));
-
-    return matchesSearch && matchesTags;
-  });
-
   if (loading) {
     return (
       <AppLayout title="Worlds">
@@ -94,106 +73,75 @@ export default function Worlds() {
   }
 
   return (
-    <AppLayout title="Worlds">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Search & Create */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex gap-3"
-        >
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search worlds..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-input border-border"
-            />
-          </div>
-          <Button
-            onClick={() => navigate('/worlds/create')}
-            className="bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground neon-border"
+    <AppLayout 
+      title="MASCOT"
+      headerLeftIcon="add-friend"
+      headerRightIcon="notifications"
+      showFab
+      fabTo="/worlds/create"
+    >
+      <div className="max-w-lg mx-auto space-y-4">
+        {/* Tab Switcher */}
+        <div className="flex bg-secondary rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('worlds')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'worlds'
+                ? 'bg-background text-primary'
+                : 'text-muted-foreground'
+            }`}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Create
-          </Button>
-        </motion.div>
-
-        {/* Tag Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-wrap gap-2"
-        >
-          <div className="flex items-center gap-2 text-muted-foreground mr-2">
-            <Filter className="w-4 h-4" />
-            <span className="text-sm">Tags:</span>
-          </div>
-          {POPULAR_TAGS.map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`px-3 py-1 rounded-full text-sm transition-all ${
-                selectedTags.includes(tag)
-                  ? 'bg-primary text-primary-foreground neon-border'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </motion.div>
-
-        {/* NSFW Notice for non-minors */}
-        {!profile?.is_minor && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-xs text-muted-foreground text-center"
+            worlds
+          </button>
+          <button
+            onClick={() => setActiveTab('dms')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'dms'
+                ? 'bg-background text-primary'
+                : 'text-muted-foreground'
+            }`}
           >
-            NSFW worlds are visible. You can filter them using tags.
-          </motion.div>
-        )}
+            Direct Messages
+          </button>
+        </div>
 
-        {/* Worlds Grid */}
-        {loadingWorlds ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filteredWorlds.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass-card p-8 text-center"
-          >
-            <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h4 className="text-lg font-semibold text-foreground mb-2">No worlds found</h4>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery || selectedTags.length > 0
-                ? 'Try adjusting your search or filters'
-                : 'Be the first to create a world!'}
-            </p>
-            <Button
-              onClick={() => navigate('/worlds/create')}
-              className="bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create World
-            </Button>
-          </motion.div>
+        {/* Content */}
+        {activeTab === 'worlds' ? (
+          <>
+            {loadingWorlds ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : worlds.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-20 text-center"
+              >
+                <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No worlds yet</p>
+              </motion.div>
+            ) : (
+              <div className="grid gap-4">
+                {worlds.map((world, index) => (
+                  <WorldCard
+                    key={world.id}
+                    world={world}
+                    index={index}
+                    currentUserId={user?.id}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {filteredWorlds.map((world, index) => (
-              <WorldCard
-                key={world.id}
-                world={world}
-                index={index}
-                currentUserId={user?.id}
-              />
-            ))}
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="py-20 text-center"
+          >
+            <p className="text-muted-foreground">No direct messages yet</p>
+          </motion.div>
         )}
       </div>
     </AppLayout>

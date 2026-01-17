@@ -1,28 +1,53 @@
 import { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { TopHeader } from './TopHeader';
+import { FloatingActionButton } from './FloatingActionButton';
 
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
   showNav?: boolean;
+  showFab?: boolean;
+  fabTo?: string;
+  fabOnClick?: () => void;
+  headerVariant?: 'default' | 'worlds' | 'profile' | 'simple';
+  headerLeftIcon?: 'grid' | 'avatar' | 'add-friend' | 'none';
+  headerRightIcon?: 'search' | 'notifications' | 'menu' | 'none';
+  onHeaderLeftAction?: () => void;
+  onHeaderRightAction?: () => void;
 }
 
-export const AppLayout = ({ children, title, showNav = true }: AppLayoutProps) => {
+export const AppLayout = ({ 
+  children, 
+  title, 
+  showNav = true,
+  showFab = false,
+  fabTo,
+  fabOnClick,
+  headerVariant = 'default',
+  headerLeftIcon = 'none',
+  headerRightIcon = 'none',
+  onHeaderLeftAction,
+  onHeaderRightAction
+}: AppLayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
-      {/* Ambient glow effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-neon-pink/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neon-blue/5 rounded-full blur-3xl animate-glow" />
-      </div>
-
-      <TopHeader title={title} />
+      <TopHeader 
+        title={title}
+        variant={headerVariant}
+        leftIcon={headerLeftIcon}
+        rightIcon={headerRightIcon}
+        onLeftAction={onHeaderLeftAction}
+        onRightAction={onHeaderRightAction}
+      />
       
-      <main className="relative pt-24 pb-28 px-4">
+      <main className="relative pt-16 pb-20 px-4">
         {children}
       </main>
+
+      {showFab && (fabTo || fabOnClick) && (
+        <FloatingActionButton to={fabTo} onClick={fabOnClick} />
+      )}
 
       {showNav && <BottomNav />}
     </div>
