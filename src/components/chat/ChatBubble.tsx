@@ -1,27 +1,54 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 
 interface ChatBubbleProps {
+  messageId: string;
   characterName: string;
   characterAvatar: string | null;
   content: string;
   type: 'dialogue' | 'thought' | 'narrator';
   isOwnMessage: boolean;
   timestamp?: string;
+  attachmentUrl?: string | null;
+  emojiReactions?: Record<string, string[]>;
+  onReact?: (messageId: string, emoji: string) => void;
 }
 
+const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+
 export const ChatBubble = ({
+  messageId,
   characterName,
   characterAvatar,
   content,
   type,
   isOwnMessage,
-  timestamp
+  timestamp,
+  attachmentUrl,
+  emojiReactions = {},
+  onReact
 }: ChatBubbleProps) => {
+  const [showReactions, setShowReactions] = useState(false);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
 
   // Check if content contains action text (wrapped in asterisks)
   const hasAction = content.includes('*');
+  
+  // Parse content with asterisks for italic action text
+  const parseContent = (text: string) => {
+    const parts = text.split(/(\*[^*]+\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return (
+          <span key={i} className="italic text-muted-foreground">
+            {part.slice(1, -1)}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
   
   // Narrator mode - centered italic text
   if (type === 'narrator') {
@@ -32,24 +59,35 @@ export const ChatBubble = ({
         className="text-center py-4 px-8"
       >
         <p className="text-muted-foreground italic text-sm">{content}</p>
+        {timestamp && (
+          <span className="text-[10px] text-muted-foreground/50">{formattedTime}</span>
+        )}
       </motion.div>
     );
   }
 
-  // Thought bubble - uses gray styling
-  const isRoleplayAction = hasAction || type === 'thought';
-  const displayContent = type === 'thought' ? `(${content})` : content;
+  // Thought bubble - cloud style
+  const isThought = type === 'thought';
+  const displayContent = isThought ? content : content;
 
-  // Decorate character name with stars if special
+  // Decorate character name
   const decoratedName = characterName.includes('Morningstar') || characterName.includes('star') 
     ? `☆${characterName}☆` 
     : characterName;
+
+  // Count reactions
+  const reactionCounts = Object.entries(emojiReactions).map(([emoji, users]) => ({
+    emoji,
+    count: users.length
+  })).filter(r => r.count > 0);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-end mb-3"
+      onMouseEnter={() => setShowReactions(true)}
+      onMouseLeave={() => setShowReactions(false)}
     >
       {/* Timestamp + Character Name + Avatar Row */}
       <div className="flex items-center gap-2 mb-1.5">
@@ -75,17 +113,71 @@ export const ChatBubble = ({
       </div>
 
       {/* Message Bubble */}
-      <div className="flex justify-end mr-11">
-        <div className={`max-w-[280px] rounded-2xl px-4 py-2.5 ${
-          isRoleplayAction
-            ? 'bg-muted/80 text-foreground'
-            : 'bg-[#5865F2] text-white'
+      <div className="flex justify-end mr-11 relative">
+        <div className={`max-w-[280px] rounded-2xl px-4 py-2.5 relative ${
+          isThought
+            ? 'bg-muted/60 text-foreground border border-muted-foreground/20'
+            : hasAction
+              ? 'bg-muted/80 text-foreground'
+              : 'bg-primary text-primary-foreground'
         }`}>
+          {/* Thought bubble decoration */}
+          {isThought && (
+            <div className="absolute -bottom-2 right-4 flex gap-0.5">
+              <div className="w-2 h-2 rounded-full bg-muted/60 border border-muted-foreground/20" />
+              <div className="w-1.5 h-1.5 rounded-full bg-muted/60 border border-muted-foreground/20" />
+            </div>
+          )}
+          
+          {/* Attachment Image */}
+          {attachmentUrl && (
+            <div className="mb-2 rounded-lg overflow-hidden">
+              <img 
+                src={attachmentUrl} 
+                alt="Attachment" 
+                className="max-w-full h-auto"
+              />
+            </div>
+          )}
+          
           <p className="text-sm leading-relaxed">
-            {displayContent}
+            {isThought ? `(${parseContent(displayContent)})` : parseContent(displayContent)}
           </p>
         </div>
+
+        {/* Reaction Picker */}
+        {showReactions && onReact && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute -top-8 right-0 flex gap-0.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg"
+          >
+            {REACTION_EMOJIS.map(emoji => (
+              <button
+                key={emoji}
+                onClick={() => onReact(messageId, emoji)}
+                className="text-sm hover:scale-125 transition-transform p-0.5"
+              >
+                {emoji}
+              </button>
+            ))}
+          </motion.div>
+        )}
       </div>
+
+      {/* Reaction Counts */}
+      {reactionCounts.length > 0 && (
+        <div className="flex gap-1 mr-11 mt-1">
+          {reactionCounts.map(({ emoji, count }) => (
+            <span
+              key={emoji}
+              className="flex items-center gap-0.5 text-xs bg-secondary/50 rounded-full px-1.5 py-0.5"
+            >
+              {emoji} {count}
+            </span>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
