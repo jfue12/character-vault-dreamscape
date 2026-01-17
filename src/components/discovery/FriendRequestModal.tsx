@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Send, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -40,7 +40,7 @@ export const FriendRequestModal = ({
   const [myCharacters, setMyCharacters] = useState<{ id: string; name: string; avatar_url: string | null }[]>([]);
 
   // Fetch user's characters when modal opens
-  useState(() => {
+  useEffect(() => {
     if (open && user) {
       supabase
         .from('characters')
@@ -56,7 +56,7 @@ export const FriendRequestModal = ({
           }
         });
     }
-  });
+  }, [open, user]);
 
   const handleSendRequest = async () => {
     if (!user || !targetCharacter || !starterMessage.trim()) return;
@@ -114,6 +114,7 @@ export const FriendRequestModal = ({
           <DialogTitle className="font-display text-xl text-foreground">
             Send Friend Request
           </DialogTitle>
+          <DialogDescription>Write a starter message to begin the conversation.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

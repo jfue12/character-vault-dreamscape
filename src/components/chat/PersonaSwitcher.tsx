@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { User } from 'lucide-react';
 
 interface Character {
   id: string;
@@ -9,20 +10,40 @@ interface Character {
 interface PersonaSwitcherProps {
   characters: Character[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
+  showBaseProfile?: boolean;
+  baseProfileName?: string;
 }
 
-export const PersonaSwitcher = ({ characters, selectedId, onSelect }: PersonaSwitcherProps) => {
-  if (characters.length === 0) {
-    return (
-      <div className="text-center py-3 text-xs text-muted-foreground">
-        Create a character to start chatting
-      </div>
-    );
-  }
-
+export const PersonaSwitcher = ({ 
+  characters, 
+  selectedId, 
+  onSelect, 
+  showBaseProfile = true,
+  baseProfileName = 'You'
+}: PersonaSwitcherProps) => {
   return (
     <div className="flex gap-3 overflow-x-auto py-3 px-4 scrollbar-hide">
+      {/* Base profile option for chatting without a character */}
+      {showBaseProfile && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => onSelect(null)}
+          className="flex-shrink-0"
+        >
+          <div className={`w-10 h-10 rounded-full overflow-hidden transition-all flex items-center justify-center ${
+            selectedId === null
+              ? 'ring-2 ring-primary ring-offset-1 ring-offset-background bg-primary/20'
+              : 'opacity-60 bg-muted'
+          }`}>
+            <User className="w-5 h-5 text-foreground" />
+          </div>
+          <p className="text-[10px] text-center text-muted-foreground mt-1 max-w-[40px] truncate">
+            {baseProfileName}
+          </p>
+        </motion.button>
+      )}
+      
       {characters.map((character) => (
         <motion.button
           key={character.id}
@@ -47,6 +68,9 @@ export const PersonaSwitcher = ({ characters, selectedId, onSelect }: PersonaSwi
               </div>
             )}
           </div>
+          <p className="text-[10px] text-center text-muted-foreground mt-1 max-w-[40px] truncate">
+            {character.name}
+          </p>
         </motion.button>
       ))}
     </div>

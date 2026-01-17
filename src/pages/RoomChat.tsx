@@ -747,6 +747,7 @@ export default function RoomChat() {
             characters={characters}
             selectedId={selectedCharacterId}
             onSelect={handleCharacterSelect}
+            baseProfileName={profile?.username || 'You'}
           />
         </div>
         

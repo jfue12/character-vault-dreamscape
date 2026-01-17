@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -381,6 +381,7 @@ export const ManageWorldModal = ({
           <DialogTitle className="font-display text-xl text-foreground">
             Manage {world.name}
           </DialogTitle>
+          <DialogDescription>Configure rooms, members, AI characters, and invites.</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="rooms" className="mt-4">
