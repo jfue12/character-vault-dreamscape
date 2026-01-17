@@ -12,6 +12,7 @@ import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 // AI typing indicator disabled
 import { ChatMemberList } from '@/components/chat/ChatMemberList';
+import { InviteFriendsModal } from '@/components/chat/InviteFriendsModal';
 import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
 import { usePhantomAI } from '@/hooks/usePhantomAI';
 import { useSpamDetection } from '@/hooks/useSpamDetection';
@@ -107,6 +108,7 @@ export default function RoomChat() {
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('member');
+  const [showInviteFriends, setShowInviteFriends] = useState(false);
 
   // Get current character
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
@@ -767,7 +769,17 @@ export default function RoomChat() {
         members={members}
         memberCount={members.length}
         currentUserRole={userRole}
+        currentUserId={user?.id}
         onLeaveWorld={handleLeaveWorld}
+        onInviteFriends={() => setShowInviteFriends(true)}
+      />
+
+      {/* Invite Friends Modal */}
+      <InviteFriendsModal
+        isOpen={showInviteFriends}
+        onClose={() => setShowInviteFriends(false)}
+        worldId={worldId || ''}
+        worldName={world?.name || ''}
       />
 
       {/* Settings Panel */}
