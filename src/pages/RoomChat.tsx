@@ -464,7 +464,10 @@ export default function RoomChat() {
         type: m.type,
       }));
 
-      triggerPhantomAI(content, selectedCharacterId, messageHistory);
+      const result = await triggerPhantomAI(content, selectedCharacterId, messageHistory);
+      if (result?.ok === false) {
+        toast({ title: 'AI', description: result.error, variant: 'destructive' });
+      }
     }
   };
 
