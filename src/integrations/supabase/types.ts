@@ -70,6 +70,58 @@ export type Database = {
           },
         ]
       }
+      moderation_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          moderator_id: string | null
+          reason: string | null
+          target_user_id: string | null
+          world_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          moderator_id?: string | null
+          reason?: string | null
+          target_user_id?: string | null
+          world_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          moderator_id?: string | null
+          reason?: string | null
+          target_user_id?: string | null
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_logs_moderator_id_fkey"
+            columns: ["moderator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_logs_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_logs_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           bio: string | null
@@ -99,6 +151,145 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      world_members: {
+        Row: {
+          id: string
+          is_banned: boolean
+          joined_at: string
+          role: string
+          timeout_until: string | null
+          user_id: string
+          world_id: string
+        }
+        Insert: {
+          id?: string
+          is_banned?: boolean
+          joined_at?: string
+          role?: string
+          timeout_until?: string | null
+          user_id: string
+          world_id: string
+        }
+        Update: {
+          id?: string
+          is_banned?: boolean
+          joined_at?: string
+          role?: string
+          timeout_until?: string | null
+          user_id?: string
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_members_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_rooms: {
+        Row: {
+          background_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_staff_only: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          world_id: string
+        }
+        Insert: {
+          background_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_staff_only?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          world_id: string
+        }
+        Update: {
+          background_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_staff_only?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_rooms_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worlds: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_nsfw: boolean
+          is_public: boolean
+          name: string
+          owner_id: string
+          rules: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_nsfw?: boolean
+          is_public?: boolean
+          name: string
+          owner_id: string
+          rules?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_nsfw?: boolean
+          is_public?: boolean
+          name?: string
+          owner_id?: string
+          rules?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worlds_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
