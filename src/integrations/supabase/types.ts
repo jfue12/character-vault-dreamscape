@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      age_verifications: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          user_id: string
+          verification_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          user_id: string
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          user_id?: string
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "age_verifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_characters: {
         Row: {
           character_id: string
@@ -181,6 +216,41 @@ export type Database = {
             columns: ["world_id"]
             isOneToOne: false
             referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_gallery: {
+        Row: {
+          caption: string | null
+          character_id: string
+          created_at: string
+          id: string
+          image_url: string
+          sort_order: number | null
+        }
+        Insert: {
+          caption?: string | null
+          character_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          sort_order?: number | null
+        }
+        Update: {
+          caption?: string | null
+          character_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_gallery_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
             referencedColumns: ["id"]
           },
         ]
@@ -743,6 +813,73 @@ export type Database = {
           },
         ]
       }
+      temp_ai_characters: {
+        Row: {
+          avatar_description: string | null
+          bio: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          is_saved: boolean | null
+          name: string
+          personality_traits: Json | null
+          room_id: string | null
+          saved_character_id: string | null
+          social_rank: string | null
+          world_id: string
+        }
+        Insert: {
+          avatar_description?: string | null
+          bio?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_saved?: boolean | null
+          name: string
+          personality_traits?: Json | null
+          room_id?: string | null
+          saved_character_id?: string | null
+          social_rank?: string | null
+          world_id: string
+        }
+        Update: {
+          avatar_description?: string | null
+          bio?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_saved?: boolean | null
+          name?: string
+          personality_traits?: Json | null
+          room_id?: string | null
+          saved_character_id?: string | null
+          social_rank?: string | null
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "temp_ai_characters_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "world_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "temp_ai_characters_saved_character_id_fkey"
+            columns: ["saved_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "temp_ai_characters_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timeouts: {
         Row: {
           created_at: string
@@ -791,6 +928,110 @@ export type Database = {
             columns: ["world_id"]
             isOneToOne: false
             referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reported_character_id: string | null
+          reported_message_id: string | null
+          reported_user_id: string | null
+          reporter_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reported_character_id?: string | null
+          reported_message_id?: string | null
+          reported_user_id?: string | null
+          reporter_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reported_character_id?: string | null
+          reported_message_id?: string | null
+          reported_user_id?: string | null
+          reporter_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_reports_reported_character_id_fkey"
+            columns: ["reported_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reported_message_id_fkey"
+            columns: ["reported_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reported_user_id_fkey"
+            columns: ["reported_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1012,6 +1253,7 @@ export type Database = {
         Args: { _user_id: string; _world_id: string }
         Returns: string
       }
+      is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_user_timed_out: {
         Args: { _user_id: string; _world_id: string }
         Returns: boolean

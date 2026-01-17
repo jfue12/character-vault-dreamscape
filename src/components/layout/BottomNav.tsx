@@ -8,9 +8,8 @@ export const BottomNav = () => {
 
   const navItems = [
     { icon: Layers, label: 'Discovery', path: '/' },
-    { icon: BookOpen, label: 'Stories', path: '/worlds' },
+    { icon: BookOpen, label: 'Hub', path: '/hub' },
     { icon: Hash, label: 'Plots', path: '/plots' },
-    { icon: MessageCircle, label: 'Chat', path: '/messages' },
   ];
 
   // Hide bottom nav on chat room pages
