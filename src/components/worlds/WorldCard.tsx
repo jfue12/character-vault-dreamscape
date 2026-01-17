@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Globe, Lock, AlertTriangle, Users } from 'lucide-react';
+import { Globe, Lock, AlertTriangle, Users, LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface World {
   id: string;
@@ -17,19 +18,36 @@ interface WorldCardProps {
   world: World;
   index?: number;
   currentUserId?: string;
+  showJoinButton?: boolean;
+  isJoining?: boolean;
+  onJoin?: () => void;
   onClick?: () => void;
 }
 
-export const WorldCard = ({ world, index = 0, currentUserId, onClick }: WorldCardProps) => {
+export const WorldCard = ({ 
+  world, 
+  index = 0, 
+  currentUserId, 
+  showJoinButton = false,
+  isJoining = false,
+  onJoin,
+  onClick 
+}: WorldCardProps) => {
   const navigate = useNavigate();
   const isOwner = currentUserId === world.owner_id;
 
   const handleClick = () => {
+    if (showJoinButton) return; // Don't navigate on discover cards
     if (onClick) {
       onClick();
     } else {
       navigate(`/worlds/${world.id}`);
     }
+  };
+
+  const handleJoin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onJoin?.();
   };
 
   return (
@@ -38,7 +56,9 @@ export const WorldCard = ({ world, index = 0, currentUserId, onClick }: WorldCar
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       onClick={handleClick}
-      className="glass-card overflow-hidden cursor-pointer group hover:neon-border transition-all"
+      className={`glass-card overflow-hidden group transition-all ${
+        showJoinButton ? '' : 'cursor-pointer hover:neon-border'
+      }`}
     >
       {/* Cover Image */}
       <div className="h-40 bg-gradient-to-br from-neon-purple/20 to-neon-blue/20 relative overflow-hidden">
@@ -78,9 +98,29 @@ export const WorldCard = ({ world, index = 0, currentUserId, onClick }: WorldCar
 
       {/* Info */}
       <div className="p-4 space-y-2">
-        <h4 className="font-display font-bold text-foreground group-hover:text-primary transition-colors">
-          {world.name}
-        </h4>
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="font-display font-bold text-foreground group-hover:text-primary transition-colors flex-1">
+            {world.name}
+          </h4>
+          
+          {showJoinButton && (
+            <Button
+              size="sm"
+              onClick={handleJoin}
+              disabled={isJoining}
+              className="shrink-0"
+            >
+              {isJoining ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4 mr-1" />
+                  Join
+                </>
+              )}
+            </Button>
+          )}
+        </div>
         
         {world.description && (
           <p className="text-muted-foreground text-sm line-clamp-2">

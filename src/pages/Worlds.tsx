@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
+import { useToast } from '@/hooks/use-toast';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface World {
   id: string;
@@ -12,6 +15,7 @@ interface World {
   description: string | null;
   image_url: string | null;
   is_nsfw: boolean;
+  is_public: boolean;
   tags: string[] | null;
   owner_id: string;
 }
@@ -19,9 +23,13 @@ interface World {
 export default function Worlds() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'joined' | 'owned'>('joined');
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'joined' | 'owned' | 'discover'>('joined');
   const [worlds, setWorlds] = useState<World[]>([]);
+  const [joinedWorldIds, setJoinedWorldIds] = useState<Set<string>>(new Set());
   const [loadingWorlds, setLoadingWorlds] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -31,9 +39,29 @@ export default function Worlds() {
 
   useEffect(() => {
     if (user) {
+      fetchJoinedWorldIds();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
       fetchWorlds();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, joinedWorldIds]);
+
+  const fetchJoinedWorldIds = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('world_members')
+      .select('world_id')
+      .eq('user_id', user.id)
+      .eq('is_banned', false);
+    
+    if (data) {
+      setJoinedWorldIds(new Set(data.map(m => m.world_id)));
+    }
+  };
 
   const fetchWorlds = async () => {
     if (!user) return;
@@ -50,41 +78,97 @@ export default function Worlds() {
       if (!error && data) {
         setWorlds(data);
       }
-    } else {
+    } else if (activeTab === 'joined') {
       // Fetch worlds user is a member of
-      const { data: memberData, error: memberError } = await supabase
-        .from('world_members')
-        .select('world_id')
-        .eq('user_id', user.id)
-        .eq('is_banned', false);
+      if (joinedWorldIds.size > 0) {
+        let query = supabase
+          .from('worlds')
+          .select('*')
+          .in('id', Array.from(joinedWorldIds))
+          .order('created_at', { ascending: false });
 
-      if (!memberError && memberData) {
-        const worldIds = memberData.map(m => m.world_id);
-        
-        if (worldIds.length > 0) {
-          let query = supabase
-            .from('worlds')
-            .select('*')
-            .in('id', worldIds)
-            .order('created_at', { ascending: false });
-
-          // Filter NSFW for minors
-          if (profile?.is_minor) {
-            query = query.eq('is_nsfw', false);
-          }
-
-          const { data, error } = await query;
-          if (!error && data) {
-            setWorlds(data);
-          }
-        } else {
-          setWorlds([]);
+        // Filter NSFW for minors
+        if (profile?.is_minor) {
+          query = query.eq('is_nsfw', false);
         }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          setWorlds(data);
+        }
+      } else {
+        setWorlds([]);
+      }
+    } else {
+      // Discover tab - fetch public worlds user hasn't joined
+      let query = supabase
+        .from('worlds')
+        .select('*')
+        .eq('is_public', true)
+        .neq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Filter NSFW for minors
+      if (profile?.is_minor) {
+        query = query.eq('is_nsfw', false);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        // Filter out already joined worlds
+        const discoverableWorlds = data.filter(w => !joinedWorldIds.has(w.id));
+        setWorlds(discoverableWorlds);
       }
     }
 
     setLoadingWorlds(false);
   };
+
+  const handleJoinWorld = async (worldId: string) => {
+    if (!user) return;
+    
+    setJoiningWorldId(worldId);
+    
+    const { error } = await supabase
+      .from('world_members')
+      .insert({
+        world_id: worldId,
+        user_id: user.id,
+        role: 'member'
+      });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to join world',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Joined!',
+        description: 'You are now a member of this world'
+      });
+      
+      // Update joined worlds set
+      setJoinedWorldIds(prev => new Set([...prev, worldId]));
+      
+      // Remove from discover list
+      setWorlds(prev => prev.filter(w => w.id !== worldId));
+    }
+    
+    setJoiningWorldId(null);
+  };
+
+  const filteredWorlds = worlds.filter(world => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      world.name.toLowerCase().includes(query) ||
+      world.description?.toLowerCase().includes(query) ||
+      world.tags?.some(tag => tag.toLowerCase().includes(query))
+    );
+  });
 
   if (loading) {
     return (
@@ -106,20 +190,20 @@ export default function Worlds() {
     >
       <div className="max-w-lg mx-auto">
         {/* Tab Switcher */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           <button
             onClick={() => setActiveTab('joined')}
-            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all ${
+            className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all ${
               activeTab === 'joined'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary text-muted-foreground hover:text-foreground'
             }`}
           >
-            Joined Worlds
+            Joined
           </button>
           <button
             onClick={() => setActiveTab('owned')}
-            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all ${
+            className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all ${
               activeTab === 'owned'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary text-muted-foreground hover:text-foreground'
@@ -127,32 +211,71 @@ export default function Worlds() {
           >
             My Worlds
           </button>
+          <button
+            onClick={() => setActiveTab('discover')}
+            className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'discover'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Discover
+          </button>
         </div>
+
+        {/* Search (only for discover tab) */}
+        {activeTab === 'discover' && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search worlds..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        )}
 
         {/* Worlds List */}
         {loadingWorlds ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : worlds.length === 0 ? (
+        ) : filteredWorlds.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="py-20 text-center"
           >
             <p className="text-muted-foreground mb-4">
-              {activeTab === 'joined' ? 'No worlds joined yet' : 'No worlds created yet'}
+              {activeTab === 'joined' 
+                ? 'No worlds joined yet' 
+                : activeTab === 'owned' 
+                  ? 'No worlds created yet'
+                  : searchQuery 
+                    ? 'No worlds match your search'
+                    : 'No new worlds to discover'}
             </p>
-            <button
-              onClick={() => activeTab === 'joined' ? navigate('/') : navigate('/create-world')}
-              className="text-primary hover:underline"
-            >
-              {activeTab === 'joined' ? 'Discover worlds' : 'Create a world'}
-            </button>
+            {activeTab === 'joined' && (
+              <button
+                onClick={() => setActiveTab('discover')}
+                className="text-primary hover:underline"
+              >
+                Discover worlds to join
+              </button>
+            )}
+            {activeTab === 'owned' && (
+              <button
+                onClick={() => navigate('/create-world')}
+                className="text-primary hover:underline"
+              >
+                Create a world
+              </button>
+            )}
           </motion.div>
         ) : (
           <div className="space-y-4">
-            {worlds.map((world, index) => (
+            {filteredWorlds.map((world, index) => (
               <motion.div
                 key={world.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -161,7 +284,15 @@ export default function Worlds() {
               >
                 <WorldCard
                   world={world}
-                  onClick={() => navigate(`/worlds/${world.id}`)}
+                  currentUserId={user?.id}
+                  showJoinButton={activeTab === 'discover'}
+                  isJoining={joiningWorldId === world.id}
+                  onJoin={() => handleJoinWorld(world.id)}
+                  onClick={() => {
+                    if (activeTab !== 'discover') {
+                      navigate(`/worlds/${world.id}`);
+                    }
+                  }}
                 />
               </motion.div>
             ))}
