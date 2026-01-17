@@ -13,9 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
   Plus, Trash2, DoorOpen, Users, Shield, Clock, 
-  Ban, Crown, Upload, X, FileText, AlertTriangle, Bot
+  Ban, Crown, Upload, X, FileText, AlertTriangle, Bot, Link2
 } from 'lucide-react';
 import { AICharacterManager } from './AICharacterManager';
+import { InviteManager } from './InviteManager';
 
 interface World {
   id: string;
@@ -383,18 +384,21 @@ export const ManageWorldModal = ({
         </DialogHeader>
 
         <Tabs defaultValue="rooms" className="mt-4">
-          <TabsList className="w-full bg-secondary">
-            <TabsTrigger value="rooms" className="flex-1">
-              <DoorOpen className="w-4 h-4 mr-2" /> Rooms
+          <TabsList className="w-full bg-secondary flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="rooms" className="flex-1 min-w-[80px]">
+              <DoorOpen className="w-4 h-4 mr-1" /> Rooms
             </TabsTrigger>
-            <TabsTrigger value="members" className="flex-1">
-              <Users className="w-4 h-4 mr-2" /> Members
+            <TabsTrigger value="invites" className="flex-1 min-w-[80px]">
+              <Link2 className="w-4 h-4 mr-1" /> Invites
             </TabsTrigger>
-            <TabsTrigger value="ai" className="flex-1">
-              <Bot className="w-4 h-4 mr-2" /> AI NPCs
+            <TabsTrigger value="members" className="flex-1 min-w-[80px]">
+              <Users className="w-4 h-4 mr-1" /> Members
             </TabsTrigger>
-            <TabsTrigger value="logs" className="flex-1">
-              <FileText className="w-4 h-4 mr-2" /> Logs
+            <TabsTrigger value="ai" className="flex-1 min-w-[80px]">
+              <Bot className="w-4 h-4 mr-1" /> AI
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="flex-1 min-w-[80px]">
+              <FileText className="w-4 h-4 mr-1" /> Logs
             </TabsTrigger>
           </TabsList>
 
@@ -498,6 +502,11 @@ export const ManageWorldModal = ({
                 </div>
               ))}
             </div>
+          </TabsContent>
+
+          {/* Invites Tab */}
+          <TabsContent value="invites" className="space-y-4 mt-4">
+            <InviteManager worldId={world.id} />
           </TabsContent>
 
           {/* Members Tab */}
