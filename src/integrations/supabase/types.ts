@@ -296,7 +296,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_world_role: {
+        Args: { _user_id: string; _world_id: string }
+        Returns: string
+      }
+      is_world_member: {
+        Args: { _user_id: string; _world_id: string }
+        Returns: boolean
+      }
+      is_world_staff: {
+        Args: { _user_id: string; _world_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
