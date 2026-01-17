@@ -179,7 +179,7 @@ export default function WorldDetail() {
       toast({ title: 'Failed to join', description: error.message, variant: 'destructive' });
     } else {
       // Fetch username for system message
-      const { data: profile } = await supabase
+      const { data: userProfile } = await supabase
         .from('profiles')
         .select('username')
         .eq('id', user.id)
@@ -197,7 +197,18 @@ export default function WorldDetail() {
           room_id: worldRooms[0].id,
           message_type: 'join',
           user_id: user.id,
-          username: profile?.username || 'Someone'
+          username: userProfile?.username || 'Someone'
+        });
+      }
+
+      // Notify the world owner
+      if (world && world.owner_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: world.owner_id,
+          type: 'world_join',
+          title: 'New Member',
+          body: `${userProfile?.username || 'Someone'} joined your world "${world.name}"`,
+          data: { world_id: worldId, joiner_id: user.id }
         });
       }
 

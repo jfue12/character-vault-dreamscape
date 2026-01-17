@@ -7,8 +7,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
 import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
-import { Globe, MessageCircle, Compass } from 'lucide-react';
+import { Globe, MessageCircle, Compass, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 interface World {
   id: string;
@@ -32,6 +33,7 @@ export default function Hub() {
   const [loadingWorlds, setLoadingWorlds] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -170,6 +172,9 @@ export default function Hub() {
     
     setJoiningWorldId(worldId);
     
+    // Get world info for notification
+    const targetWorld = worlds.find(w => w.id === worldId);
+    
     const { error } = await supabase
       .from('world_members')
       .insert({
@@ -190,6 +195,17 @@ export default function Hub() {
         description: 'You are now a member of this world'
       });
       
+      // Notify the world owner
+      if (targetWorld && targetWorld.owner_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: targetWorld.owner_id,
+          type: 'world_join',
+          title: 'New Member',
+          body: `${profile?.username || 'Someone'} joined your world "${targetWorld.name}"`,
+          data: { world_id: worldId, joiner_id: user.id }
+        });
+      }
+      
       // Update joined worlds set
       setJoinedWorldIds(prev => new Set([...prev, worldId]));
       
@@ -203,6 +219,17 @@ export default function Hub() {
   const handleConversationSelect = (friendshipId: string, _friendId: string) => {
     navigate(`/dm/${friendshipId}`);
   };
+
+  // Filter worlds based on search query
+  const filteredWorlds = worlds.filter(world => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      world.name.toLowerCase().includes(query) ||
+      world.description?.toLowerCase().includes(query) ||
+      world.tags?.some(tag => tag.toLowerCase().includes(query))
+    );
+  });
 
   if (loading) {
     return (
@@ -286,44 +313,59 @@ export default function Hub() {
               </button>
             </div>
 
+            {/* Search Bar */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search worlds..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             {/* Worlds List */}
             {loadingWorlds ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : worlds.length === 0 ? (
+            ) : filteredWorlds.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="py-20 text-center"
               >
                 <p className="text-muted-foreground mb-4">
-                  {worldsTab === 'joined' 
-                    ? 'No worlds joined yet' 
-                    : worldsTab === 'owned'
-                      ? 'No worlds created yet'
-                      : 'No public worlds to discover'}
+                  {searchQuery
+                    ? 'No worlds match your search'
+                    : worldsTab === 'joined' 
+                      ? 'No worlds joined yet' 
+                      : worldsTab === 'owned'
+                        ? 'No worlds created yet'
+                        : 'No public worlds to discover'}
                 </p>
-                <button
-                  onClick={() => {
-                    if (worldsTab === 'joined') {
-                      setWorldsTab('discover');
-                    } else if (worldsTab === 'owned') {
-                      navigate('/create-world');
-                    }
-                  }}
-                  className="text-primary hover:underline"
-                >
-                  {worldsTab === 'joined' 
-                    ? 'Discover worlds' 
-                    : worldsTab === 'owned'
-                      ? 'Create a world'
-                      : null}
-                </button>
+                {!searchQuery && (
+                  <button
+                    onClick={() => {
+                      if (worldsTab === 'joined') {
+                        setWorldsTab('discover');
+                      } else if (worldsTab === 'owned') {
+                        navigate('/create-world');
+                      }
+                    }}
+                    className="text-primary hover:underline"
+                  >
+                    {worldsTab === 'joined' 
+                      ? 'Discover worlds' 
+                      : worldsTab === 'owned'
+                        ? 'Create a world'
+                        : null}
+                  </button>
+                )}
               </motion.div>
             ) : (
               <div className="space-y-4">
-                {worlds.map((world, index) => (
+                {filteredWorlds.map((world, index) => (
                   <motion.div
                     key={world.id}
                     initial={{ opacity: 0, y: 20 }}

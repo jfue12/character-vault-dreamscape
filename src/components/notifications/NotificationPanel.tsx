@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, UserPlus, MessageCircle, Shield, Check, Trash2 } from 'lucide-react';
+import { X, Bell, UserPlus, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -134,6 +134,11 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
           navigate(`/user/${notification.data.follower_id}`);
         }
         break;
+      case 'world_join':
+        if (notification.data?.world_id) {
+          navigate(`/worlds/${notification.data.world_id}`);
+        }
+        break;
       default:
         break;
     }
@@ -149,6 +154,12 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
         return <MessageCircle className="w-5 h-5 text-primary" />;
       case 'moderation':
         return <Shield className="w-5 h-5 text-destructive" />;
+      case 'follow':
+        return <Heart className="w-5 h-5 text-pink-500" />;
+      case 'world_join':
+        return <Globe className="w-5 h-5 text-primary" />;
+      case 'world_invite':
+        return <Users className="w-5 h-5 text-primary" />;
       default:
         return <Bell className="w-5 h-5 text-primary" />;
     }
