@@ -24,6 +24,8 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
     lastTriggerRef.current = now;
 
     try {
+      console.log('Triggering Phantom AI for world:', worldId, 'room:', roomId);
+      
       const { data, error } = await supabase.functions.invoke('phantom-ai', {
         body: {
           worldId,
@@ -35,7 +37,9 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
       });
 
       if (error) {
-        console.error('Phantom AI error:', error);
+        console.error('Phantom AI error:', error.message || error);
+      } else {
+        console.log('Phantom AI response:', data);
       }
 
       return data;
