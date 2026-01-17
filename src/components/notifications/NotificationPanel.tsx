@@ -109,11 +109,14 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
     
     switch (notification.type) {
       case 'friend_request':
-        navigate('/messages');
+        // Navigate to Hub's messages tab where FriendRequestsLobby is
+        navigate('/hub');
         break;
       case 'dm':
         if (notification.data?.friendship_id) {
           navigate(`/dm/${notification.data.friendship_id}`);
+        } else {
+          navigate('/hub');
         }
         break;
       case 'world_invite':
@@ -125,6 +128,13 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
         if (notification.data?.world_id) {
           navigate(`/worlds/${notification.data.world_id}`);
         }
+        break;
+      case 'follow':
+        if (notification.data?.follower_id) {
+          navigate(`/user/${notification.data.follower_id}`);
+        }
+        break;
+      default:
         break;
     }
     
