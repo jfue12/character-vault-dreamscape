@@ -15,6 +15,7 @@ import RoomChat from "./pages/RoomChat";
 import DMChat from "./pages/DMChat";
 import Plots from "./pages/Plots";
 import Create from "./pages/Create";
+import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/dm/:friendshipId" element={<DMChat />} />
             <Route path="/plots" element={<Plots />} />
             <Route path="/create" element={<Create />} />
+            <Route path="/feed" element={<Feed />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
