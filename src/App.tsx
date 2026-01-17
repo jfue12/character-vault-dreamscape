@@ -36,6 +36,7 @@ const App = () => (
             <Route path="/worlds/:worldId" element={<WorldDetail />} />
             <Route path="/worlds/:worldId/rooms/:roomId" element={<RoomChat />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/dm/:friendshipId" element={<Messages />} />
             <Route path="/plots" element={<Plots />} />
             <Route path="/create" element={<Create />} />
             <Route path="*" element={<NotFound />} />

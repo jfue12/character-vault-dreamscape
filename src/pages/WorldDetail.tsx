@@ -7,10 +7,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { RoomCard } from '@/components/worlds/RoomCard';
 import { ManageWorldModal } from '@/components/worlds/ManageWorldModal';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft, Settings, Users, Lock, AlertTriangle, 
-  LogIn, LogOut, Globe, ScrollText
+  LogIn, LogOut, Globe, ScrollText, BookOpen
 } from 'lucide-react';
 
 interface World {
@@ -23,6 +24,8 @@ interface World {
   is_public: boolean;
   is_nsfw: boolean;
   owner_id: string;
+  lore_content: string | null;
+  lore_image_url: string | null;
 }
 
 interface Room {
@@ -40,8 +43,13 @@ interface Member {
   role: string;
   is_banned: boolean;
   timeout_until: string | null;
+  active_character_id: string | null;
   profiles: {
     username: string | null;
+  } | null;
+  active_character?: {
+    name: string;
+    avatar_url: string | null;
   } | null;
 }
 
@@ -57,7 +65,7 @@ export default function WorldDetail() {
   const [membership, setMembership] = useState<Member | null>(null);
   const [loadingWorld, setLoadingWorld] = useState(true);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-  const [showRules, setShowRules] = useState(false);
+  const [activeTab, setActiveTab] = useState<'rooms' | 'lore' | 'members'>('rooms');
 
   const isOwner = membership?.role === 'owner';
   const isAdmin = membership?.role === 'admin';
@@ -126,7 +134,6 @@ export default function WorldDetail() {
       .order('sort_order', { ascending: true });
 
     if (data) {
-      // Filter staff-only rooms for non-staff
       const filteredRooms = isStaff 
         ? data 
         : data.filter(room => !room.is_staff_only);
@@ -139,11 +146,24 @@ export default function WorldDetail() {
 
     const { data } = await supabase
       .from('world_members')
-      .select('*, profiles(username)')
+      .select(`
+        *,
+        profiles(username),
+        active_character:characters!world_members_active_character_id_fkey(name, avatar_url)
+      `)
       .eq('world_id', worldId)
+      .eq('is_banned', false)
       .order('role', { ascending: true });
 
-    if (data) setMembers(data);
+    if (data) {
+      const processedMembers = data.map(m => ({
+        ...m,
+        active_character: Array.isArray(m.active_character) 
+          ? m.active_character[0] 
+          : m.active_character
+      }));
+      setMembers(processedMembers);
+    }
   };
 
   const handleJoin = async () => {
@@ -209,7 +229,6 @@ export default function WorldDetail() {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
             
-            {/* Back button */}
             <button
               onClick={() => navigate('/worlds')}
               className="absolute top-4 left-4 p-2 rounded-full bg-background/80 backdrop-blur hover:bg-background transition-colors"
@@ -217,7 +236,6 @@ export default function WorldDetail() {
               <ArrowLeft className="w-5 h-5" />
             </button>
 
-            {/* Badges */}
             <div className="absolute top-4 right-4 flex gap-2">
               {world.is_nsfw && (
                 <span className="px-2 py-1 rounded-full bg-destructive/80 backdrop-blur text-destructive-foreground text-xs flex items-center gap-1">
@@ -243,8 +261,7 @@ export default function WorldDetail() {
                   <p className="text-muted-foreground mb-4">{world.description}</p>
                 )}
                 
-                {/* Tags */}
-                {world.tags.length > 0 && (
+                {world.tags && world.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
                     {world.tags.map(tag => (
                       <span key={tag} className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs">
@@ -254,7 +271,6 @@ export default function WorldDetail() {
                   </div>
                 )}
 
-                {/* Stats */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Users className="w-4 h-4" />
@@ -267,13 +283,7 @@ export default function WorldDetail() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2">
-                {world.rules && (
-                  <Button variant="ghost" size="icon" onClick={() => setShowRules(!showRules)}>
-                    <ScrollText className="w-5 h-5" />
-                  </Button>
-                )}
                 {isOwner && (
                   <Button variant="ghost" size="icon" onClick={() => setIsManageModalOpen(true)}>
                     <Settings className="w-5 h-5" />
@@ -292,54 +302,148 @@ export default function WorldDetail() {
                 )}
               </div>
             </div>
-
-            {/* Rules */}
-            {showRules && world.rules && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mt-4 p-4 rounded-lg bg-secondary"
-              >
-                <h4 className="font-semibold text-foreground mb-2">World Rules</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{world.rules}</p>
-              </motion.div>
-            )}
           </div>
         </motion.div>
 
-        {/* Rooms */}
+        {/* Tabs for Rooms, Lore, Members */}
         {isMember ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="space-y-4"
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-semibold text-foreground">Areas</h3>
-              {isOwner && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setIsManageModalOpen(true)}
-                >
-                  Manage Rooms
-                </Button>
-              )}
-            </div>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <TabsList className="w-full bg-secondary mb-4">
+                <TabsTrigger value="rooms" className="flex-1">
+                  <Globe className="w-4 h-4 mr-2" /> Rooms
+                </TabsTrigger>
+                <TabsTrigger value="lore" className="flex-1">
+                  <BookOpen className="w-4 h-4 mr-2" /> Lore
+                </TabsTrigger>
+                <TabsTrigger value="members" className="flex-1">
+                  <Users className="w-4 h-4 mr-2" /> Members
+                </TabsTrigger>
+              </TabsList>
 
-            {rooms.length === 0 ? (
-              <div className="glass-card p-8 text-center">
-                <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No rooms yet</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {rooms.map((room, index) => (
-                  <RoomCard key={room.id} room={room} index={index} worldId={worldId!} />
+              {/* Rooms Tab */}
+              <TabsContent value="rooms" className="space-y-4">
+                {isOwner && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsManageModalOpen(true)}
+                    className="w-full"
+                  >
+                    Manage Rooms
+                  </Button>
+                )}
+
+                {rooms.length === 0 ? (
+                  <div className="glass-card p-8 text-center">
+                    <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No rooms yet</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {rooms.map((room, index) => (
+                      <RoomCard key={room.id} room={room} index={index} worldId={worldId!} />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Lore Tab */}
+              <TabsContent value="lore" className="space-y-4">
+                <div className="glass-card overflow-hidden">
+                  {world.lore_image_url && (
+                    <div className="h-48 bg-gradient-to-br from-neon-purple/20 to-neon-blue/20">
+                      <img 
+                        src={world.lore_image_url} 
+                        alt="Lore" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    {world.lore_content ? (
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <div className="whitespace-pre-wrap text-muted-foreground">
+                          {world.lore_content}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No lore added yet</p>
+                        {isOwner && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Add world lore in the settings
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rules */}
+                {world.rules && (
+                  <div className="glass-card p-6">
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <ScrollText className="w-4 h-4 text-primary" />
+                      World Rules
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {world.rules}
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Members Tab */}
+              <TabsContent value="members" className="space-y-3">
+                {members.map((member) => (
+                  <div 
+                    key={member.id} 
+                    className="flex items-center gap-3 p-3 rounded-xl bg-secondary"
+                  >
+                    <div className="w-12 h-12 rounded-full overflow-hidden">
+                      {member.active_character?.avatar_url ? (
+                        <img 
+                          src={member.active_character.avatar_url} 
+                          alt={member.active_character.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+                          <span className="text-lg font-bold text-white">
+                            {member.active_character?.name?.[0] || member.profiles?.username?.[0] || '?'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">
+                          {member.active_character?.name || member.profiles?.username || 'Unknown'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          member.role === 'owner' ? 'bg-primary text-primary-foreground' :
+                          member.role === 'admin' ? 'bg-accent text-accent-foreground' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {member.role}
+                        </span>
+                      </div>
+                      {member.active_character && (
+                        <p className="text-xs text-muted-foreground">
+                          @{member.profiles?.username}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
           </motion.div>
         ) : (
           <motion.div
