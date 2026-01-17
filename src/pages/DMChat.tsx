@@ -371,7 +371,7 @@ export default function DMChat() {
 
       {/* Messages Area */}
       <main className="flex-1 pb-44 px-4 overflow-y-auto pt-4">
-        <div className="max-w-lg mx-auto space-y-2">
+        <div className="max-w-lg mx-auto space-y-4">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
