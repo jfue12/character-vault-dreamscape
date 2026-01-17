@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import Worlds from "./pages/Worlds";
 import CreateWorld from "./pages/CreateWorld";
 import WorldDetail from "./pages/WorldDetail";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/worlds" element={<Worlds />} />
             <Route path="/create-world" element={<CreateWorld />} />
             <Route path="/worlds/:worldId" element={<WorldDetail />} />
