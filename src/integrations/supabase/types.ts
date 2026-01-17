@@ -299,6 +299,7 @@ export type Database = {
           age: number | null
           avatar_url: string | null
           bio: string | null
+          bubble_alignment: string | null
           bubble_color: string | null
           created_at: string
           dislikes: string[] | null
@@ -319,6 +320,7 @@ export type Database = {
           age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          bubble_alignment?: string | null
           bubble_color?: string | null
           created_at?: string
           dislikes?: string[] | null
@@ -339,6 +341,7 @@ export type Database = {
           age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          bubble_alignment?: string | null
           bubble_color?: string | null
           created_at?: string
           dislikes?: string[] | null

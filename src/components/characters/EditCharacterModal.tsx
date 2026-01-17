@@ -65,6 +65,9 @@ export const EditCharacterModal = ({
     dislikes: '',
     is_hidden: false,
     is_private: false,
+    bubble_color: '',
+    text_color: '',
+    bubble_alignment: 'auto',
   });
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -73,6 +76,7 @@ export const EditCharacterModal = ({
   useEffect(() => {
     if (character) {
       const identityTags = character.identity_tags as { sexuality?: string; rp_style?: string } | null;
+      const charAny = character as any;
       setFormData({
         name: character.name || '',
         bio: character.bio || '',
@@ -86,6 +90,9 @@ export const EditCharacterModal = ({
         dislikes: character.dislikes?.join(', ') || '',
         is_hidden: character.is_hidden || false,
         is_private: character.is_private || false,
+        bubble_color: charAny.bubble_color || '',
+        text_color: charAny.text_color || '',
+        bubble_alignment: charAny.bubble_alignment || 'auto',
       });
       setAvatarPreview(character.avatar_url);
     }
@@ -140,6 +147,9 @@ export const EditCharacterModal = ({
           dislikes: formData.dislikes ? formData.dislikes.split(',').map(s => s.trim()).filter(Boolean) : [],
           is_hidden: formData.is_hidden,
           is_private: formData.is_private,
+          bubble_color: formData.bubble_color || null,
+          text_color: formData.text_color || null,
+          bubble_alignment: formData.bubble_alignment || 'auto',
           identity_tags: {
             sexuality: formData.sexuality || null,
             rp_style: formData.rp_style || null,
@@ -314,6 +324,71 @@ export const EditCharacterModal = ({
               onChange={(e) => setFormData({ ...formData, dislikes: e.target.value })}
               placeholder="Loud noises, Mornings"
             />
+          </div>
+
+          {/* Chat Customization */}
+          <div className="space-y-3 pt-2 border-t border-border">
+            <Label className="text-sm font-medium">Chat Appearance</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Bubble Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={formData.bubble_color || '#6366f1'}
+                    onChange={(e) => setFormData({ ...formData, bubble_color: e.target.value })}
+                    className="w-10 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    value={formData.bubble_color}
+                    onChange={(e) => setFormData({ ...formData, bubble_color: e.target.value })}
+                    placeholder="#6366f1"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Text Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={formData.text_color || '#ffffff'}
+                    onChange={(e) => setFormData({ ...formData, text_color: e.target.value })}
+                    className="w-10 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    value={formData.text_color}
+                    onChange={(e) => setFormData({ ...formData, text_color: e.target.value })}
+                    placeholder="#ffffff"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Bubble Alignment</Label>
+              <Select 
+                value={formData.bubble_alignment} 
+                onValueChange={(v) => setFormData({ ...formData, bubble_alignment: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select alignment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (right for own messages)</SelectItem>
+                  <SelectItem value="left">Always Left</SelectItem>
+                  <SelectItem value="right">Always Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(formData.bubble_color || formData.text_color) && (
+              <div className="p-3 rounded-lg" style={{ 
+                backgroundColor: formData.bubble_color || '#6366f1',
+                color: formData.text_color || '#ffffff'
+              }}>
+                <p className="text-sm">Preview: This is how your messages will look!</p>
+              </div>
+            )}
           </div>
 
           {/* Privacy Settings */}
