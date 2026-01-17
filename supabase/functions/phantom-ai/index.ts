@@ -40,7 +40,7 @@ serve(async (req) => {
     // Fetch world lore and context
     const { data: world } = await supabase
       .from("worlds")
-      .select("name, lore_content, description")
+      .select("name, lore_content, description, owner_id")
       .eq("id", worldId)
       .single();
 
@@ -51,15 +51,22 @@ serve(async (req) => {
       .eq("id", roomId)
       .single();
 
-    // Fetch AI characters for this world
+    // Fetch pre-configured AI characters for this world
     const { data: aiCharacters } = await supabase
       .from("ai_characters")
       .select(`
         *,
-        character:characters(id, name, bio, pronouns, species, gender)
+        character:characters(id, name, bio, pronouns, species, gender, avatar_url)
       `)
       .eq("world_id", worldId)
       .eq("is_active", true);
+
+    // Fetch temporary AI characters for this world/room
+    const { data: tempAiCharacters } = await supabase
+      .from("temp_ai_characters")
+      .select("*")
+      .eq("world_id", worldId)
+      .gt("expires_at", new Date().toISOString());
 
     // Fetch trigger character info for hierarchy
     const { data: triggerChar } = await supabase
@@ -81,6 +88,51 @@ serve(async (req) => {
       ai.spawn_keywords?.some((keyword: string) => lowerMessage.includes(keyword.toLowerCase()))
     );
 
+    // Common spawn keywords for auto-generation
+    const commonSpawnKeywords = [
+      { keywords: ["guard", "guards", "soldier", "soldiers"], role: "Guard", rank: "commoner", traits: ["loyal", "aggressive"] },
+      { keywords: ["bartender", "barkeep", "innkeeper"], role: "Bartender", rank: "merchant", traits: ["friendly", "gossipy"] },
+      { keywords: ["servant", "maid", "butler"], role: "Servant", rank: "servant", traits: ["timid", "observant"] },
+      { keywords: ["noble", "lord", "lady"], role: "Noble", rank: "noble", traits: ["arrogant", "refined"] },
+      { keywords: ["merchant", "trader", "shopkeeper"], role: "Merchant", rank: "merchant", traits: ["shrewd", "friendly"] },
+      { keywords: ["beggar", "homeless", "vagabond"], role: "Beggar", rank: "outcast", traits: ["desperate", "cunning"] },
+      { keywords: ["priest", "cleric", "monk"], role: "Priest", rank: "professional", traits: ["pious", "mysterious"] },
+      { keywords: ["thief", "rogue", "pickpocket"], role: "Thief", rank: "outcast", traits: ["sneaky", "opportunistic"] },
+    ];
+
+    // Check if message triggers auto-spawn
+    let autoSpawnRole = null;
+    for (const spawn of commonSpawnKeywords) {
+      if (spawn.keywords.some(kw => lowerMessage.includes(kw))) {
+        autoSpawnRole = spawn;
+        break;
+      }
+    }
+
+    // Combine all available AI characters
+    const allAiCharacters = [
+      ...(aiCharacters || []).map(ai => ({
+        id: ai.id,
+        characterId: ai.character?.id,
+        name: ai.character?.name || "Unknown",
+        bio: ai.character?.bio || "Mysterious figure",
+        socialRank: ai.social_rank,
+        personalityTraits: ai.personality_traits,
+        spawnKeywords: ai.spawn_keywords,
+        isTemp: false,
+      })),
+      ...(tempAiCharacters || []).map(temp => ({
+        id: temp.id,
+        characterId: temp.id,
+        name: temp.name,
+        bio: temp.bio || "A passing stranger",
+        socialRank: temp.social_rank,
+        personalityTraits: temp.personality_traits,
+        spawnKeywords: [],
+        isTemp: true,
+      })),
+    ];
+
     // Build system prompt
     const systemPrompt = `You are the "Phantom User" AI for a roleplay world called "${world?.name || 'Unknown'}".
 
@@ -97,6 +149,7 @@ YOUR ROLE:
 - You have extreme personality traits - be dramatic, not passive
 - You can spawn "lurker" actions without prompts (e.g., *A shadow moves in the corner*)
 - You remember past interactions and hold grudges/affections
+- You can CREATE NEW TEMPORARY NPCs on-the-fly when the scene calls for it
 
 SOCIAL HIERARCHY (highest to lowest):
 1. Royalty (kings, queens, princes, etc.)
@@ -106,12 +159,17 @@ SOCIAL HIERARCHY (highest to lowest):
 5. Servant/Outcast
 
 AVAILABLE AI CHARACTERS:
-${aiCharacters?.map(ai => `
-- ${ai.character?.name} (${ai.social_rank})
-  Traits: ${JSON.stringify(ai.personality_traits)}
-  Bio: ${ai.character?.bio || 'Mysterious figure'}
-  Spawn keywords: ${ai.spawn_keywords?.join(', ') || 'none'}
-`).join('\n') || 'No AI characters configured'}
+${allAiCharacters.map(ai => `
+- ${ai.name} (${ai.socialRank})${ai.isTemp ? ' [TEMPORARY]' : ''}
+  Traits: ${JSON.stringify(ai.personalityTraits)}
+  Bio: ${ai.bio}
+`).join('\n') || 'No AI characters configured - you may create temporary NPCs!'}
+
+${autoSpawnRole ? `
+⚡ AUTO-SPAWN DETECTED: The user mentioned "${autoSpawnRole.role}". You should respond as this character type!
+Suggested traits: ${autoSpawnRole.traits.join(', ')}
+Suggested rank: ${autoSpawnRole.rank}
+` : ''}
 
 TRIGGER CHARACTER INFO:
 Name: ${triggerChar?.name || 'Unknown'}
@@ -126,12 +184,20 @@ You MUST respond with valid JSON in this exact format:
   "shouldRespond": true/false,
   "responses": [
     {
-      "characterId": "uuid of AI character to use",
+      "characterId": "uuid of existing AI character OR null for new temp character",
       "characterName": "Name",
       "content": "The message content",
-      "type": "dialogue|thought|narrator"
+      "type": "dialogue|thought|narrator",
+      "isNewCharacter": true/false
     }
   ],
+  "newCharacter": {
+    "name": "Name of new NPC if creating one",
+    "bio": "Brief backstory",
+    "socialRank": "commoner|servant|merchant|noble|royalty|outcast",
+    "personalityTraits": ["trait1", "trait2"],
+    "avatarDescription": "Brief physical description for potential image generation"
+  } OR null,
   "memoryUpdate": {
     "relationshipChange": "friend|enemy|lover|rival|neutral|null",
     "trustChange": -10 to +10,
@@ -146,8 +212,11 @@ PERSONALITY RULES:
 - COWARDLY: Cowers, makes excuses, tries to escape conflict
 - ARROGANT: Looks down on lower-status characters
 - LOYAL: Fiercely protective of allies
+- GOSSIPY: Shares rumors and secrets
+- MYSTERIOUS: Speaks in riddles, hints at dark secrets
 
 React dynamically to physical actions (slaps, flirtation, commands) with realistic responses.
+If creating a new character, make them memorable and distinct!
 If no response is warranted, set shouldRespond to false.`;
 
     // Build message history for context
@@ -170,7 +239,7 @@ If no response is warranted, set shouldRespond to false.`;
           { role: "user", content: `[${triggerChar?.name || 'Someone'}]: ${triggerMessage}` }
         ],
         temperature: 0.9,
-        max_tokens: 1000,
+        max_tokens: 1500,
       }),
     });
 
@@ -202,7 +271,6 @@ If no response is warranted, set shouldRespond to false.`;
     // Parse AI response
     let parsed;
     try {
-      // Extract JSON from potential markdown code blocks
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
       parsed = JSON.parse(jsonMatch[1] || content);
     } catch {
@@ -212,20 +280,55 @@ If no response is warranted, set shouldRespond to false.`;
       });
     }
 
+    // Create new temporary character if specified
+    let newTempCharId = null;
+    if (parsed.newCharacter && parsed.responses?.some((r: any) => r.isNewCharacter)) {
+      const { data: newTemp, error: tempError } = await supabase
+        .from("temp_ai_characters")
+        .insert({
+          world_id: worldId,
+          room_id: roomId,
+          name: parsed.newCharacter.name,
+          bio: parsed.newCharacter.bio,
+          social_rank: parsed.newCharacter.socialRank || "commoner",
+          personality_traits: parsed.newCharacter.personalityTraits || [],
+          avatar_description: parsed.newCharacter.avatarDescription,
+        })
+        .select("id")
+        .single();
+
+      if (!tempError && newTemp) {
+        newTempCharId = newTemp.id;
+        console.log("Created new temp AI character:", newTemp.id, parsed.newCharacter.name);
+      }
+    }
+
     // Insert AI messages
     if (parsed.shouldRespond && parsed.responses?.length > 0) {
       for (const resp of parsed.responses) {
-        // Find the AI character
-        const aiChar = aiCharacters?.find(ai => 
-          ai.character?.id === resp.characterId || 
-          ai.character?.name?.toLowerCase() === resp.characterName?.toLowerCase()
-        );
+        let characterId = resp.characterId;
+        let senderId = resp.characterId;
 
-        if (aiChar?.character) {
+        // Handle new character case
+        if (resp.isNewCharacter && newTempCharId) {
+          characterId = newTempCharId;
+          senderId = world?.owner_id; // Use world owner as sender for temp NPCs
+        } else if (!characterId) {
+          // Find matching character from available ones
+          const matchingChar = allAiCharacters.find(ai => 
+            ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
+          );
+          if (matchingChar) {
+            characterId = matchingChar.characterId;
+            senderId = matchingChar.isTemp ? world?.owner_id : characterId;
+          }
+        }
+
+        if (senderId) {
           await supabase.from("messages").insert({
             room_id: roomId,
-            sender_id: aiChar.character.id, // Use character ID as sender for AI
-            character_id: aiChar.character.id,
+            sender_id: senderId,
+            character_id: characterId || null,
             content: resp.content,
             type: resp.type || "dialogue",
             is_ai: true,
@@ -254,14 +357,20 @@ If no response is warranted, set shouldRespond to false.`;
           })
           .eq("id", existingMemory.id);
       } else if (parsed.memoryUpdate.relationshipChange || parsed.memoryUpdate.memoryNote) {
-        await supabase.from("ai_memory_store").insert({
-          world_id: worldId,
-          user_character_id: triggerCharacterId,
-          ai_character_id: matchedAiChar?.character?.id || aiCharacters?.[0]?.character?.id,
-          relationship_type: parsed.memoryUpdate.relationshipChange || "neutral",
-          trust_level: parsed.memoryUpdate.trustChange || 0,
-          memory_notes: parsed.memoryUpdate.memoryNote ? [{ note: parsed.memoryUpdate.memoryNote, timestamp: new Date().toISOString() }] : [],
-        });
+        const aiCharId = matchedAiChar?.character?.id || 
+                        aiCharacters?.[0]?.character?.id || 
+                        newTempCharId;
+        
+        if (aiCharId) {
+          await supabase.from("ai_memory_store").insert({
+            world_id: worldId,
+            user_character_id: triggerCharacterId,
+            ai_character_id: aiCharId,
+            relationship_type: parsed.memoryUpdate.relationshipChange || "neutral",
+            trust_level: parsed.memoryUpdate.trustChange || 0,
+            memory_notes: parsed.memoryUpdate.memoryNote ? [{ note: parsed.memoryUpdate.memoryNote, timestamp: new Date().toISOString() }] : [],
+          });
+        }
       }
     }
 
@@ -276,7 +385,10 @@ If no response is warranted, set shouldRespond to false.`;
       });
     }
 
-    return new Response(JSON.stringify(parsed), {
+    return new Response(JSON.stringify({
+      ...parsed,
+      newCharacterId: newTempCharId,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
