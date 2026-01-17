@@ -198,6 +198,10 @@ export const ManageWorldModal = ({
   };
 
   const handleBan = async (memberId: string, userId: string) => {
+    // Get username for system message
+    const member = members.find(m => m.user_id === userId);
+    const username = member?.profiles?.username || 'Someone';
+
     const { error } = await supabase
       .from('world_members')
       .update({ is_banned: true })
@@ -206,6 +210,22 @@ export const ManageWorldModal = ({
     if (error) {
       toast({ title: 'Failed to ban user', variant: 'destructive' });
     } else {
+      // Send system message to first room
+      const { data: worldRooms } = await supabase
+        .from('world_rooms')
+        .select('id')
+        .eq('world_id', world.id)
+        .limit(1);
+
+      if (worldRooms && worldRooms.length > 0) {
+        await supabase.from('system_messages').insert({
+          room_id: worldRooms[0].id,
+          message_type: 'ban',
+          user_id: userId,
+          username
+        });
+      }
+
       toast({ title: 'User banned' });
       await logAudit('ban', userId, null, {});
       await logModeration(userId, 'Banned');
@@ -232,6 +252,10 @@ export const ManageWorldModal = ({
   const handleTimeout = async (memberId: string, userId: string, seconds: number, label: string) => {
     const timeoutUntil = new Date(Date.now() + seconds * 1000).toISOString();
     
+    // Get username for system message
+    const member = members.find(m => m.user_id === userId);
+    const username = member?.profiles?.username || 'Someone';
+
     // Update world_members
     const { error: memberError } = await supabase
       .from('world_members')
@@ -252,6 +276,23 @@ export const ManageWorldModal = ({
     if (memberError || timeoutError) {
       toast({ title: 'Failed to timeout user', variant: 'destructive' });
     } else {
+      // Send system message
+      const { data: worldRooms } = await supabase
+        .from('world_rooms')
+        .select('id')
+        .eq('world_id', world.id)
+        .limit(1);
+
+      if (worldRooms && worldRooms.length > 0) {
+        await supabase.from('system_messages').insert({
+          room_id: worldRooms[0].id,
+          message_type: 'timeout',
+          user_id: userId,
+          username,
+          duration: label
+        });
+      }
+
       toast({ title: `User timed out for ${label}` });
       await logAudit('timeout', userId, null, { duration: label });
       await logModeration(userId, `Timed out for ${label}`);
@@ -260,6 +301,26 @@ export const ManageWorldModal = ({
   };
 
   const handleKick = async (memberId: string, userId: string) => {
+    // Get username for system message
+    const member = members.find(m => m.user_id === userId);
+    const username = member?.profiles?.username || 'Someone';
+
+    // Send system message BEFORE deleting (so we still have access to the member data)
+    const { data: worldRooms } = await supabase
+      .from('world_rooms')
+      .select('id')
+      .eq('world_id', world.id)
+      .limit(1);
+
+    if (worldRooms && worldRooms.length > 0) {
+      await supabase.from('system_messages').insert({
+        room_id: worldRooms[0].id,
+        message_type: 'kick',
+        user_id: userId,
+        username
+      });
+    }
+
     const { error } = await supabase
       .from('world_members')
       .delete()
