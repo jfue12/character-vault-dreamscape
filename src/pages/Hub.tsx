@@ -140,7 +140,7 @@ export default function Hub() {
     }
   };
 
-  const handleConversationSelect = (friendshipId: string) => {
+  const handleConversationSelect = (friendshipId: string, _friendId: string) => {
     navigate(`/dm/${friendshipId}`);
   };
 
