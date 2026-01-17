@@ -110,9 +110,8 @@ export default function Profile() {
   return (
     <AppLayout 
       title={profile?.username ? `@${profile.username}` : 'Profile'}
-      headerLeftIcon="add-friend"
+      headerLeftIcon="none"
       headerRightIcon="more"
-      onHeaderLeftAction={() => navigate('/messages')}
       onHeaderRightAction={() => setShowSettings(!showSettings)}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}

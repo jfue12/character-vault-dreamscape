@@ -185,54 +185,41 @@ export default function Feed() {
   };
 
   return (
-    <AppLayout>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border">
-          <div className="flex items-center justify-between px-4 h-14">
-            <h1 className="text-xl font-bold text-foreground">Feed</h1>
-            {user && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Post
-              </button>
-            )}
+    <AppLayout 
+      title="Feed" 
+      headerLeftIcon="none"
+      headerRightIcon="notifications"
+      showFab
+      fabOnClick={user ? () => setShowCreateModal(true) : undefined}
+    >
+      <div className="max-w-lg mx-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        </header>
-
-        {/* Posts */}
-        <main className="pb-24">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-20 px-4">
-              <p className="text-muted-foreground">No posts yet. Be the first to share!</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              <AnimatePresence>
-                {posts.map((post, index) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <PostCard
-                      post={post}
-                      onLike={handleLike}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </main>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-20 px-4">
+            <p className="text-muted-foreground">No posts yet. Be the first to share!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            <AnimatePresence>
+              {posts.map((post, index) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <PostCard
+                    post={post}
+                    onLike={handleLike}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Create Post Modal */}
         <CreatePostModal

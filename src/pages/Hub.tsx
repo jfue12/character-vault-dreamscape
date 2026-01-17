@@ -244,7 +244,7 @@ export default function Hub() {
   return (
     <AppLayout 
       title="Hub"
-      headerLeftIcon="add-friend"
+      headerLeftIcon="none"
       headerRightIcon="notifications"
       showFab
       fabTo="/create-world"
