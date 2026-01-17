@@ -31,16 +31,14 @@ export default function Create() {
       title: 'New World',
       description: 'Build a roleplay world',
       gradient: 'from-neon-blue to-neon-purple',
-      action: () => {},
-      disabled: true,
+      action: () => navigate('/create-world'),
     },
     {
       icon: Sparkles,
       title: 'New Story',
       description: 'Start a roleplay scenario',
       gradient: 'from-neon-pink to-neon-blue',
-      action: () => {},
-      disabled: true,
+      action: () => navigate('/plots'),
     },
   ];
 
@@ -70,8 +68,7 @@ export default function Create() {
             >
               <button
                 onClick={option.action}
-                disabled={option.disabled}
-                className="w-full glass-card p-6 text-left group hover:neon-border transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full glass-card p-6 text-left group hover:neon-border transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${option.gradient} flex items-center justify-center group-hover:animate-pulse-neon transition-all`}>
@@ -85,11 +82,6 @@ export default function Create() {
                       {option.description}
                     </p>
                   </div>
-                  {option.disabled && (
-                    <span className="px-2 py-1 rounded-full bg-secondary text-secondary-foreground text-xs">
-                      Soon
-                    </span>
-                  )}
                 </div>
               </button>
             </motion.div>

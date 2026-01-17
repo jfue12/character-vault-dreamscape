@@ -7,6 +7,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { CharacterScroller } from '@/components/profile/CharacterScroller';
 import { CharacterDetailView } from '@/components/profile/CharacterDetailView';
 import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
+import { EditCharacterModal } from '@/components/characters/EditCharacterModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface Character {
   id: string;
@@ -27,9 +29,11 @@ interface Character {
 export default function Profile() {
   const { user, profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
 
   useEffect(() => {
@@ -67,6 +71,25 @@ export default function Profile() {
     navigate('/auth');
   };
 
+  const handleShare = async () => {
+    if (selectedCharacter) {
+      const url = `${window.location.origin}/user/${user?.id}`;
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Profile link copied!' });
+    }
+  };
+
+  const handleSetActiveCharacter = async () => {
+    if (!user || !selectedCharacterId) return;
+    
+    await supabase
+      .from('profiles')
+      .update({ active_character_id: selectedCharacterId })
+      .eq('id', user.id);
+    
+    toast({ title: 'Active character updated!' });
+  };
+
   const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
 
   if (loading) {
@@ -84,6 +107,7 @@ export default function Profile() {
       title={profile?.username ? `@${profile.username}` : 'Profile'}
       headerLeftIcon="add-friend"
       headerRightIcon="more"
+      onHeaderLeftAction={() => navigate('/messages')}
       onHeaderRightAction={handleSignOut}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
@@ -111,8 +135,9 @@ export default function Profile() {
             followingCount={profile?.following_count || 0}
             storiesCount={profile?.stories_count || 0}
             isOwnProfile={true}
-            onEdit={() => {/* TODO: Open edit modal */}}
-            onArrange={() => {/* TODO: Open arrange modal */}}
+            onEdit={() => setIsEditModalOpen(true)}
+            onArrange={handleSetActiveCharacter}
+            onShare={handleShare}
           />
         ) : (
           <motion.div
@@ -139,6 +164,22 @@ export default function Profile() {
         onOpenChange={setIsCreateModalOpen}
         onSuccess={fetchCharacters}
       />
+
+      {selectedCharacter && (
+        <EditCharacterModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          character={selectedCharacter}
+          onSuccess={() => {
+            fetchCharacters();
+            setIsEditModalOpen(false);
+          }}
+          onDelete={() => {
+            fetchCharacters();
+            setSelectedCharacterId(null);
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

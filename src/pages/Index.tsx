@@ -128,6 +128,7 @@ export default function Index() {
     <AppLayout 
       headerLeftIcon="add-friend"
       headerRightIcon="notifications"
+      onHeaderLeftAction={() => navigate('/messages')}
       showFab
       showActiveOC
     >

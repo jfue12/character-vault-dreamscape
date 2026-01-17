@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Share2, Image, Gamepad2, BookOpen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { differenceInDays } from 'date-fns';
 import { CharacterRelationships } from './CharacterRelationships';
+import { useToast } from '@/hooks/use-toast';
 
 interface Character {
   id: string;
@@ -34,6 +36,7 @@ interface CharacterDetailViewProps {
   onArrange?: () => void;
   onFollow?: () => void;
   onMessage?: () => void;
+  onShare?: () => void;
 }
 
 export const CharacterDetailView = ({
@@ -45,8 +48,11 @@ export const CharacterDetailView = ({
   onEdit,
   onArrange,
   onFollow,
-  onMessage
+  onMessage,
+  onShare
 }: CharacterDetailViewProps) => {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>('Gallery');
   const daysActive = differenceInDays(new Date(), new Date(character.created_at));
 
   const identityTags = character.identity_tags as { sexuality?: string; rp_style?: string; zodiac?: string } | null;
@@ -96,7 +102,7 @@ export const CharacterDetailView = ({
             onClick={onArrange}
             className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
           >
-            Arrange Character
+            Set as Active
           </Button>
           <Button 
             variant="outline"
@@ -108,6 +114,7 @@ export const CharacterDetailView = ({
           <Button
             variant="outline"
             size="icon"
+            onClick={onShare}
             className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
           >
             <Share2 className="w-4 h-4" />
@@ -220,7 +227,11 @@ export const CharacterDetailView = ({
         {subNavItems.map(({ icon: Icon, label }) => (
           <button
             key={label}
-            className="text-muted-foreground hover:text-primary transition-colors p-2"
+            onClick={() => {
+              setActiveTab(label);
+              toast({ title: `${label} coming soon!` });
+            }}
+            className={`transition-colors p-2 ${activeTab === label ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
             title={label}
           >
             <Icon className="w-6 h-6" />

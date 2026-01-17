@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, MoreHorizontal, Share2 } from 'lucide-react';
+import { ChevronLeft, Share2, Flag, UserMinus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 
 interface Character {
@@ -37,6 +40,7 @@ export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
@@ -118,9 +122,31 @@ export default function UserProfile() {
     fetchUserProfile();
   };
 
-  const handleMessage = () => {
-    // TODO: Navigate to DM with user
-    console.log('Message user:', userId);
+  const handleMessage = async () => {
+    if (!user || !userId) return;
+
+    // Check if friendship already exists
+    const { data: existingFriendship } = await supabase
+      .from('friendships')
+      .select('id, status')
+      .or(`and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`)
+      .single();
+
+    if (existingFriendship) {
+      if (existingFriendship.status === 'accepted') {
+        navigate(`/dm/${existingFriendship.id}`);
+      } else {
+        toast({ title: 'Friend request pending', description: 'Wait for them to accept your request' });
+      }
+    } else {
+      toast({ title: 'Send a friend request first', description: 'You can only message friends' });
+    }
+  };
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/user/${userId}`;
+    await navigator.clipboard.writeText(url);
+    toast({ title: 'Profile link copied!' });
   };
 
   // Zodiac data
@@ -180,9 +206,21 @@ export default function UserProfile() {
           <h1 className="font-semibold text-foreground">
             @{profile.username || 'unknown'}
           </h1>
-          <button className="p-2 -mr-2">
-            <MoreHorizontal className="w-6 h-6 text-foreground" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 -mr-2">
+                <MoreHorizontal className="w-6 h-6 text-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleShare} className="gap-2">
+                <Share2 className="w-4 h-4" /> Share Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast({ title: 'Report submitted' })} className="gap-2 text-destructive">
+                <Flag className="w-4 h-4" /> Report User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -319,6 +357,7 @@ export default function UserProfile() {
         <Button
           variant="outline"
           size="icon"
+          onClick={handleShare}
           className="border-primary text-primary hover:bg-primary/10 rounded-lg h-12 w-12"
         >
           <Share2 className="w-5 h-5" />

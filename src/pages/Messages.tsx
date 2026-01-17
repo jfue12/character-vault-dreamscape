@@ -27,6 +27,7 @@ export default function Messages() {
       title="Messages"
       headerLeftIcon="add-friend"
       headerRightIcon="notifications"
+      onHeaderLeftAction={() => navigate('/')}
       showFab
     >
       <div className="max-w-lg mx-auto">
