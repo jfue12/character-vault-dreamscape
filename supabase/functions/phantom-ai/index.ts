@@ -355,6 +355,11 @@ Bio: ${sanitizeInput(triggerChar?.bio || 'Unknown background').slice(0, 1000)}
 MEMORIES WITH THIS CHARACTER:
 ${memories?.map(m => `- ${m.relationship_type}, Trust: ${m.trust_level}/100, Notes: ${JSON.stringify(m.memory_notes || [])}`).join('\n') || 'No prior interactions - treat them as a stranger!'}
 
+CRITICAL RULES:
+- ONLY ONE CHARACTER responds per message. Never have multiple characters speak at once.
+- NEVER use "narrator" type. Only use "dialogue" or "thought".
+- Pick the SINGLE most relevant character to respond based on context.
+
 RESPONSE FORMAT (VALID JSON ONLY):
 {
   "shouldRespond": true/false,
@@ -363,7 +368,7 @@ RESPONSE FORMAT (VALID JSON ONLY):
       "characterId": "uuid or null",
       "characterName": "Name",
       "content": "The message - make it UNIQUE and CHARACTER-APPROPRIATE",
-      "type": "dialogue|thought|narrator",
+      "type": "dialogue|thought",
       "isNewCharacter": true/false
     }
   ],
