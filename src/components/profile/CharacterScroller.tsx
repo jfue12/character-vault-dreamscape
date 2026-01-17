@@ -21,13 +21,13 @@ export const CharacterScroller = ({
   onAddNew 
 }: CharacterScrollerProps) => {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-      {/* Add New Character Button */}
+    <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide -mx-4 px-4">
+      {/* Add New Character Button - First Item */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onAddNew}
-        className="flex-shrink-0 w-16 h-16 rounded-full dashed-circle flex items-center justify-center"
+        className="flex-shrink-0 w-16 h-16 rounded-full dashed-circle flex items-center justify-center bg-background"
       >
         <Plus className="w-6 h-6 text-primary" />
       </motion.button>
@@ -42,10 +42,10 @@ export const CharacterScroller = ({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => onSelect(character.id)}
-          className={`flex-shrink-0 w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${
+          className={`flex-shrink-0 w-16 h-16 rounded-full overflow-hidden transition-all ${
             selectedId === character.id 
-              ? 'border-primary ring-2 ring-primary ring-offset-2 ring-offset-background' 
-              : 'border-border'
+              ? 'ring-[3px] ring-primary ring-offset-2 ring-offset-background' 
+              : 'border-2 border-border hover:border-primary/50'
           }`}
         >
           {character.avatar_url ? (

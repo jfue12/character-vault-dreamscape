@@ -21,6 +21,7 @@ interface Character {
   dislikes: string[] | null;
   is_hidden: boolean;
   created_at: string;
+  identity_tags?: unknown;
 }
 
 export default function Profile() {
@@ -81,15 +82,15 @@ export default function Profile() {
 
   return (
     <AppLayout 
-      title={profile?.username || 'Profile'}
+      title={profile?.username ? `@${profile.username}` : 'Profile'}
       headerLeftIcon="add-friend"
       headerRightIcon="notifications"
       onHeaderRightAction={handleSignOut}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
-      <div className="max-w-lg mx-auto space-y-6">
-        {/* Character Scroller */}
+      <div className="max-w-lg mx-auto space-y-4">
+        {/* Character Scroller - Top horizontal avatars */}
         <CharacterScroller
           characters={characters}
           selectedId={selectedCharacterId}
@@ -107,6 +108,7 @@ export default function Profile() {
             character={selectedCharacter}
             followersCount={profile?.followers_count || 0}
             followingCount={profile?.following_count || 0}
+            storiesCount={profile?.stories_count || 0}
             isOwnProfile={true}
             onEdit={() => {/* TODO: Open edit modal */}}
             onArrange={() => {/* TODO: Open arrange modal */}}
@@ -117,10 +119,13 @@ export default function Profile() {
             animate={{ opacity: 1 }}
             className="py-20 text-center"
           >
+            <div className="w-20 h-20 rounded-full dashed-circle flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl text-primary">+</span>
+            </div>
             <p className="text-muted-foreground mb-4">No characters yet</p>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="text-primary hover:underline"
+              className="text-primary hover:underline font-medium"
             >
               Create your first character
             </button>

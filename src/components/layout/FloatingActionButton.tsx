@@ -12,9 +12,14 @@ export const FloatingActionButton = ({ to, onClick }: FloatingActionButtonProps)
     <motion.div
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg neon-border cursor-pointer"
+      className="relative w-14 h-14"
     >
-      <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
+      {/* Outer neon ring */}
+      <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse" />
+      {/* Inner button */}
+      <div className="absolute inset-1 rounded-full bg-primary flex items-center justify-center shadow-lg neon-border">
+        <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
+      </div>
     </motion.div>
   );
 
