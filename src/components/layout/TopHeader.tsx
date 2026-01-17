@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 
 interface TopHeaderProps {
   title?: string;
@@ -39,6 +40,7 @@ export const TopHeader = ({
   const navigate = useNavigate();
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     if (user && profile?.active_character_id) {
@@ -49,6 +51,25 @@ export const TopHeader = ({
   useEffect(() => {
     if (user) {
       fetchUnreadNotifications();
+      
+      // Subscribe to notifications for real-time updates
+      const channel = supabase
+        .channel('notification-count')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => fetchUnreadNotifications()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -111,15 +132,21 @@ export const TopHeader = ({
     switch (rightIcon) {
       case 'notifications':
         return (
-          <button 
-            onClick={onRightAction}
-            className="p-2 -mr-2 text-foreground hover:text-primary transition-colors relative"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadNotifications > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-            )}
-          </button>
+          <>
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 -mr-2 text-foreground hover:text-primary transition-colors relative"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+              )}
+            </button>
+            <NotificationPanel 
+              isOpen={showNotifications} 
+              onClose={() => setShowNotifications(false)} 
+            />
+          </>
         );
       case 'more':
         return (

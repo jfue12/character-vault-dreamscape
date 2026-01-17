@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronUp, Users, Bot } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,8 +10,9 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { usePhantomAI } from '@/hooks/usePhantomAI';
+import { useSpamDetection } from '@/hooks/useSpamDetection';
 import { motion, AnimatePresence } from 'framer-motion';
-
 interface Room {
   id: string;
   name: string;
@@ -38,6 +39,7 @@ interface Message {
   sender_id: string;
   character_id: string | null;
   created_at: string;
+  is_ai?: boolean;
   attachment_url: string | null;
   emoji_reactions: Record<string, string[]> | null;
   character?: Character;
@@ -75,9 +77,16 @@ export default function RoomChat() {
   const [showRoomScroller, setShowRoomScroller] = useState(true);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showMemberList, setShowMemberList] = useState(false);
+  const [hasAI, setHasAI] = useState(false);
 
   // Get current character
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
+
+  // Phantom AI hook
+  const { triggerPhantomAI } = usePhantomAI(worldId || '', roomId || '');
+  
+  // Spam detection hook
+  const { validateMessage } = useSpamDetection(worldId || '', user?.id || '');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -89,8 +98,21 @@ export default function RoomChat() {
     if (user && worldId) {
       fetchWorldData();
       fetchUserCharacters();
+      checkAICharacters();
     }
   }, [user, worldId]);
+
+  // Check if this world has AI characters
+  const checkAICharacters = async () => {
+    if (!worldId) return;
+    const { data } = await supabase
+      .from('ai_characters')
+      .select('id')
+      .eq('world_id', worldId)
+      .eq('is_active', true)
+      .limit(1);
+    setHasAI((data?.length || 0) > 0);
+  };
 
   useEffect(() => {
     if (roomId && rooms.length > 0) {
@@ -356,6 +378,10 @@ export default function RoomChat() {
   const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
     if (!user || !currentRoom || !selectedCharacterId) return;
 
+    // Validate against spam
+    const isValid = await validateMessage(content);
+    if (!isValid) return;
+
     const { error } = await supabase
       .from('messages')
       .insert({
@@ -370,6 +396,19 @@ export default function RoomChat() {
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+      return;
+    }
+
+    // Trigger Phantom AI if world has AI characters
+    if (hasAI && type === 'dialogue') {
+      const messageHistory = messages.slice(-10).map(m => ({
+        content: m.content,
+        characterName: m.character?.name || 'Unknown',
+        characterId: m.character_id || '',
+        type: m.type,
+      }));
+
+      triggerPhantomAI(content, selectedCharacterId, messageHistory);
     }
   };
 

@@ -14,6 +14,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_characters: {
+        Row: {
+          character_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          personality_traits: Json | null
+          social_rank: string | null
+          spawn_keywords: string[] | null
+          world_id: string
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          personality_traits?: Json | null
+          social_rank?: string | null
+          spawn_keywords?: string[] | null
+          world_id: string
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          personality_traits?: Json | null
+          social_rank?: string | null
+          spawn_keywords?: string[] | null
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_characters_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_characters_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_memory_store: {
+        Row: {
+          ai_character_id: string | null
+          created_at: string
+          id: string
+          last_interaction: string | null
+          memory_notes: Json | null
+          relationship_type: string
+          trust_level: number | null
+          updated_at: string
+          user_character_id: string | null
+          world_id: string
+        }
+        Insert: {
+          ai_character_id?: string | null
+          created_at?: string
+          id?: string
+          last_interaction?: string | null
+          memory_notes?: Json | null
+          relationship_type?: string
+          trust_level?: number | null
+          updated_at?: string
+          user_character_id?: string | null
+          world_id: string
+        }
+        Update: {
+          ai_character_id?: string | null
+          created_at?: string
+          id?: string
+          last_interaction?: string | null
+          memory_notes?: Json | null
+          relationship_type?: string
+          trust_level?: number | null
+          updated_at?: string
+          user_character_id?: string | null
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_memory_store_ai_character_id_fkey"
+            columns: ["ai_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_memory_store_user_character_id_fkey"
+            columns: ["user_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_memory_store_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -338,6 +447,7 @@ export type Database = {
           created_at: string
           emoji_reactions: Json | null
           id: string
+          is_ai: boolean | null
           room_id: string
           sender_id: string
           type: Database["public"]["Enums"]["message_type"]
@@ -351,6 +461,7 @@ export type Database = {
           created_at?: string
           emoji_reactions?: Json | null
           id?: string
+          is_ai?: boolean | null
           room_id: string
           sender_id: string
           type?: Database["public"]["Enums"]["message_type"]
@@ -364,6 +475,7 @@ export type Database = {
           created_at?: string
           emoji_reactions?: Json | null
           id?: string
+          is_ai?: boolean | null
           room_id?: string
           sender_id?: string
           type?: Database["public"]["Enums"]["message_type"]
@@ -676,6 +788,58 @@ export type Database = {
           },
           {
             foreignKeyName: "timeouts_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_events: {
+        Row: {
+          content: string
+          created_at: string
+          event_type: string
+          id: string
+          room_id: string | null
+          triggered_by: string | null
+          world_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          event_type: string
+          id?: string
+          room_id?: string | null
+          triggered_by?: string | null
+          world_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          room_id?: string | null
+          triggered_by?: string | null
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "world_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_events_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_events_world_id_fkey"
             columns: ["world_id"]
             isOneToOne: false
             referencedRelation: "worlds"
