@@ -13,8 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
   Plus, Trash2, DoorOpen, Users, Shield, Clock, 
-  Ban, Crown, Upload, X, FileText, AlertTriangle
+  Ban, Crown, Upload, X, FileText, AlertTriangle, Bot
 } from 'lucide-react';
+import { AICharacterManager } from './AICharacterManager';
 
 interface World {
   id: string;
@@ -328,8 +329,11 @@ export const ManageWorldModal = ({
             <TabsTrigger value="members" className="flex-1">
               <Users className="w-4 h-4 mr-2" /> Members
             </TabsTrigger>
+            <TabsTrigger value="ai" className="flex-1">
+              <Bot className="w-4 h-4 mr-2" /> AI NPCs
+            </TabsTrigger>
             <TabsTrigger value="logs" className="flex-1">
-              <FileText className="w-4 h-4 mr-2" /> Audit Log
+              <FileText className="w-4 h-4 mr-2" /> Logs
             </TabsTrigger>
           </TabsList>
 
@@ -518,6 +522,13 @@ export const ManageWorldModal = ({
                 </div>
               );
             })}
+          </TabsContent>
+
+          {/* AI NPCs Tab */}
+          <TabsContent value="ai" className="mt-4">
+            {user && (
+              <AICharacterManager worldId={world.id} ownerId={user.id} />
+            )}
           </TabsContent>
 
           {/* Audit Log Tab */}
