@@ -475,6 +475,8 @@ If the scene calls for drama, CREATE it!`;
     // Create new temporary character if specified
     // IMPORTANT: messages.character_id has a FK to public.characters.id, so TEMP NPCs must also have a hidden row in public.characters.
     let newTempCharId: string | null = null; // this will be a public.characters.id
+    let generatedAvatarUrl: string | null = null;
+    
     if (parsed.newCharacter && parsed.responses?.some((r: any) => r.isNewCharacter)) {
       const ownerId = world?.owner_id;
 
@@ -487,6 +489,59 @@ If the scene calls for drama, CREATE it!`;
         const npcTraits = parsed.newCharacter.personalityTraits || randomNPC.personalityTraits;
         const npcAvatarDesc = sanitizeInput(parsed.newCharacter.avatarDescription || randomNPC.avatarDescription).slice(0, 300);
 
+        // Generate avatar for the new NPC using AI image generation
+        try {
+          console.log("Generating avatar for NPC:", npcName, "Description:", npcAvatarDesc);
+          
+          const avatarPrompt = `Fantasy character portrait, ${npcAvatarDesc}, ${npcSocialRank} attire, detailed face, expressive eyes, dramatic lighting, digital art style, bust portrait, clean background`;
+          
+          const avatarResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-image-preview",
+              messages: [{ role: "user", content: avatarPrompt }],
+              modalities: ["image", "text"],
+            }),
+          });
+
+          if (avatarResponse.ok) {
+            const avatarData = await avatarResponse.json();
+            const imageUrl = avatarData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            
+            if (imageUrl) {
+              // Upload to Supabase storage
+              const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+              const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+              const fileName = `ai-npc-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+              
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(fileName, binaryData, {
+                  contentType: 'image/png',
+                  upsert: false
+                });
+
+              if (!uploadError && uploadData) {
+                const { data: { publicUrl } } = supabase.storage
+                  .from('avatars')
+                  .getPublicUrl(fileName);
+                generatedAvatarUrl = publicUrl;
+                console.log("Generated avatar URL:", generatedAvatarUrl);
+              } else {
+                console.error("Failed to upload avatar:", uploadError?.message);
+              }
+            }
+          } else {
+            console.error("Avatar generation failed:", avatarResponse.status);
+          }
+        } catch (avatarErr) {
+          console.error("Error generating avatar:", avatarErr);
+        }
+
         // 1) Create a hidden character row (satisfies FK for messages + memory store)
         const { data: createdChar, error: charError } = await supabase
           .from("characters")
@@ -494,6 +549,7 @@ If the scene calls for drama, CREATE it!`;
             owner_id: ownerId,
             name: npcName,
             bio: npcBio,
+            avatar_url: generatedAvatarUrl,
             is_private: true,
             is_hidden: true,
           })
@@ -522,7 +578,7 @@ If the scene calls for drama, CREATE it!`;
             .single();
 
           if (!tempError && newTemp) {
-            console.log("Created new temp AI character:", newTemp.id, npcName, "-> character", newTempCharId);
+            console.log("Created new temp AI character:", newTemp.id, npcName, "-> character", newTempCharId, "avatar:", generatedAvatarUrl);
           } else if (tempError) {
             console.error("Failed to insert temp_ai_characters row:", tempError.message);
           }
