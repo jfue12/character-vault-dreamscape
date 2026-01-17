@@ -13,6 +13,7 @@ import CreateWorld from "./pages/CreateWorld";
 import WorldDetail from "./pages/WorldDetail";
 import RoomChat from "./pages/RoomChat";
 import Messages from "./pages/Messages";
+import DMChat from "./pages/DMChat";
 import Plots from "./pages/Plots";
 import Create from "./pages/Create";
 import NotFound from "./pages/NotFound";
@@ -36,7 +37,7 @@ const App = () => (
             <Route path="/worlds/:worldId" element={<WorldDetail />} />
             <Route path="/worlds/:worldId/rooms/:roomId" element={<RoomChat />} />
             <Route path="/messages" element={<Messages />} />
-            <Route path="/dm/:friendshipId" element={<Messages />} />
+            <Route path="/dm/:friendshipId" element={<DMChat />} />
             <Route path="/plots" element={<Plots />} />
             <Route path="/create" element={<Create />} />
             <Route path="*" element={<NotFound />} />
