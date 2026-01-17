@@ -44,35 +44,33 @@ export const CharacterDetailView = ({
 }: CharacterDetailViewProps) => {
   const daysActive = differenceInDays(new Date(), new Date(character.created_at));
 
-  // Get zodiac from identity_tags or generate from creation date
-  const zodiacData: Record<string, { emoji: string; color: string }> = {
-    'aries': { emoji: '♈', color: 'text-red-500' },
-    'taurus': { emoji: '♉', color: 'text-green-500' },
-    'gemini': { emoji: '♊', color: 'text-yellow-500' },
-    'cancer': { emoji: '♋', color: 'text-blue-300' },
-    'leo': { emoji: '♌', color: 'text-orange-500' },
-    'virgo': { emoji: '♍', color: 'text-emerald-500' },
-    'libra': { emoji: '♎', color: 'text-pink-400' },
-    'scorpio': { emoji: '♏', color: 'text-red-600' },
-    'sagittarius': { emoji: '♐', color: 'text-purple-500' },
-    'capricorn': { emoji: '♑', color: 'text-gray-400' },
-    'aquarius': { emoji: '♒', color: 'text-cyan-400' },
-    'pisces': { emoji: '♓', color: 'text-indigo-400' }
+  // Zodiac mapping
+  const zodiacData: Record<string, { emoji: string }> = {
+    'aries': { emoji: '♈' },
+    'taurus': { emoji: '♉' },
+    'gemini': { emoji: '♊' },
+    'cancer': { emoji: '♋' },
+    'leo': { emoji: '♌' },
+    'virgo': { emoji: '♍' },
+    'libra': { emoji: '♎' },
+    'scorpio': { emoji: '♏' },
+    'sagittarius': { emoji: '♐' },
+    'capricorn': { emoji: '♑' },
+    'aquarius': { emoji: '♒' },
+    'pisces': { emoji: '♓' }
   };
   
   const zodiacOrder = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
   const identityTags = character.identity_tags as Record<string, string> | null | undefined;
   const zodiacKey = identityTags?.zodiac?.toLowerCase() || zodiacOrder[new Date(character.created_at).getMonth()];
-  const zodiac = zodiacData[zodiacKey] || { emoji: '♌', color: 'text-primary' };
+  const zodiac = zodiacData[zodiacKey] || { emoji: '♌' };
 
-  // Gender flag emoji mapping
+  // Gender emoji
   const genderEmoji: Record<string, string> = {
     'male': '🚹',
     'female': '🚺',
-    'non-binary': '🏳️‍🌈',
-    'other': '⚧️'
+    'non-binary': '⚧️',
   };
-  const genderIcon = genderEmoji[character.gender?.toLowerCase() || ''] || '';
 
   const subNavItems = [
     { icon: Image, label: 'Gallery' },
@@ -85,10 +83,10 @@ export const CharacterDetailView = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
+      className="space-y-5"
     >
       {/* Large Avatar - Rounded Square */}
-      <div className="relative mx-auto w-72 aspect-[3/4] rounded-2xl overflow-hidden bg-card">
+      <div className="relative mx-auto w-64 aspect-[3/4] rounded-2xl overflow-hidden">
         {character.avatar_url ? (
           <img 
             src={character.avatar_url} 
@@ -96,8 +94,8 @@ export const CharacterDetailView = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
-            <span className="text-7xl font-display font-bold text-primary/50">
+          <div className="w-full h-full bg-gradient-to-br from-primary/30 to-purple-900/30 flex items-center justify-center">
+            <span className="text-7xl font-display font-bold text-primary/60">
               {character.name[0]?.toUpperCase()}
             </span>
           </div>
@@ -105,101 +103,83 @@ export const CharacterDetailView = ({
       </div>
 
       {/* Action Buttons Row */}
-      <div className="flex gap-3 justify-center items-center">
-        {isOwnProfile ? (
-          <>
-            <Button 
-              variant="outline" 
-              onClick={onArrange}
-              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 rounded-full px-5"
-            >
-              Arrange Character
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={onEdit}
-              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 rounded-full px-5"
-            >
-              Edit Character
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 rounded-full w-10 h-10"
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button 
-              variant="outline" 
-              onClick={onMessage}
-              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 rounded-full px-6"
-            >
-              Message
-            </Button>
-            <Button 
-              onClick={onFollow}
-              className="bg-primary hover:bg-primary/90 rounded-full px-6"
-            >
-              Follow
-            </Button>
-          </>
-        )}
-      </div>
+      {isOwnProfile && (
+        <div className="flex gap-2 justify-center items-center px-4">
+          <Button 
+            variant="outline" 
+            onClick={onArrange}
+            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+          >
+            Arrange Character
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={onEdit}
+            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+          >
+            Edit Character
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Character Name */}
       <h2 className="text-xl font-semibold text-center text-foreground">
         {character.name}
       </h2>
 
-      {/* Stats Bar - Inline */}
-      <div className="flex justify-center gap-8">
+      {/* Stats Row */}
+      <div className="flex justify-center gap-10">
         <div className="text-center">
-          <span className="font-bold text-foreground">{followersCount}</span>
+          <span className="font-bold text-lg text-foreground">{followersCount}</span>
           <p className="text-xs text-muted-foreground">Followers</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-foreground">{followingCount}</span>
+          <span className="font-bold text-lg text-foreground">{followingCount}</span>
           <p className="text-xs text-muted-foreground">Following</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-foreground">{daysActive}</span>
+          <span className="font-bold text-lg text-foreground">{daysActive}</span>
           <p className="text-xs text-muted-foreground">Days</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-foreground">{storiesCount}</span>
+          <span className="font-bold text-lg text-foreground">{storiesCount}</span>
           <p className="text-xs text-muted-foreground">Stories</p>
         </div>
       </div>
 
-      {/* Identity Line - Inline with icons */}
+      {/* Identity Row */}
       <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         {character.pronouns && (
           <span>{character.pronouns}</span>
         )}
-        <span className={zodiac.color}>{zodiac.emoji}</span>
+        <span className="text-primary">{zodiac.emoji}</span>
         {character.age && (
           <span>{character.age}</span>
         )}
         {character.gender && (
           <>
-            {genderIcon && <span>{genderIcon}</span>}
+            <span>{genderEmoji[character.gender.toLowerCase()] || ''}</span>
             <span>{character.gender}</span>
           </>
         )}
       </div>
 
-      {/* Bio - Centered paragraph */}
+      {/* Bio */}
       {character.bio && (
-        <p className="text-center text-muted-foreground px-4 text-sm leading-relaxed">
+        <p className="text-center text-muted-foreground px-6 text-sm leading-relaxed">
           {character.bio}
         </p>
       )}
 
-      {/* Sub-Nav Icons - Bottom */}
-      <div className="flex justify-around py-4 border-t border-border mt-4">
+      {/* Sub-Nav Icons */}
+      <div className="flex justify-around items-center py-3 border-t border-border">
         {subNavItems.map(({ icon: Icon, label }) => (
           <button
             key={label}
@@ -209,8 +189,8 @@ export const CharacterDetailView = ({
             <Icon className="w-6 h-6" />
           </button>
         ))}
-        {/* Current character avatar as last icon */}
-        <button className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-primary">
+        {/* Current character avatar */}
+        <button className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-primary">
           {character.avatar_url ? (
             <img 
               src={character.avatar_url} 
@@ -218,8 +198,8 @@ export const CharacterDetailView = ({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-secondary flex items-center justify-center">
-              <span className="text-xs font-bold text-muted-foreground">
+            <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+              <span className="text-[10px] font-bold text-white">
                 {character.name[0]?.toUpperCase()}
               </span>
             </div>

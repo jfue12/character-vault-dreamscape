@@ -15,27 +15,26 @@ interface PersonaSwitcherProps {
 export const PersonaSwitcher = ({ characters, selectedId, onSelect }: PersonaSwitcherProps) => {
   if (characters.length === 0) {
     return (
-      <div className="text-center py-2 text-xs text-muted-foreground">
+      <div className="text-center py-3 text-xs text-muted-foreground">
         Create a character to start chatting
       </div>
     );
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto py-2 px-2 scrollbar-hide">
+    <div className="flex gap-3 overflow-x-auto py-3 px-4 scrollbar-hide">
       {characters.map((character) => (
         <motion.button
           key={character.id}
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => onSelect(character.id)}
-          className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all ${
-            selectedId === character.id
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground'
-          }`}
+          className="flex-shrink-0"
         >
-          <div className="w-6 h-6 rounded-full overflow-hidden">
+          <div className={`w-10 h-10 rounded-full overflow-hidden transition-all ${
+            selectedId === character.id
+              ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+              : 'opacity-60'
+          }`}>
             {character.avatar_url ? (
               <img 
                 src={character.avatar_url} 
@@ -43,12 +42,11 @@ export const PersonaSwitcher = ({ characters, selectedId, onSelect }: PersonaSwi
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-bold">
+              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-purple-900/40 flex items-center justify-center text-xs font-bold">
                 {character.name[0]}
               </div>
             )}
           </div>
-          <span className="text-sm font-medium">{character.name}</span>
         </motion.button>
       ))}
     </div>

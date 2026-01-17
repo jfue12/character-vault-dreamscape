@@ -55,7 +55,6 @@ export default function Profile() {
 
     if (!error && data) {
       setCharacters(data);
-      // Auto-select first character if none selected
       if (!selectedCharacterId && data.length > 0) {
         setSelectedCharacterId(data[0].id);
       }
@@ -84,19 +83,21 @@ export default function Profile() {
     <AppLayout 
       title={profile?.username ? `@${profile.username}` : 'Profile'}
       headerLeftIcon="add-friend"
-      headerRightIcon="notifications"
+      headerRightIcon="more"
       onHeaderRightAction={handleSignOut}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
-      <div className="max-w-lg mx-auto space-y-4">
-        {/* Character Scroller - Top horizontal avatars */}
-        <CharacterScroller
-          characters={characters}
-          selectedId={selectedCharacterId}
-          onSelect={setSelectedCharacterId}
-          onAddNew={() => setIsCreateModalOpen(true)}
-        />
+      <div className="max-w-lg mx-auto pb-8">
+        {/* Character Scroller */}
+        <div className="mb-4">
+          <CharacterScroller
+            characters={characters}
+            selectedId={selectedCharacterId}
+            onSelect={setSelectedCharacterId}
+            onAddNew={() => setIsCreateModalOpen(true)}
+          />
+        </div>
 
         {/* Character Detail View */}
         {loadingCharacters ? (
