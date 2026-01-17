@@ -37,6 +37,7 @@ interface Character {
   avatar_url: string | null;
   bubble_color: string | null;
   text_color: string | null;
+  bubble_alignment: string | null;
 }
 
 interface Message {
@@ -129,16 +130,10 @@ export default function RoomChat() {
     }
   }, [user, worldId]);
 
-  // Check if this world has AI characters
+  // Phantom AI is always enabled - it can dynamically spawn NPCs
   const checkAICharacters = async () => {
-    if (!worldId) return;
-    const { data } = await supabase
-      .from('ai_characters')
-      .select('id')
-      .eq('world_id', worldId)
-      .eq('is_active', true)
-      .limit(1);
-    setHasAI((data?.length || 0) > 0);
+    // Always enable AI - it can spawn dynamic NPCs even without pre-configured characters
+    setHasAI(true);
   };
 
   useEffect(() => {
@@ -248,7 +243,7 @@ export default function RoomChat() {
 
     const { data, error } = await supabase
       .from('characters')
-      .select('id, name, avatar_url, bubble_color, text_color')
+      .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
       .eq('owner_id', user.id)
       .eq('is_hidden', false);
 
@@ -275,7 +270,7 @@ export default function RoomChat() {
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
           .from('characters')
-          .select('id, name, avatar_url, bubble_color, text_color')
+          .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
           .in('id', characterIds);
         
         if (charData) {
@@ -326,7 +321,7 @@ export default function RoomChat() {
           if (newMessage.character_id) {
             const { data } = await supabase
               .from('characters')
-              .select('id, name, avatar_url, bubble_color, text_color')
+              .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
               .eq('id', newMessage.character_id)
               .single();
             if (data) character = data;
@@ -693,6 +688,9 @@ export default function RoomChat() {
                   attachmentUrl={msg.attachment_url}
                   emojiReactions={msg.emoji_reactions || {}}
                   onReact={handleReaction}
+                  bubbleColor={msg.character?.bubble_color || undefined}
+                  textColor={msg.character?.text_color || undefined}
+                  bubbleAlignment={(msg.character?.bubble_alignment as 'auto' | 'left' | 'right') || 'auto'}
                 />
               );
             })
