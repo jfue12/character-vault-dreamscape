@@ -21,25 +21,25 @@ export const CharacterScroller = ({
   onAddNew 
 }: CharacterScrollerProps) => {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-      {/* Add New Character Button - First Item */}
-      <div className="flex flex-col items-center gap-1 flex-shrink-0">
+    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+      {/* Add New Character Button */}
+      <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onAddNew}
-          className="w-16 h-16 rounded-full dashed-circle flex items-center justify-center bg-background"
+          className="w-16 h-16 rounded-full border-2 border-dashed border-primary/60 flex items-center justify-center bg-transparent hover:border-primary transition-colors"
         >
-          <Plus className="w-6 h-6 text-primary" />
+          <Plus className="w-6 h-6 text-primary/60" />
         </motion.button>
-        <span className="text-xs text-muted-foreground w-16 text-center truncate">
+        <span className="text-xs text-muted-foreground">
           Character
         </span>
       </div>
 
-      {/* Character Avatars with Names */}
+      {/* Character Avatars */}
       {characters.map((character, index) => (
-        <div key={character.id} className="flex flex-col items-center gap-1 flex-shrink-0">
+        <div key={character.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -50,7 +50,7 @@ export const CharacterScroller = ({
             className={`w-16 h-16 rounded-full overflow-hidden transition-all ${
               selectedId === character.id 
                 ? 'ring-[3px] ring-primary ring-offset-2 ring-offset-background' 
-                : 'border-2 border-border hover:border-primary/50'
+                : ''
             }`}
           >
             {character.avatar_url ? (
@@ -60,8 +60,8 @@ export const CharacterScroller = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-secondary flex items-center justify-center">
-                <span className="text-lg font-bold text-muted-foreground">
+              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-purple-900/40 flex items-center justify-center">
+                <span className="text-lg font-bold text-foreground">
                   {character.name[0]?.toUpperCase()}
                 </span>
               </div>

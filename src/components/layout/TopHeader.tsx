@@ -1,4 +1,4 @@
-import { UserPlus, Bell, Menu, ChevronLeft, ChevronDown } from 'lucide-react';
+import { UserPlus, Bell, MoreHorizontal, ChevronLeft, BadgeCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,11 +6,12 @@ interface TopHeaderProps {
   title?: string;
   variant?: 'default' | 'worlds' | 'profile' | 'simple' | 'room';
   leftIcon?: 'grid' | 'avatar' | 'add-friend' | 'back' | 'none';
-  rightIcon?: 'search' | 'notifications' | 'menu' | 'none';
+  rightIcon?: 'search' | 'notifications' | 'menu' | 'more' | 'none';
   onLeftAction?: () => void;
   onRightAction?: () => void;
   subtitle?: string;
   onTitleClick?: () => void;
+  showVerified?: boolean;
 }
 
 export const TopHeader = ({
@@ -21,10 +22,13 @@ export const TopHeader = ({
   onLeftAction,
   onRightAction,
   subtitle,
-  onTitleClick
+  onTitleClick,
+  showVerified = true
 }: TopHeaderProps) => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+
+  const displayTitle = title || (profile?.username ? `@${profile.username}` : 'MASCOT');
 
   const renderLeftIcon = () => {
     switch (leftIcon) {
@@ -32,7 +36,7 @@ export const TopHeader = ({
         return (
           <button 
             onClick={onLeftAction}
-            className="p-2 text-foreground hover:text-primary transition-colors"
+            className="p-2 -ml-2 text-foreground hover:text-primary transition-colors"
           >
             <UserPlus className="w-5 h-5" />
           </button>
@@ -41,9 +45,9 @@ export const TopHeader = ({
         return (
           <button 
             onClick={onLeftAction || (() => navigate(-1))}
-            className="p-2 text-foreground hover:text-primary transition-colors"
+            className="p-2 -ml-2 text-foreground hover:text-primary transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
         );
       case 'avatar':
@@ -53,7 +57,7 @@ export const TopHeader = ({
           </div>
         );
       default:
-        return <div className="w-8" />;
+        return <div className="w-10" />;
     }
   };
 
@@ -63,47 +67,40 @@ export const TopHeader = ({
         return (
           <button 
             onClick={onRightAction}
-            className="p-2 text-foreground hover:text-primary transition-colors relative"
+            className="p-2 -mr-2 text-foreground hover:text-primary transition-colors relative"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
           </button>
         );
-      case 'menu':
+      case 'more':
         return (
           <button 
             onClick={onRightAction}
-            className="p-2 text-foreground hover:text-primary transition-colors"
+            className="p-2 -mr-2 text-foreground hover:text-primary transition-colors"
           >
-            <Menu className="w-5 h-5" />
+            <MoreHorizontal className="w-5 h-5" />
           </button>
         );
       default:
-        return <div className="w-8" />;
+        return <div className="w-10" />;
     }
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
+      <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
         {renderLeftIcon()}
         
         <button 
           onClick={onTitleClick}
-          className="flex flex-col items-center"
+          className="flex items-center gap-1.5"
           disabled={!onTitleClick}
         >
-          <div className="flex items-center gap-2">
-            <h1 className="font-display font-bold text-lg text-foreground">
-              {title || profile?.username || 'MASCOT'}
-            </h1>
-            {profile?.username && !subtitle && (
-              <span className="text-primary text-sm">✓</span>
-            )}
-            {onTitleClick && <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </div>
-          {subtitle && (
-            <span className="text-xs text-muted-foreground">{subtitle}</span>
+          <span className="font-semibold text-foreground">
+            {displayTitle}
+          </span>
+          {showVerified && profile?.username && (
+            <BadgeCheck className="w-4 h-4 text-primary fill-primary" />
           )}
         </button>
 
