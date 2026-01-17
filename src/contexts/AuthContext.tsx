@@ -11,6 +11,7 @@ interface Profile {
   followers_count: number;
   following_count: number;
   stories_count: number;
+  active_character_id: string | null;
 }
 
 interface AuthContextType {

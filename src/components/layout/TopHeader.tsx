@@ -1,6 +1,8 @@
 import { UserPlus, Bell, MoreHorizontal, ChevronLeft, BadgeCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TopHeaderProps {
   title?: string;
@@ -12,6 +14,13 @@ interface TopHeaderProps {
   subtitle?: string;
   onTitleClick?: () => void;
   showVerified?: boolean;
+  showActiveOC?: boolean;
+}
+
+interface Character {
+  id: string;
+  name: string;
+  avatar_url: string | null;
 }
 
 export const TopHeader = ({
@@ -23,12 +32,49 @@ export const TopHeader = ({
   onRightAction,
   subtitle,
   onTitleClick,
-  showVerified = true
+  showVerified = true,
+  showActiveOC = false
 }: TopHeaderProps) => {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
+  const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  const displayTitle = title || (profile?.username ? `@${profile.username}` : 'MASCOT');
+  useEffect(() => {
+    if (user && profile?.active_character_id) {
+      fetchActiveCharacter();
+    }
+  }, [user, profile?.active_character_id]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadNotifications();
+    }
+  }, [user]);
+
+  const fetchActiveCharacter = async () => {
+    if (!profile?.active_character_id) return;
+    
+    const { data } = await supabase
+      .from('characters')
+      .select('id, name, avatar_url')
+      .eq('id', profile.active_character_id)
+      .single();
+    
+    if (data) {
+      setActiveCharacter(data);
+    }
+  };
+
+  const fetchUnreadNotifications = async () => {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user?.id)
+      .eq('is_read', false);
+    
+    setUnreadNotifications(count || 0);
+  };
 
   const renderLeftIcon = () => {
     switch (leftIcon) {
@@ -70,6 +116,9 @@ export const TopHeader = ({
             className="p-2 -mr-2 text-foreground hover:text-primary transition-colors relative"
           >
             <Bell className="w-5 h-5" />
+            {unreadNotifications > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+            )}
           </button>
         );
       case 'more':
@@ -86,8 +135,39 @@ export const TopHeader = ({
     }
   };
 
+  const renderTitle = () => {
+    if (showActiveOC && activeCharacter) {
+      return (
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold text-foreground">
+            {activeCharacter.name}
+          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">
+              @{profile?.username || 'user'}
+            </span>
+            {showVerified && profile?.username && (
+              <BadgeCheck className="w-3 h-3 text-primary fill-primary" />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="font-semibold text-foreground">
+          {title || (profile?.username ? `@${profile.username}` : 'MASCOT')}
+        </span>
+        {showVerified && profile?.username && !title && (
+          <BadgeCheck className="w-4 h-4 text-primary fill-primary" />
+        )}
+      </div>
+    );
+  };
+
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
         {renderLeftIcon()}
         
@@ -96,12 +176,7 @@ export const TopHeader = ({
           className="flex items-center gap-1.5"
           disabled={!onTitleClick}
         >
-          <span className="font-semibold text-foreground">
-            {displayTitle}
-          </span>
-          {showVerified && profile?.username && (
-            <BadgeCheck className="w-4 h-4 text-primary fill-primary" />
-          )}
+          {renderTitle()}
         </button>
 
         {renderRightIcon()}

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface CreateCharacterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCharacterModalProps) => {
@@ -126,7 +126,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
       setAvatarFile(null);
       setAvatarPreview(null);
       
-      onSuccess();
+      onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {
       toast({
