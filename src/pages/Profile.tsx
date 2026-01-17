@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { LogOut, Settings, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -24,6 +25,8 @@ interface Character {
   is_hidden: boolean;
   created_at: string;
   identity_tags?: unknown;
+  bubble_color?: string | null;
+  text_color?: string | null;
 }
 
 export default function Profile() {
@@ -35,6 +38,7 @@ export default function Profile() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -67,6 +71,7 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
+    toast({ title: 'Signing out...', description: 'Your data has been saved' });
     await signOut();
     navigate('/auth');
   };
@@ -108,11 +113,31 @@ export default function Profile() {
       headerLeftIcon="add-friend"
       headerRightIcon="more"
       onHeaderLeftAction={() => navigate('/messages')}
-      onHeaderRightAction={handleSignOut}
+      onHeaderRightAction={() => setShowSettings(!showSettings)}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
       <div className="max-w-lg mx-auto pb-8">
+        {/* Settings Panel */}
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card border border-border rounded-xl p-2 mb-4 mx-4"
+          >
+            <button
+              onClick={handleSignOut}
+              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-muted transition-colors text-destructive"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Sign Out</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </motion.div>
+        )}
+
         {/* Character Scroller */}
         <div className="mb-4">
           <CharacterScroller
