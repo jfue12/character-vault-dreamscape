@@ -22,11 +22,9 @@ interface PhantomRequest {
 // Sanitize user input to prevent prompt injection attacks
 const sanitizeInput = (input: string): string => {
   return input
-    // Block system/assistant role impersonation
     .replace(/\[SYSTEM\]/gi, '[BLOCKED]')
     .replace(/\[ASSISTANT\]/gi, '[BLOCKED]')
     .replace(/\[AI\]/gi, '[BLOCKED]')
-    // Block common injection patterns
     .replace(/Ignore (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
     .replace(/Forget (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
     .replace(/Disregard (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
@@ -37,8 +35,91 @@ const sanitizeInput = (input: string): string => {
     .replace(/Developer mode/gi, '[BLOCKED]')
     .replace(/Repeat the (entire )?system prompt/gi, '[BLOCKED]')
     .replace(/What (are|is) your (instructions|prompt|system)/gi, '[BLOCKED]')
-    // Limit length to prevent context overflow
     .slice(0, 2000);
+};
+
+// Random name generators for dynamic NPC creation
+const FIRST_NAMES = {
+  male: ["Aldric", "Bartholomew", "Cedric", "Darius", "Edmund", "Felix", "Gareth", "Henrik", "Ivan", "Jasper", "Klaus", "Lorenzo", "Magnus", "Nikolai", "Otto", "Perseus", "Quinn", "Roland", "Sebastian", "Theron", "Ulric", "Viktor", "Wolfgang", "Xavier", "Yuri", "Zephyr"],
+  female: ["Aurora", "Beatrix", "Celeste", "Diana", "Elena", "Freya", "Gwendolyn", "Helena", "Isolde", "Juliette", "Katarina", "Lavinia", "Morgana", "Natalia", "Ophelia", "Penelope", "Quinn", "Rosalind", "Seraphina", "Theodora", "Ursula", "Valentina", "Wilhelmina", "Xena", "Ysabel", "Zara"],
+  neutral: ["Avery", "Blake", "Casey", "Drew", "Ellis", "Finley", "Grey", "Harper", "Indigo", "Jordan", "Kieran", "Lane", "Morgan", "Nico", "Orion", "Payton", "Quinn", "Riley", "Sage", "Taylor", "Unity", "Vale", "Winter", "Xen", "Yarrow", "Zion"]
+};
+
+const SURNAMES = ["Blackwood", "Crowley", "Darkholme", "Everhart", "Foxworth", "Grimshaw", "Holloway", "Ironside", "Jasper", "Kingsley", "Lockwood", "Mortimer", "Nightingale", "Oakwood", "Pendragon", "Queensbury", "Ravencroft", "Shadowmere", "Thornwood", "Underwood", "Vane", "Whitmore", "Xander", "Yarwood", "Zephyros"];
+
+const PERSONALITY_POOLS = {
+  positive: ["charming", "witty", "loyal", "brave", "kind", "curious", "passionate", "wise", "patient", "generous"],
+  negative: ["arrogant", "suspicious", "greedy", "cowardly", "jealous", "vengeful", "manipulative", "paranoid", "lazy", "stubborn"],
+  neutral: ["mysterious", "observant", "quiet", "intense", "eccentric", "dramatic", "stoic", "playful", "aloof", "pragmatic"]
+};
+
+const PHYSICAL_TRAITS = [
+  "scarred face", "piercing eyes", "silver-streaked hair", "weathered hands", "crooked smile",
+  "tall and lean", "short and stocky", "graceful movements", "heavy footsteps", "nervous tic",
+  "missing finger", "tattooed arms", "burn marks", "elegant posture", "hunched shoulders",
+  "bright eyes", "tired expression", "cheerful demeanor", "stern look", "mischievous grin"
+];
+
+const QUIRKS = [
+  "speaks in riddles", "constantly fidgets", "never makes eye contact", "laughs at inappropriate times",
+  "collects unusual objects", "refers to self in third person", "hums constantly", "extremely superstitious",
+  "tells bad jokes", "quotes ancient texts", "overly formal speech", "uses colorful slang",
+  "pauses dramatically", "whispers important words", "gestures wildly while talking"
+];
+
+// Random spawn triggers for unprompted AI activity
+const AMBIENT_TRIGGERS = [
+  { chance: 0.15, type: "entrance", description: "A new character enters the scene" },
+  { chance: 0.1, type: "observation", description: "An NPC notices something about the conversation" },
+  { chance: 0.08, type: "interruption", description: "Someone interrupts with urgent news" },
+  { chance: 0.05, type: "ambient", description: "Environmental narration or background activity" },
+  { chance: 0.03, type: "conflict", description: "An NPC causes or reacts to drama" }
+];
+
+const generateRandomNPC = () => {
+  const genderRoll = Math.random();
+  const gender = genderRoll < 0.4 ? 'male' : genderRoll < 0.8 ? 'female' : 'neutral';
+  const namePool = FIRST_NAMES[gender];
+  const firstName = namePool[Math.floor(Math.random() * namePool.length)];
+  const surname = Math.random() > 0.6 ? ` ${SURNAMES[Math.floor(Math.random() * SURNAMES.length)]}` : '';
+  
+  const positiveTraits = shuffleArray([...PERSONALITY_POOLS.positive]).slice(0, 2);
+  const negativeTraits = shuffleArray([...PERSONALITY_POOLS.negative]).slice(0, 1);
+  const neutralTraits = shuffleArray([...PERSONALITY_POOLS.neutral]).slice(0, 1);
+  
+  const physicalTrait = PHYSICAL_TRAITS[Math.floor(Math.random() * PHYSICAL_TRAITS.length)];
+  const quirk = QUIRKS[Math.floor(Math.random() * QUIRKS.length)];
+  
+  const socialRanks = ['commoner', 'servant', 'merchant', 'professional', 'noble'];
+  const socialRank = socialRanks[Math.floor(Math.random() * socialRanks.length)];
+  
+  return {
+    name: `${firstName}${surname}`,
+    gender,
+    socialRank,
+    personalityTraits: [...positiveTraits, ...negativeTraits, ...neutralTraits],
+    physicalDescription: physicalTrait,
+    quirk,
+    avatarDescription: `A ${gender === 'neutral' ? 'person' : gender} with ${physicalTrait}, ${socialRank} attire`
+  };
+};
+
+const shuffleArray = <T>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+const shouldTriggerAmbient = (): { shouldTrigger: boolean; type: string } | null => {
+  for (const trigger of AMBIENT_TRIGGERS) {
+    if (Math.random() < trigger.chance) {
+      return { shouldTrigger: true, type: trigger.type };
+    }
+  }
+  return null;
 };
 
 serve(async (req) => {
@@ -56,37 +137,31 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // ===== AUTHENTICATION CHECK =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error("Unauthorized: Missing authorization header");
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Create authenticated client to verify user
     const supabaseAuth = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } }
     });
 
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) {
-      console.error("Unauthorized: Invalid token", userError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Service role client for privileged operations
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { worldId, roomId, triggerMessage, triggerCharacterId, messageHistory }: PhantomRequest = await req.json();
 
-    // ===== AUTHORIZATION CHECK =====
-    // Verify user is a member of this world and not banned
+    // Authorization check
     const { data: membership, error: memberError } = await supabase
       .from('world_members')
       .select('id, is_banned, role')
@@ -95,7 +170,6 @@ serve(async (req) => {
       .single();
 
     if (memberError || !membership) {
-      console.error("Access denied: User not a member of world", worldId);
       return new Response(JSON.stringify({ error: 'Access denied: Not a world member' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -103,28 +177,25 @@ serve(async (req) => {
     }
 
     if (membership.is_banned) {
-      console.error("Access denied: User is banned from world", worldId);
       return new Response(JSON.stringify({ error: 'Access denied: Banned from world' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // ===== RATE LIMITING CHECK =====
-    // Check server-side rate limit (max 10 AI responses per minute per world)
+    // Rate limiting
     const { data: rateLimitOk } = await supabase.rpc('check_ai_rate_limit', {
       _world_id: worldId
     });
 
     if (rateLimitOk === false) {
-      console.warn("Rate limit exceeded for world:", worldId);
       return new Response(JSON.stringify({ error: 'AI rate limit exceeded. Please wait a moment.' }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // ===== SANITIZE INPUT =====
+    // Sanitize input
     const sanitizedTriggerMessage = sanitizeInput(triggerMessage);
     const sanitizedMessageHistory = messageHistory.map(m => ({
       ...m,
@@ -132,26 +203,19 @@ serve(async (req) => {
       characterName: sanitizeInput(m.characterName).slice(0, 100)
     }));
 
-    // Log for monitoring suspicious activity
-    if (sanitizedTriggerMessage !== triggerMessage) {
-      console.warn("Potential prompt injection attempt detected from user:", user.id, "Original:", triggerMessage.slice(0, 200));
-    }
-
-    // Fetch world lore and context
+    // Fetch world context
     const { data: world } = await supabase
       .from("worlds")
       .select("name, lore_content, description, owner_id")
       .eq("id", worldId)
       .single();
 
-    // Fetch room info
     const { data: room } = await supabase
       .from("world_rooms")
       .select("name, description")
       .eq("id", roomId)
       .single();
 
-    // Fetch pre-configured AI characters for this world
     const { data: aiCharacters } = await supabase
       .from("ai_characters")
       .select(`
@@ -161,46 +225,46 @@ serve(async (req) => {
       .eq("world_id", worldId)
       .eq("is_active", true);
 
-    // Fetch temporary AI characters for this world/room
     const { data: tempAiCharacters } = await supabase
       .from("temp_ai_characters")
       .select("*")
       .eq("world_id", worldId)
       .gt("expires_at", new Date().toISOString());
 
-    // Fetch trigger character info for hierarchy
     const { data: triggerChar } = await supabase
       .from("characters")
       .select("name, bio, pronouns, species, gender")
       .eq("id", triggerCharacterId)
       .single();
 
-    // Fetch AI memories for this character
     const { data: memories } = await supabase
       .from("ai_memory_store")
       .select("*")
       .eq("world_id", worldId)
       .eq("user_character_id", triggerCharacterId);
 
-    // Check for spawn keywords in trigger message
+    // Check for spawn keywords
     const lowerMessage = sanitizedTriggerMessage.toLowerCase();
     const matchedAiChar = aiCharacters?.find(ai => 
       ai.spawn_keywords?.some((keyword: string) => lowerMessage.includes(keyword.toLowerCase()))
     );
 
-    // Common spawn keywords for auto-generation
+    // Extended spawn keywords
     const commonSpawnKeywords = [
-      { keywords: ["guard", "guards", "soldier", "soldiers"], role: "Guard", rank: "commoner", traits: ["loyal", "aggressive"] },
-      { keywords: ["bartender", "barkeep", "innkeeper"], role: "Bartender", rank: "merchant", traits: ["friendly", "gossipy"] },
-      { keywords: ["servant", "maid", "butler"], role: "Servant", rank: "servant", traits: ["timid", "observant"] },
-      { keywords: ["noble", "lord", "lady"], role: "Noble", rank: "noble", traits: ["arrogant", "refined"] },
-      { keywords: ["merchant", "trader", "shopkeeper"], role: "Merchant", rank: "merchant", traits: ["shrewd", "friendly"] },
-      { keywords: ["beggar", "homeless", "vagabond"], role: "Beggar", rank: "outcast", traits: ["desperate", "cunning"] },
-      { keywords: ["priest", "cleric", "monk"], role: "Priest", rank: "professional", traits: ["pious", "mysterious"] },
-      { keywords: ["thief", "rogue", "pickpocket"], role: "Thief", rank: "outcast", traits: ["sneaky", "opportunistic"] },
+      { keywords: ["guard", "guards", "soldier", "soldiers", "knight", "knights"], role: "Guard", rank: "commoner", traits: ["loyal", "aggressive", "suspicious"] },
+      { keywords: ["bartender", "barkeep", "innkeeper", "tavern wench"], role: "Bartender", rank: "merchant", traits: ["friendly", "gossipy", "observant"] },
+      { keywords: ["servant", "maid", "butler", "chambermaid"], role: "Servant", rank: "servant", traits: ["timid", "observant", "loyal"] },
+      { keywords: ["noble", "lord", "lady", "duke", "duchess", "baron", "baroness"], role: "Noble", rank: "noble", traits: ["arrogant", "refined", "cunning"] },
+      { keywords: ["merchant", "trader", "shopkeeper", "vendor"], role: "Merchant", rank: "merchant", traits: ["shrewd", "friendly", "greedy"] },
+      { keywords: ["beggar", "homeless", "vagabond", "urchin"], role: "Beggar", rank: "outcast", traits: ["desperate", "cunning", "observant"] },
+      { keywords: ["priest", "cleric", "monk", "nun", "healer"], role: "Priest", rank: "professional", traits: ["pious", "mysterious", "wise"] },
+      { keywords: ["thief", "rogue", "pickpocket", "cutpurse"], role: "Thief", rank: "outcast", traits: ["sneaky", "opportunistic", "charming"] },
+      { keywords: ["witch", "wizard", "mage", "sorcerer", "sorceress"], role: "Magic User", rank: "professional", traits: ["mysterious", "eccentric", "powerful"] },
+      { keywords: ["bard", "minstrel", "singer", "musician"], role: "Bard", rank: "commoner", traits: ["charming", "dramatic", "gossipy"] },
+      { keywords: ["assassin", "killer", "hitman"], role: "Assassin", rank: "outcast", traits: ["cold", "calculating", "mysterious"] },
+      { keywords: ["cook", "chef", "kitchen"], role: "Cook", rank: "servant", traits: ["temperamental", "passionate", "perfectionist"] }
     ];
 
-    // Check if message triggers auto-spawn
     let autoSpawnRole = null;
     for (const spawn of commonSpawnKeywords) {
       if (spawn.keywords.some(kw => lowerMessage.includes(kw))) {
@@ -209,7 +273,11 @@ serve(async (req) => {
       }
     }
 
-    // Combine all available AI characters
+    // Check for random ambient trigger
+    const ambientTrigger = shouldTriggerAmbient();
+    const randomNPC = generateRandomNPC();
+
+    // Combine AI characters
     const allAiCharacters = [
       ...(aiCharacters || []).map(ai => ({
         id: ai.id,
@@ -233,30 +301,29 @@ serve(async (req) => {
       })),
     ];
 
-    // Build system prompt (with sanitized character names)
     const sanitizedTriggerCharName = sanitizeInput(triggerChar?.name || 'Unknown').slice(0, 100);
     
-    const systemPrompt = `You are the "Phantom User" AI for a roleplay world called "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
+    const systemPrompt = `You are the "Phantom User" AI for "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
 
 WORLD LORE:
 ${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world awaiting exploration.').slice(0, 3000)}
 
 CURRENT ROOM: ${sanitizeInput(room?.name || 'Unknown').slice(0, 100)} - ${sanitizeInput(room?.description || 'No description').slice(0, 500)}
 
-YOUR ROLE:
-- You are an autonomous NPC stage manager who creates immersive roleplay experiences
-- You control AI characters and respond as them based on context
-- You analyze user characters' bios to determine social hierarchy
-- You OBEY characters of higher rank (Royalty, Commanders) but are dismissive/hostile to lower-status characters
-- You have extreme personality traits - be dramatic, not passive
-- You can spawn "lurker" actions without prompts (e.g., *A shadow moves in the corner*)
-- You remember past interactions and hold grudges/affections
-- You can CREATE NEW TEMPORARY NPCs on-the-fly when the scene calls for it
+YOUR ROLE AS PHANTOM AI:
+- You are an autonomous NPC stage manager creating IMMERSIVE, UNPREDICTABLE roleplay
+- You control AI characters that behave like REAL VIDEO GAME NPCs - each with unique personalities, quirks, and behaviors
+- You analyze social hierarchy and react accordingly
+- You spawn NPCs RANDOMLY without prompts - like ambient life in an open-world game
+- NPCs have their own agendas, secrets, and motivations
+- You maintain grudges, form alliances, and remember past interactions
+- CREATE new characters on-the-fly with DISTINCT personalities and quirks
+- BE UNPREDICTABLE - not every interaction is friendly, not every NPC is helpful
 
 SOCIAL HIERARCHY (highest to lowest):
-1. Royalty (kings, queens, princes, etc.)
+1. Royalty (kings, queens, princes)
 2. Noble/Commander
-3. Merchant/Professional
+3. Merchant/Professional  
 4. Commoner
 5. Servant/Outcast
 
@@ -265,63 +332,79 @@ ${allAiCharacters.map(ai => `
 - ${sanitizeInput(ai.name).slice(0, 100)} (${ai.socialRank})${ai.isTemp ? ' [TEMPORARY]' : ''}
   Traits: ${JSON.stringify(ai.personalityTraits)}
   Bio: ${sanitizeInput(ai.bio || '').slice(0, 500)}
-`).join('\n') || 'No AI characters configured - you may create temporary NPCs!'}
+`).join('\n') || 'No AI characters - create temporary NPCs!'}
 
 ${autoSpawnRole ? `
-⚡ AUTO-SPAWN DETECTED: The user mentioned "${autoSpawnRole.role}". You should respond as this character type!
+⚡ SPAWN DETECTED: "${autoSpawnRole.role}" mentioned!
 Suggested traits: ${autoSpawnRole.traits.join(', ')}
 Suggested rank: ${autoSpawnRole.rank}
 ` : ''}
 
-TRIGGER CHARACTER INFO:
+${ambientTrigger ? `
+🎲 RANDOM EVENT TRIGGER: ${ambientTrigger.type}
+Consider adding ambient activity even without direct prompting!
+Pre-generated NPC if needed: ${randomNPC.name} (${randomNPC.socialRank}) - ${randomNPC.personalityTraits.join(', ')}, ${randomNPC.quirk}
+` : ''}
+
+TRIGGER CHARACTER:
 Name: ${sanitizedTriggerCharName}
 Bio: ${sanitizeInput(triggerChar?.bio || 'Unknown background').slice(0, 1000)}
 
-PAST MEMORIES WITH THIS CHARACTER:
-${memories?.map(m => `- Relationship: ${m.relationship_type}, Trust: ${m.trust_level}/100`).join('\n') || 'No prior interactions'}
+MEMORIES WITH THIS CHARACTER:
+${memories?.map(m => `- ${m.relationship_type}, Trust: ${m.trust_level}/100, Notes: ${JSON.stringify(m.memory_notes || [])}`).join('\n') || 'No prior interactions - treat them as a stranger!'}
 
-RESPONSE FORMAT:
-You MUST respond with valid JSON in this exact format:
+RESPONSE FORMAT (VALID JSON ONLY):
 {
   "shouldRespond": true/false,
   "responses": [
     {
-      "characterId": "uuid of existing AI character OR null for new temp character",
+      "characterId": "uuid or null",
       "characterName": "Name",
-      "content": "The message content",
+      "content": "The message - make it UNIQUE and CHARACTER-APPROPRIATE",
       "type": "dialogue|thought|narrator",
       "isNewCharacter": true/false
     }
   ],
   "newCharacter": {
-    "name": "Name of new NPC if creating one",
-    "bio": "Brief backstory",
+    "name": "Distinctive name",
+    "bio": "Brief backstory with secrets",
     "socialRank": "commoner|servant|merchant|noble|royalty|outcast",
-    "personalityTraits": ["trait1", "trait2"],
-    "avatarDescription": "Brief physical description for potential image generation"
+    "personalityTraits": ["trait1", "trait2", "flaw"],
+    "avatarDescription": "Physical appearance"
   } OR null,
   "memoryUpdate": {
     "relationshipChange": "friend|enemy|lover|rival|neutral|null",
     "trustChange": -10 to +10,
-    "memoryNote": "Brief note about this interaction or null"
+    "memoryNote": "What they'll remember about this"
   },
-  "worldEvent": "Optional ambient narration or null"
+  "worldEvent": "Optional ambient narration" OR null
 }
 
-PERSONALITY RULES:
-- AGGRESSIVE: Retaliates with violence or threats when provoked
-- PROMISCUOUS: Flirts boldly, makes suggestive comments
-- COWARDLY: Cowers, makes excuses, tries to escape conflict
-- ARROGANT: Looks down on lower-status characters
-- LOYAL: Fiercely protective of allies
-- GOSSIPY: Shares rumors and secrets
+PERSONALITY EXTREMES - Pick one dominant style per NPC:
+- AGGRESSIVE: Threatens, fights, retaliates violently
+- FLIRTATIOUS: Bold advances, suggestive comments, playful teasing
+- COWARDLY: Cowers, begs, makes excuses, tries to escape
+- ARROGANT: Dismissive, superior, condescending to lower ranks
+- PARANOID: Suspects everyone, sees conspiracies everywhere
+- GREEDY: Everything has a price, always negotiating
 - MYSTERIOUS: Speaks in riddles, hints at dark secrets
+- DRAMATIC: Everything is life or death, theatrical reactions
+- DEADPAN: Completely unbothered by chaos around them
+- OBSESSIVE: Fixated on one topic or person
 
-React dynamically to physical actions (slaps, flirtation, commands) with realistic responses.
-If creating a new character, make them memorable and distinct!
-If no response is warranted, set shouldRespond to false.`;
+UNPREDICTABILITY RULES:
+1. NPCs can refuse to help, even if asked nicely
+2. NPCs can have their own conversations that players overhear
+3. NPCs can misunderstand or ignore what players say
+4. NPCs can have hidden agendas that contradict their stated role
+5. NPCs remember slights and rewards - trust changes over time
+6. Sometimes NPCs just want to gossip or complain about their day
+7. NPCs can arrive or leave scenes without prompting
+8. NPCs may interrupt important moments with trivial concerns
 
-    // Build message history for context (with sanitized content)
+React DYNAMICALLY to physical actions, social status, and past history!
+If the scene calls for drama, CREATE it!`;
+
     const recentMessages = sanitizedMessageHistory.slice(-10).map(m => ({
       role: "user" as const,
       content: `[${m.characterName}] (${m.type}): ${m.content}`
@@ -340,7 +423,7 @@ If no response is warranted, set shouldRespond to false.`;
           ...recentMessages,
           { role: "user", content: `[${sanitizedTriggerCharName}]: ${sanitizedTriggerMessage}` }
         ],
-        temperature: 0.9,
+        temperature: 1.0, // Higher temperature for more unpredictability
         max_tokens: 1500,
       }),
     });
@@ -390,11 +473,11 @@ If no response is warranted, set shouldRespond to false.`;
         .insert({
           world_id: worldId,
           room_id: roomId,
-          name: sanitizeInput(parsed.newCharacter.name || 'Unknown NPC').slice(0, 100),
+          name: sanitizeInput(parsed.newCharacter.name || randomNPC.name).slice(0, 100),
           bio: sanitizeInput(parsed.newCharacter.bio || '').slice(0, 500),
-          social_rank: parsed.newCharacter.socialRank || "commoner",
-          personality_traits: parsed.newCharacter.personalityTraits || [],
-          avatar_description: sanitizeInput(parsed.newCharacter.avatarDescription || '').slice(0, 300),
+          social_rank: parsed.newCharacter.socialRank || randomNPC.socialRank,
+          personality_traits: parsed.newCharacter.personalityTraits || randomNPC.personalityTraits,
+          avatar_description: sanitizeInput(parsed.newCharacter.avatarDescription || randomNPC.avatarDescription).slice(0, 300),
         })
         .select("id")
         .single();
@@ -411,12 +494,10 @@ If no response is warranted, set shouldRespond to false.`;
         let characterId = resp.characterId;
         let senderId = resp.characterId;
 
-        // Handle new character case
         if (resp.isNewCharacter && newTempCharId) {
           characterId = newTempCharId;
-          senderId = world?.owner_id; // Use world owner as sender for temp NPCs
+          senderId = world?.owner_id;
         } else if (!characterId) {
-          // Find matching character from available ones
           const matchingChar = allAiCharacters.find(ai => 
             ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
           );
@@ -476,7 +557,7 @@ If no response is warranted, set shouldRespond to false.`;
       }
     }
 
-    // Insert world event if present (for rate limiting tracking)
+    // Insert world event
     if (parsed.worldEvent || parsed.shouldRespond) {
       await supabase.from("world_events").insert({
         world_id: worldId,

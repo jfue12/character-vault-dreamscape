@@ -15,6 +15,7 @@ interface ChatBubbleProps {
   onReact?: (messageId: string, emoji: string) => void;
   bubbleColor?: string;
   textColor?: string;
+  bubbleAlignment?: 'auto' | 'left' | 'right';
 }
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
@@ -31,10 +32,14 @@ export const ChatBubble = ({
   emojiReactions = {},
   onReact,
   bubbleColor,
-  textColor
+  textColor,
+  bubbleAlignment = 'auto'
 }: ChatBubbleProps) => {
   const [showReactions, setShowReactions] = useState(false);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
+
+  // Determine if message should appear on right side
+  const isRightAligned = bubbleAlignment === 'auto' ? isOwnMessage : bubbleAlignment === 'right';
 
   // Check if content contains action text (wrapped in asterisks)
   const hasAction = content.includes('*');
@@ -95,12 +100,12 @@ export const ChatBubble = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex flex-col mb-3 ${isOwnMessage ? 'items-end' : 'items-start'}`}
+      className={`flex flex-col mb-3 ${isRightAligned ? 'items-end' : 'items-start'}`}
       onMouseEnter={() => setShowReactions(true)}
       onMouseLeave={() => setShowReactions(false)}
     >
       {/* Timestamp + Character Name + Avatar Row */}
-      <div className={`flex items-center gap-2 mb-1.5 ${isOwnMessage ? 'flex-row' : 'flex-row-reverse'}`}>
+      <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row' : 'flex-row-reverse'}`}>
         <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
           {characterAvatar ? (
             <img 
@@ -123,7 +128,7 @@ export const ChatBubble = ({
       </div>
 
       {/* Message Bubble */}
-      <div className={`flex ${isOwnMessage ? 'justify-end mr-11' : 'justify-start ml-11'} relative`}>
+      <div className={`flex ${isRightAligned ? 'justify-end mr-11' : 'justify-start ml-11'} relative`}>
         <div 
           className={`max-w-[280px] rounded-2xl px-4 py-2.5 relative ${
             isThought
@@ -138,7 +143,7 @@ export const ChatBubble = ({
         >
           {/* Thought bubble decoration */}
           {isThought && (
-            <div className={`absolute -bottom-2 ${isOwnMessage ? 'right-4' : 'left-4'} flex gap-0.5`}>
+            <div className={`absolute -bottom-2 ${isRightAligned ? 'right-4' : 'left-4'} flex gap-0.5`}>
               <div className="w-2 h-2 rounded-full bg-muted/60 border border-muted-foreground/20" />
               <div className="w-1.5 h-1.5 rounded-full bg-muted/60 border border-muted-foreground/20" />
             </div>
@@ -165,7 +170,7 @@ export const ChatBubble = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`absolute -top-8 ${isOwnMessage ? 'right-0' : 'left-0'} flex gap-0.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg`}
+            className={`absolute -top-8 ${isRightAligned ? 'right-0' : 'left-0'} flex gap-0.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg`}
           >
             {REACTION_EMOJIS.map(emoji => (
               <button
@@ -182,7 +187,7 @@ export const ChatBubble = ({
 
       {/* Reaction Counts */}
       {reactionCounts.length > 0 && (
-        <div className={`flex gap-1 mt-1 ${isOwnMessage ? 'mr-11' : 'ml-11'}`}>
+        <div className={`flex gap-1 mt-1 ${isRightAligned ? 'mr-11' : 'ml-11'}`}>
           {reactionCounts.map(({ emoji, count }) => (
             <span
               key={emoji}

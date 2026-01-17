@@ -1,16 +1,16 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { X, Plus, LogOut, Trash2, Crown, Image, Shield, ScrollText, AlertTriangle, Eye, Lock, Users } from 'lucide-react';
+import { X, Plus, LogOut, Trash2, Crown, Image, Shield, ScrollText, AlertTriangle, Eye, Lock, Users, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-
 interface Room {
   id: string;
   name: string;
@@ -281,6 +281,44 @@ export const ChatSettingsPanel = ({
     }
   };
 
+  const handleTimeoutMember = async (userId: string, username: string, duration: string) => {
+    const durationMap: Record<string, number> = {
+      '30s': 30 * 1000,
+      '1m': 60 * 1000,
+      '5m': 5 * 60 * 1000,
+      '15m': 15 * 60 * 1000,
+      '30m': 30 * 60 * 1000,
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '12h': 12 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+    };
+
+    const expiresAt = new Date(Date.now() + (durationMap[duration] || 60000)).toISOString();
+    const currentUser = (await supabase.auth.getUser()).data.user;
+
+    const { error } = await supabase.from('timeouts').insert({
+      user_id: userId,
+      world_id: worldId,
+      expires_at: expiresAt,
+      issued_by: currentUser?.id,
+      reason: `Timed out for ${duration}`,
+    });
+
+    if (!error) {
+      toast({ title: `${username} timed out for ${duration}` });
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: 'timeout',
+        actor_id: currentUser?.id,
+        target_user_id: userId,
+        details: { duration }
+      });
+    } else {
+      toast({ title: 'Failed to timeout user', variant: 'destructive' });
+    }
+  };
+
   const formatAction = (action: string): string => {
     const actionMap: Record<string, string> = {
       'promote_admin': 'Promoted to Admin',
@@ -500,6 +538,23 @@ export const ChatSettingsPanel = ({
                           >
                             {member.role === 'admin' ? 'Demote' : 'Promote'}
                           </Button>
+                          <Select onValueChange={(duration) => handleTimeoutMember(member.userId, member.username, duration)}>
+                            <SelectTrigger className="h-7 w-20 text-xs">
+                              <Clock className="w-3 h-3 mr-1" />
+                              <SelectValue placeholder="Timeout" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="30s">30 sec</SelectItem>
+                              <SelectItem value="1m">1 min</SelectItem>
+                              <SelectItem value="5m">5 min</SelectItem>
+                              <SelectItem value="15m">15 min</SelectItem>
+                              <SelectItem value="30m">30 min</SelectItem>
+                              <SelectItem value="1h">1 hour</SelectItem>
+                              <SelectItem value="6h">6 hours</SelectItem>
+                              <SelectItem value="12h">12 hours</SelectItem>
+                              <SelectItem value="24h">24 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Button
                             variant="ghost"
                             size="sm"
