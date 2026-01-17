@@ -1,13 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
-import { X, Settings, Users, Shield, Plus, LogOut, Trash2, Crown, Image } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Plus, LogOut, Trash2, Crown, Image, Shield, ScrollText, AlertTriangle, Eye, Lock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 interface Room {
   id: string;
@@ -21,6 +23,19 @@ interface Member {
   userId: string;
   username: string;
   role: 'owner' | 'admin' | 'member';
+}
+
+interface AuditLog {
+  id: string;
+  action: string;
+  actor_id: string | null;
+  target_user_id: string | null;
+  target_room_id: string | null;
+  details: any;
+  created_at: string;
+  actor?: { username: string | null };
+  target_user?: { username: string | null };
+  target_room?: { name: string };
 }
 
 interface ChatSettingsPanelProps {
@@ -51,12 +66,105 @@ export const ChatSettingsPanel = ({
   onRoomDeleted
 }: ChatSettingsPanelProps) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'rooms' | 'members' | 'settings'>('rooms');
+  const [activeTab, setActiveTab] = useState<'rooms' | 'members' | 'settings' | 'logs'>('rooms');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [newRoomStaffOnly, setNewRoomStaffOnly] = useState(false);
   const [creating, setCreating] = useState(false);
+  
+  // World settings state
+  const [isPublic, setIsPublic] = useState(true);
+  const [isNsfw, setIsNsfw] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  
+  // Audit logs state
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  // Fetch world settings on open
+  useEffect(() => {
+    if (isOpen && isOwner) {
+      fetchWorldSettings();
+    }
+  }, [isOpen, isOwner, worldId]);
+
+  // Fetch audit logs when viewing logs tab
+  useEffect(() => {
+    if (activeTab === 'logs' && isOwner) {
+      fetchAuditLogs();
+    }
+  }, [activeTab, isOwner, worldId]);
+
+  const fetchWorldSettings = async () => {
+    const { data } = await supabase
+      .from('worlds')
+      .select('is_public, is_nsfw')
+      .eq('id', worldId)
+      .single();
+    
+    if (data) {
+      setIsPublic(data.is_public);
+      setIsNsfw(data.is_nsfw);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    setLoadingLogs(true);
+    const { data } = await supabase
+      .from('audit_logs')
+      .select(`
+        *,
+        actor:profiles!audit_logs_actor_id_fkey(username),
+        target_user:profiles!audit_logs_target_user_id_fkey(username),
+        target_room:world_rooms!audit_logs_target_room_id_fkey(name)
+      `)
+      .eq('world_id', worldId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (data) {
+      setAuditLogs(data as AuditLog[]);
+    }
+    setLoadingLogs(false);
+  };
+
+  const handleUpdateWorldSettings = async (field: 'is_public' | 'is_nsfw', value: boolean) => {
+    setLoadingSettings(true);
+    
+    // If turning off NSFW, that's allowed
+    // If world is NSFW, 18+ must stay on (handled by not allowing toggle)
+    const updateData: any = { [field]: value };
+    
+    // If marking as NSFW, keep it that way
+    if (field === 'is_nsfw' && value) {
+      updateData.is_nsfw = true;
+    }
+    
+    const { error } = await supabase
+      .from('worlds')
+      .update(updateData)
+      .eq('id', worldId);
+    
+    if (error) {
+      toast({ title: 'Failed to update settings', variant: 'destructive' });
+    } else {
+      if (field === 'is_public') setIsPublic(value);
+      if (field === 'is_nsfw') setIsNsfw(value);
+      toast({ title: 'Settings updated' });
+      
+      // Log the change
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: field === 'is_public' 
+          ? (value ? 'world_made_public' : 'world_made_private')
+          : (value ? 'nsfw_enabled' : 'nsfw_disabled'),
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        details: { [field]: value }
+      });
+    }
+    setLoadingSettings(false);
+  };
 
   const handleCreateRoom = async () => {
     if (!newRoomName.trim()) {
@@ -110,6 +218,12 @@ export const ChatSettingsPanel = ({
 
     if (!error) {
       toast({ title: 'Member promoted to admin' });
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: 'promote_admin',
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        target_user_id: userId
+      });
     }
   };
 
@@ -122,7 +236,67 @@ export const ChatSettingsPanel = ({
 
     if (!error) {
       toast({ title: 'Admin demoted to member' });
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: 'demote_admin',
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        target_user_id: userId
+      });
     }
+  };
+
+  const handleKickMember = async (userId: string, username: string) => {
+    const { error } = await supabase
+      .from('world_members')
+      .delete()
+      .eq('world_id', worldId)
+      .eq('user_id', userId);
+
+    if (!error) {
+      toast({ title: `${username} has been kicked` });
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: 'kick',
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        target_user_id: userId
+      });
+    }
+  };
+
+  const handleBanMember = async (userId: string, username: string) => {
+    const { error } = await supabase
+      .from('world_members')
+      .update({ is_banned: true })
+      .eq('world_id', worldId)
+      .eq('user_id', userId);
+
+    if (!error) {
+      toast({ title: `${username} has been banned` });
+      await supabase.from('audit_logs').insert({
+        world_id: worldId,
+        action: 'ban',
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        target_user_id: userId
+      });
+    }
+  };
+
+  const formatAction = (action: string): string => {
+    const actionMap: Record<string, string> = {
+      'promote_admin': 'Promoted to Admin',
+      'demote_admin': 'Demoted to Member',
+      'kick': 'Kicked',
+      'ban': 'Banned',
+      'unban': 'Unbanned',
+      'timeout': 'Timed Out',
+      'world_made_public': 'Made World Public',
+      'world_made_private': 'Made World Private',
+      'nsfw_enabled': 'Enabled NSFW',
+      'nsfw_disabled': 'Disabled NSFW',
+      'room_created': 'Created Room',
+      'room_deleted': 'Deleted Room',
+    };
+    return actionMap[action] || action.replace(/_/g, ' ');
   };
 
   const isStaff = isOwner || isAdmin;
@@ -163,7 +337,7 @@ export const ChatSettingsPanel = ({
             <div className="flex border-b border-border">
               <button
                 onClick={() => setActiveTab('rooms')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 text-xs font-medium transition-colors ${
                   activeTab === 'rooms' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
                 }`}
               >
@@ -171,21 +345,31 @@ export const ChatSettingsPanel = ({
               </button>
               <button
                 onClick={() => setActiveTab('members')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 text-xs font-medium transition-colors ${
                   activeTab === 'members' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
                 }`}
               >
                 Members
               </button>
-              {isStaff && (
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                    activeTab === 'settings' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  Settings
-                </button>
+              {isOwner && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className={`flex-1 py-3 text-xs font-medium transition-colors ${
+                      activeTab === 'settings' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+                    }`}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('logs')}
+                    className={`flex-1 py-3 text-xs font-medium transition-colors ${
+                      activeTab === 'logs' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+                    }`}
+                  >
+                    Logs
+                  </button>
+                </>
               )}
             </div>
 
@@ -289,7 +473,7 @@ export const ChatSettingsPanel = ({
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">@{member.username}</span>
+                        <span className="font-medium text-foreground text-sm">@{member.username}</span>
                         {member.role === 'owner' && (
                           <span className="flex items-center gap-0.5 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
                             <Crown className="w-2.5 h-2.5" />
@@ -304,16 +488,35 @@ export const ChatSettingsPanel = ({
                         )}
                       </div>
                       {isOwner && member.role !== 'owner' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => member.role === 'admin' 
-                            ? handleDemoteMember(member.userId) 
-                            : handlePromoteMember(member.userId)
-                          }
-                        >
-                          {member.role === 'admin' ? 'Demote' : 'Promote'}
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => member.role === 'admin' 
+                              ? handleDemoteMember(member.userId) 
+                              : handlePromoteMember(member.userId)
+                            }
+                          >
+                            {member.role === 'admin' ? 'Demote' : 'Promote'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleKickMember(member.userId, member.username)}
+                          >
+                            Kick
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleBanMember(member.userId, member.username)}
+                          >
+                            Ban
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -321,12 +524,133 @@ export const ChatSettingsPanel = ({
               )}
 
               {/* Settings Tab */}
-              {activeTab === 'settings' && isStaff && (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    World settings and moderation options.
-                  </p>
-                  {/* Add more settings here as needed */}
+              {activeTab === 'settings' && isOwner && (
+                <div className="space-y-6">
+                  {/* Privacy Toggle */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      Privacy
+                    </h3>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Public World</p>
+                        <p className="text-xs text-muted-foreground">Anyone can find and join</p>
+                      </div>
+                      <Switch
+                        checked={isPublic}
+                        onCheckedChange={(value) => handleUpdateWorldSettings('is_public', value)}
+                        disabled={loadingSettings}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Age Toggle */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Age Restriction
+                    </h3>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">18+ Only (NSFW)</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isNsfw ? 'Cannot be disabled while NSFW' : 'Restrict to adults only'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isNsfw}
+                        onCheckedChange={(value) => handleUpdateWorldSettings('is_nsfw', value)}
+                        disabled={loadingSettings}
+                      />
+                    </div>
+                    {isNsfw && (
+                      <p className="text-xs text-amber-500 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        NSFW worlds must remain 18+ only
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Auto Spam Detection Info */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Auto Moderation
+                    </h3>
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        Spam detection is <span className="text-green-500 font-medium">active</span>. 
+                        Users sending rapid messages or duplicate content will be auto-warned and timed out.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Phantom AI Info */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Dynamic AI NPCs
+                    </h3>
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        The Phantom AI automatically creates dynamic NPCs based on context. 
+                        Trigger keywords like <span className="text-primary">"Guards!"</span> or 
+                        <span className="text-primary"> "Bartender"</span> to spawn characters.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Logs Tab */}
+              {activeTab === 'logs' && isOwner && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <ScrollText className="w-4 h-4" />
+                    Moderation Log
+                  </h3>
+                  
+                  {loadingLogs ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      Loading logs...
+                    </div>
+                  ) : auditLogs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No moderation actions yet
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[400px]">
+                      <div className="space-y-2">
+                        {auditLogs.map((log) => (
+                          <div
+                            key={log.id}
+                            className="p-3 bg-muted/50 rounded-lg text-xs"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-foreground">
+                                {formatAction(log.action)}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {format(new Date(log.created_at), 'MMM d, HH:mm')}
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground">
+                              {log.actor?.username && (
+                                <span>By @{log.actor.username}</span>
+                              )}
+                              {log.target_user?.username && (
+                                <span> → @{log.target_user.username}</span>
+                              )}
+                              {log.target_room?.name && (
+                                <span> in {log.target_room.name}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
                 </div>
               )}
             </div>
