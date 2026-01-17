@@ -110,7 +110,7 @@ export const ChatBubble = ({
       onMouseLeave={() => setShowReactions(false)}
     >
       {/* Timestamp + Character Name + Avatar Row */}
-      <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row' : 'flex-row-reverse'}`}>
+      <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
           {characterAvatar ? (
             <img 
@@ -133,7 +133,7 @@ export const ChatBubble = ({
       </div>
 
       {/* Message Bubble */}
-      <div className={`flex ${isRightAligned ? 'justify-end mr-11' : 'justify-start ml-11'} relative`}>
+      <div className={`flex ${isRightAligned ? 'justify-end ml-11' : 'justify-start mr-11'} relative`}>
         <div 
           className={`max-w-[280px] rounded-2xl px-4 py-2.5 relative ${
             isThought
@@ -192,7 +192,7 @@ export const ChatBubble = ({
 
       {/* Reaction Counts */}
       {reactionCounts.length > 0 && (
-        <div className={`flex gap-1 mt-1 ${isRightAligned ? 'mr-11' : 'ml-11'}`}>
+        <div className={`flex gap-1 mt-1 ${isRightAligned ? 'ml-11' : 'mr-11'}`}>
           {reactionCounts.map(({ emoji, count }) => (
             <span
               key={emoji}
@@ -206,7 +206,7 @@ export const ChatBubble = ({
 
       {/* Read Receipt for own messages */}
       {showReadReceipt && isOwnMessage && (
-        <div className={`flex items-center gap-1 mt-0.5 ${isRightAligned ? 'mr-11 justify-end' : 'ml-11'}`}>
+        <div className={`flex items-center gap-1 mt-0.5 ${isRightAligned ? 'ml-11 justify-end' : 'mr-11'}`}>
           {isRead ? (
             <span className="flex items-center gap-0.5 text-[10px] text-primary">
               <CheckCheck className="w-3 h-3" />
