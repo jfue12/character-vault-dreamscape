@@ -5,28 +5,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
-import { Globe } from 'lucide-react';
 
 interface World {
   id: string;
   name: string;
   description: string | null;
   image_url: string | null;
-  tags: string[];
-  is_public: boolean;
   is_nsfw: boolean;
+  tags: string[] | null;
   owner_id: string;
-  created_at: string;
 }
-
-type TabType = 'worlds' | 'dms';
 
 export default function Worlds() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'joined' | 'owned'>('joined');
   const [worlds, setWorlds] = useState<World[]>([]);
   const [loadingWorlds, setLoadingWorlds] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('worlds');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,33 +33,62 @@ export default function Worlds() {
     if (user) {
       fetchWorlds();
     }
-  }, [user, profile]);
+  }, [user, activeTab]);
 
   const fetchWorlds = async () => {
+    if (!user) return;
     setLoadingWorlds(true);
-    
-    let query = supabase
-      .from('worlds')
-      .select('*')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false });
 
-    // Filter NSFW content for minors
-    if (profile?.is_minor) {
-      query = query.eq('is_nsfw', false);
+    if (activeTab === 'owned') {
+      // Fetch worlds owned by user
+      const { data, error } = await supabase
+        .from('worlds')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setWorlds(data);
+      }
+    } else {
+      // Fetch worlds user is a member of
+      const { data: memberData, error: memberError } = await supabase
+        .from('world_members')
+        .select('world_id')
+        .eq('user_id', user.id)
+        .eq('is_banned', false);
+
+      if (!memberError && memberData) {
+        const worldIds = memberData.map(m => m.world_id);
+        
+        if (worldIds.length > 0) {
+          let query = supabase
+            .from('worlds')
+            .select('*')
+            .in('id', worldIds)
+            .order('created_at', { ascending: false });
+
+          // Filter NSFW for minors
+          if (profile?.is_minor) {
+            query = query.eq('is_nsfw', false);
+          }
+
+          const { data, error } = await query;
+          if (!error && data) {
+            setWorlds(data);
+          }
+        } else {
+          setWorlds([]);
+        }
+      }
     }
 
-    const { data, error } = await query;
-
-    if (!error && data) {
-      setWorlds(data);
-    }
     setLoadingWorlds(false);
   };
 
   if (loading) {
     return (
-      <AppLayout title="Worlds">
+      <AppLayout title="Stories">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
@@ -74,74 +98,74 @@ export default function Worlds() {
 
   return (
     <AppLayout 
-      title="MASCOT"
+      title="Stories"
       headerLeftIcon="add-friend"
       headerRightIcon="notifications"
       showFab
-      fabTo="/worlds/create"
+      fabTo="/create-world"
     >
-      <div className="max-w-lg mx-auto space-y-4">
+      <div className="max-w-lg mx-auto">
         {/* Tab Switcher */}
-        <div className="flex bg-secondary rounded-lg p-1">
+        <div className="flex gap-2 mb-6">
           <button
-            onClick={() => setActiveTab('worlds')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'worlds'
-                ? 'bg-background text-primary'
-                : 'text-muted-foreground'
+            onClick={() => setActiveTab('joined')}
+            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'joined'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
             }`}
           >
-            worlds
+            Joined Worlds
           </button>
           <button
-            onClick={() => setActiveTab('dms')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'dms'
-                ? 'bg-background text-primary'
-                : 'text-muted-foreground'
+            onClick={() => setActiveTab('owned')}
+            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'owned'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
             }`}
           >
-            Direct Messages
+            My Worlds
           </button>
         </div>
 
-        {/* Content */}
-        {activeTab === 'worlds' ? (
-          <>
-            {loadingWorlds ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : worlds.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="py-20 text-center"
-              >
-                <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No worlds yet</p>
-              </motion.div>
-            ) : (
-              <div className="grid gap-4">
-                {worlds.map((world, index) => (
-                  <WorldCard
-                    key={world.id}
-                    world={world}
-                    index={index}
-                    currentUserId={user?.id}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
+        {/* Worlds List */}
+        {loadingWorlds ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : worlds.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="py-20 text-center"
           >
-            <p className="text-muted-foreground">No direct messages yet</p>
+            <p className="text-muted-foreground mb-4">
+              {activeTab === 'joined' ? 'No worlds joined yet' : 'No worlds created yet'}
+            </p>
+            <button
+              onClick={() => activeTab === 'joined' ? navigate('/') : navigate('/create-world')}
+              className="text-primary hover:underline"
+            >
+              {activeTab === 'joined' ? 'Discover worlds' : 'Create a world'}
+            </button>
           </motion.div>
+        ) : (
+          <div className="space-y-4">
+            {worlds.map((world, index) => (
+              <motion.div
+                key={world.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <WorldCard
+                  world={world}
+                  onClick={() => navigate(`/worlds/${world.id}`)}
+                />
+              </motion.div>
+            ))}
+          </div>
         )}
       </div>
     </AppLayout>

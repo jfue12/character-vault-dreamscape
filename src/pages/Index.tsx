@@ -1,61 +1,116 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { WorldCard } from '@/components/worlds/WorldCard';
 
-const Index = () => {
-  const { user, loading } = useAuth();
+interface World {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  is_nsfw: boolean;
+  tags: string[] | null;
+  owner_id: string;
+}
+
+export default function Index() {
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const [worlds, setWorlds] = useState<World[]>([]);
+  const [loadingWorlds, setLoadingWorlds] = useState(true);
 
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/profile');
+    if (!loading && !user) {
+      navigate('/auth');
     }
   }, [user, loading, navigate]);
 
+  useEffect(() => {
+    if (user) {
+      fetchDiscoverWorlds();
+    }
+  }, [user, profile]);
+
+  const fetchDiscoverWorlds = async () => {
+    // Build query for public worlds
+    let query = supabase
+      .from('worlds')
+      .select('*')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    // Filter NSFW content for minors
+    if (profile?.is_minor) {
+      query = query.eq('is_nsfw', false);
+    }
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      setWorlds(data);
+    }
+    setLoadingWorlds(false);
+  };
+
+  if (loading) {
+    return (
+      <AppLayout title="Discovery">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center max-w-lg"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring' }}
-          className="w-24 h-24 rounded-full bg-gradient-to-br from-neon-purple via-neon-pink to-neon-blue flex items-center justify-center mx-auto mb-8 neon-border animate-pulse-neon"
-        >
-          <Sparkles className="w-12 h-12 text-primary-foreground" />
-        </motion.div>
-
-        <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4 neon-text">
-          OC Vault
-        </h1>
-        <p className="text-xl text-muted-foreground mb-8">
-          Your characters. Your worlds. Your stories.
-        </p>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Button
-            onClick={() => navigate('/auth')}
-            className="px-8 py-6 text-lg bg-gradient-to-r from-neon-purple via-neon-pink to-neon-blue text-primary-foreground font-semibold neon-border hover:opacity-90 transition-opacity"
+    <AppLayout 
+      title="Discovery"
+      headerLeftIcon="add-friend"
+      headerRightIcon="notifications"
+      showFab
+      fabTo="/create-world"
+    >
+      <div className="max-w-lg mx-auto">
+        {loadingWorlds ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : worlds.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="py-20 text-center"
           >
-            Get Started
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-        </motion.div>
-      </motion.div>
-    </div>
+            <p className="text-muted-foreground mb-4">No worlds to discover yet</p>
+            <button
+              onClick={() => navigate('/create-world')}
+              className="text-primary hover:underline"
+            >
+              Create the first world
+            </button>
+          </motion.div>
+        ) : (
+          <div className="space-y-4">
+            {worlds.map((world, index) => (
+              <motion.div
+                key={world.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <WorldCard
+                  world={world}
+                  onClick={() => navigate(`/worlds/${world.id}`)}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </AppLayout>
   );
-};
-
-export default Index;
+}

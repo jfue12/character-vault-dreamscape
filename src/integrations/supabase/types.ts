@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           age: number | null
           avatar_url: string | null
+          bio: string | null
           created_at: string
           dislikes: string[] | null
           gender: string | null
@@ -33,6 +34,7 @@ export type Database = {
         Insert: {
           age?: number | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           dislikes?: string[] | null
           gender?: string | null
@@ -48,6 +50,7 @@ export type Database = {
         Update: {
           age?: number | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           dislikes?: string[] | null
           gender?: string | null
@@ -64,6 +67,97 @@ export type Database = {
           {
             foreignKeyName: "characters_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          character_id: string | null
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          sender_id: string
+          type: Database["public"]["Enums"]["message_type"]
+          updated_at: string
+        }
+        Insert: {
+          character_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          room_id: string
+          sender_id: string
+          type?: Database["public"]["Enums"]["message_type"]
+          updated_at?: string
+        }
+        Update: {
+          character_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          sender_id?: string
+          type?: Database["public"]["Enums"]["message_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "world_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -127,6 +221,8 @@ export type Database = {
           bio: string | null
           created_at: string
           dob: string
+          followers_count: number | null
+          following_count: number | null
           id: string
           is_minor: boolean
           updated_at: string
@@ -136,6 +232,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           dob: string
+          followers_count?: number | null
+          following_count?: number | null
           id: string
           is_minor?: boolean
           updated_at?: string
@@ -145,6 +243,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           dob?: string
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
           is_minor?: boolean
           updated_at?: string
@@ -310,7 +410,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      message_type: "dialogue" | "thought" | "narrator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -437,6 +537,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      message_type: ["dialogue", "thought", "narrator"],
+    },
   },
 } as const

@@ -10,7 +10,7 @@ import Profile from "./pages/Profile";
 import Worlds from "./pages/Worlds";
 import CreateWorld from "./pages/CreateWorld";
 import WorldDetail from "./pages/WorldDetail";
-import RoomDetail from "./pages/RoomDetail";
+import RoomChat from "./pages/RoomChat";
 import Messages from "./pages/Messages";
 import Plots from "./pages/Plots";
 import Create from "./pages/Create";
@@ -30,9 +30,9 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/worlds" element={<Worlds />} />
-            <Route path="/worlds/create" element={<CreateWorld />} />
+            <Route path="/create-world" element={<CreateWorld />} />
             <Route path="/worlds/:worldId" element={<WorldDetail />} />
-            <Route path="/worlds/:worldId/rooms/:roomId" element={<RoomDetail />} />
+            <Route path="/worlds/:worldId/rooms/:roomId" element={<RoomChat />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/plots" element={<Plots />} />
             <Route path="/create" element={<Create />} />
