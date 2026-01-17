@@ -19,6 +19,28 @@ interface PhantomRequest {
   }>;
 }
 
+// Sanitize user input to prevent prompt injection attacks
+const sanitizeInput = (input: string): string => {
+  return input
+    // Block system/assistant role impersonation
+    .replace(/\[SYSTEM\]/gi, '[BLOCKED]')
+    .replace(/\[ASSISTANT\]/gi, '[BLOCKED]')
+    .replace(/\[AI\]/gi, '[BLOCKED]')
+    // Block common injection patterns
+    .replace(/Ignore (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
+    .replace(/Forget (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
+    .replace(/Disregard (all )?previous (instructions|prompts|context)/gi, '[BLOCKED]')
+    .replace(/You are now/gi, '[BLOCKED]')
+    .replace(/New instructions:/gi, '[BLOCKED]')
+    .replace(/Override:/gi, '[BLOCKED]')
+    .replace(/ADMIN MODE/gi, '[BLOCKED]')
+    .replace(/Developer mode/gi, '[BLOCKED]')
+    .replace(/Repeat the (entire )?system prompt/gi, '[BLOCKED]')
+    .replace(/What (are|is) your (instructions|prompt|system)/gi, '[BLOCKED]')
+    // Limit length to prevent context overflow
+    .slice(0, 2000);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,14 +50,92 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // ===== AUTHENTICATION CHECK =====
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("Unauthorized: Missing authorization header");
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create authenticated client to verify user
+    const supabaseAuth = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      console.error("Unauthorized: Invalid token", userError?.message);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Service role client for privileged operations
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { worldId, roomId, triggerMessage, triggerCharacterId, messageHistory }: PhantomRequest = await req.json();
+
+    // ===== AUTHORIZATION CHECK =====
+    // Verify user is a member of this world and not banned
+    const { data: membership, error: memberError } = await supabase
+      .from('world_members')
+      .select('id, is_banned, role')
+      .eq('world_id', worldId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (memberError || !membership) {
+      console.error("Access denied: User not a member of world", worldId);
+      return new Response(JSON.stringify({ error: 'Access denied: Not a world member' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (membership.is_banned) {
+      console.error("Access denied: User is banned from world", worldId);
+      return new Response(JSON.stringify({ error: 'Access denied: Banned from world' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ===== RATE LIMITING CHECK =====
+    // Check server-side rate limit (max 10 AI responses per minute per world)
+    const { data: rateLimitOk } = await supabase.rpc('check_ai_rate_limit', {
+      _world_id: worldId
+    });
+
+    if (rateLimitOk === false) {
+      console.warn("Rate limit exceeded for world:", worldId);
+      return new Response(JSON.stringify({ error: 'AI rate limit exceeded. Please wait a moment.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ===== SANITIZE INPUT =====
+    const sanitizedTriggerMessage = sanitizeInput(triggerMessage);
+    const sanitizedMessageHistory = messageHistory.map(m => ({
+      ...m,
+      content: sanitizeInput(m.content),
+      characterName: sanitizeInput(m.characterName).slice(0, 100)
+    }));
+
+    // Log for monitoring suspicious activity
+    if (sanitizedTriggerMessage !== triggerMessage) {
+      console.warn("Potential prompt injection attempt detected from user:", user.id, "Original:", triggerMessage.slice(0, 200));
+    }
 
     // Fetch world lore and context
     const { data: world } = await supabase
@@ -83,7 +183,7 @@ serve(async (req) => {
       .eq("user_character_id", triggerCharacterId);
 
     // Check for spawn keywords in trigger message
-    const lowerMessage = triggerMessage.toLowerCase();
+    const lowerMessage = sanitizedTriggerMessage.toLowerCase();
     const matchedAiChar = aiCharacters?.find(ai => 
       ai.spawn_keywords?.some((keyword: string) => lowerMessage.includes(keyword.toLowerCase()))
     );
@@ -133,13 +233,15 @@ serve(async (req) => {
       })),
     ];
 
-    // Build system prompt
-    const systemPrompt = `You are the "Phantom User" AI for a roleplay world called "${world?.name || 'Unknown'}".
+    // Build system prompt (with sanitized character names)
+    const sanitizedTriggerCharName = sanitizeInput(triggerChar?.name || 'Unknown').slice(0, 100);
+    
+    const systemPrompt = `You are the "Phantom User" AI for a roleplay world called "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
 
 WORLD LORE:
-${world?.lore_content || world?.description || 'A mysterious world awaiting exploration.'}
+${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world awaiting exploration.').slice(0, 3000)}
 
-CURRENT ROOM: ${room?.name || 'Unknown'} - ${room?.description || 'No description'}
+CURRENT ROOM: ${sanitizeInput(room?.name || 'Unknown').slice(0, 100)} - ${sanitizeInput(room?.description || 'No description').slice(0, 500)}
 
 YOUR ROLE:
 - You are an autonomous NPC stage manager who creates immersive roleplay experiences
@@ -160,9 +262,9 @@ SOCIAL HIERARCHY (highest to lowest):
 
 AVAILABLE AI CHARACTERS:
 ${allAiCharacters.map(ai => `
-- ${ai.name} (${ai.socialRank})${ai.isTemp ? ' [TEMPORARY]' : ''}
+- ${sanitizeInput(ai.name).slice(0, 100)} (${ai.socialRank})${ai.isTemp ? ' [TEMPORARY]' : ''}
   Traits: ${JSON.stringify(ai.personalityTraits)}
-  Bio: ${ai.bio}
+  Bio: ${sanitizeInput(ai.bio || '').slice(0, 500)}
 `).join('\n') || 'No AI characters configured - you may create temporary NPCs!'}
 
 ${autoSpawnRole ? `
@@ -172,8 +274,8 @@ Suggested rank: ${autoSpawnRole.rank}
 ` : ''}
 
 TRIGGER CHARACTER INFO:
-Name: ${triggerChar?.name || 'Unknown'}
-Bio: ${triggerChar?.bio || 'Unknown background'}
+Name: ${sanitizedTriggerCharName}
+Bio: ${sanitizeInput(triggerChar?.bio || 'Unknown background').slice(0, 1000)}
 
 PAST MEMORIES WITH THIS CHARACTER:
 ${memories?.map(m => `- Relationship: ${m.relationship_type}, Trust: ${m.trust_level}/100`).join('\n') || 'No prior interactions'}
@@ -219,8 +321,8 @@ React dynamically to physical actions (slaps, flirtation, commands) with realist
 If creating a new character, make them memorable and distinct!
 If no response is warranted, set shouldRespond to false.`;
 
-    // Build message history for context
-    const recentMessages = messageHistory.slice(-10).map(m => ({
+    // Build message history for context (with sanitized content)
+    const recentMessages = sanitizedMessageHistory.slice(-10).map(m => ({
       role: "user" as const,
       content: `[${m.characterName}] (${m.type}): ${m.content}`
     }));
@@ -236,7 +338,7 @@ If no response is warranted, set shouldRespond to false.`;
         messages: [
           { role: "system", content: systemPrompt },
           ...recentMessages,
-          { role: "user", content: `[${triggerChar?.name || 'Someone'}]: ${triggerMessage}` }
+          { role: "user", content: `[${sanitizedTriggerCharName}]: ${sanitizedTriggerMessage}` }
         ],
         temperature: 0.9,
         max_tokens: 1500,
@@ -288,11 +390,11 @@ If no response is warranted, set shouldRespond to false.`;
         .insert({
           world_id: worldId,
           room_id: roomId,
-          name: parsed.newCharacter.name,
-          bio: parsed.newCharacter.bio,
+          name: sanitizeInput(parsed.newCharacter.name || 'Unknown NPC').slice(0, 100),
+          bio: sanitizeInput(parsed.newCharacter.bio || '').slice(0, 500),
           social_rank: parsed.newCharacter.socialRank || "commoner",
           personality_traits: parsed.newCharacter.personalityTraits || [],
-          avatar_description: parsed.newCharacter.avatarDescription,
+          avatar_description: sanitizeInput(parsed.newCharacter.avatarDescription || '').slice(0, 300),
         })
         .select("id")
         .single();
@@ -329,7 +431,7 @@ If no response is warranted, set shouldRespond to false.`;
             room_id: roomId,
             sender_id: senderId,
             character_id: characterId || null,
-            content: resp.content,
+            content: sanitizeInput(resp.content || '').slice(0, 5000),
             type: resp.type || "dialogue",
             is_ai: true,
           });
@@ -344,7 +446,7 @@ If no response is warranted, set shouldRespond to false.`;
       if (existingMemory) {
         const notes = existingMemory.memory_notes || [];
         if (parsed.memoryUpdate.memoryNote) {
-          notes.push({ note: parsed.memoryUpdate.memoryNote, timestamp: new Date().toISOString() });
+          notes.push({ note: sanitizeInput(parsed.memoryUpdate.memoryNote).slice(0, 500), timestamp: new Date().toISOString() });
         }
 
         await supabase
@@ -368,19 +470,19 @@ If no response is warranted, set shouldRespond to false.`;
             ai_character_id: aiCharId,
             relationship_type: parsed.memoryUpdate.relationshipChange || "neutral",
             trust_level: parsed.memoryUpdate.trustChange || 0,
-            memory_notes: parsed.memoryUpdate.memoryNote ? [{ note: parsed.memoryUpdate.memoryNote, timestamp: new Date().toISOString() }] : [],
+            memory_notes: parsed.memoryUpdate.memoryNote ? [{ note: sanitizeInput(parsed.memoryUpdate.memoryNote).slice(0, 500), timestamp: new Date().toISOString() }] : [],
           });
         }
       }
     }
 
-    // Insert world event if present
-    if (parsed.worldEvent) {
+    // Insert world event if present (for rate limiting tracking)
+    if (parsed.worldEvent || parsed.shouldRespond) {
       await supabase.from("world_events").insert({
         world_id: worldId,
         room_id: roomId,
-        event_type: "ambient",
-        content: parsed.worldEvent,
+        event_type: parsed.worldEvent ? "ambient" : "ai_generated",
+        content: parsed.worldEvent ? sanitizeInput(parsed.worldEvent).slice(0, 1000) : "AI response generated",
         triggered_by: triggerCharacterId,
       });
     }
