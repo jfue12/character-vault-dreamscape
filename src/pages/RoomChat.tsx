@@ -132,18 +132,8 @@ export default function RoomChat() {
     scrollToBottom();
   }, [messages, systemMessages]);
 
-  // Send join system message when entering room (NOT on character switch)
-  useEffect(() => {
-    if (currentRoom && user && selectedCharacterId) {
-      sendSystemMessage('join');
-    }
-    
-    return () => {
-      if (currentRoom && user) {
-        sendSystemMessage('leave');
-      }
-    };
-  }, [currentRoom?.id]); // Only depend on room ID, not character
+  // NO JOIN/LEAVE MESSAGES ON ROOM ENTRY - Only on world join/leave
+  // Presence is tracked silently for typing indicators only
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

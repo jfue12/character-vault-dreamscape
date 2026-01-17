@@ -178,6 +178,29 @@ export default function WorldDetail() {
     if (error) {
       toast({ title: 'Failed to join', description: error.message, variant: 'destructive' });
     } else {
+      // Fetch username for system message
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+
+      // Send "joined" system message to all rooms in this world
+      const { data: worldRooms } = await supabase
+        .from('world_rooms')
+        .select('id')
+        .eq('world_id', worldId);
+
+      if (worldRooms && worldRooms.length > 0) {
+        // Only send to first room (main room) to avoid spam
+        await supabase.from('system_messages').insert({
+          room_id: worldRooms[0].id,
+          message_type: 'join',
+          user_id: user.id,
+          username: profile?.username || 'Someone'
+        });
+      }
+
       toast({ title: 'Welcome!', description: `You've joined ${world?.name}` });
       fetchMembership();
     }
@@ -185,6 +208,19 @@ export default function WorldDetail() {
 
   const handleLeave = async () => {
     if (!worldId || !user || isOwner) return;
+
+    // Fetch username for system message before leaving
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    // Get first room for system message
+    const { data: worldRooms } = await supabase
+      .from('world_rooms')
+      .select('id')
+      .eq('world_id', worldId);
 
     const { error } = await supabase
       .from('world_members')
@@ -195,6 +231,16 @@ export default function WorldDetail() {
     if (error) {
       toast({ title: 'Failed to leave', variant: 'destructive' });
     } else {
+      // Send "left" system message
+      if (worldRooms && worldRooms.length > 0) {
+        await supabase.from('system_messages').insert({
+          room_id: worldRooms[0].id,
+          message_type: 'leave',
+          user_id: user.id,
+          username: profile?.username || 'Someone'
+        });
+      }
+
       toast({ title: 'Left world' });
       setMembership(null);
       navigate('/worlds');
