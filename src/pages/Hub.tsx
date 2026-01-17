@@ -8,6 +8,7 @@ import { WorldCard } from '@/components/worlds/WorldCard';
 import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
 import { Globe, MessageCircle, Compass } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface World {
   id: string;
@@ -15,6 +16,7 @@ interface World {
   description: string | null;
   image_url: string | null;
   is_nsfw: boolean;
+  is_public: boolean;
   tags: string[] | null;
   owner_id: string;
 }
@@ -22,11 +24,14 @@ interface World {
 export default function Hub() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'worlds' | 'messages'>('worlds');
   const [worldsTab, setWorldsTab] = useState<'joined' | 'owned' | 'discover'>('joined');
   const [worlds, setWorlds] = useState<World[]>([]);
+  const [joinedWorldIds, setJoinedWorldIds] = useState<Set<string>>(new Set());
   const [loadingWorlds, setLoadingWorlds] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,10 +40,30 @@ export default function Hub() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    if (user) {
+      fetchJoinedWorldIds();
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (user && activeTab === 'worlds') {
       fetchWorlds();
     }
-  }, [user, worldsTab, activeTab]);
+  }, [user, worldsTab, activeTab, joinedWorldIds]);
+
+  const fetchJoinedWorldIds = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('world_members')
+      .select('world_id')
+      .eq('user_id', user.id)
+      .eq('is_banned', false);
+    
+    if (data) {
+      setJoinedWorldIds(new Set(data.map(m => m.world_id)));
+    }
+  };
 
   const fetchWorlds = async () => {
     if (!user) return;
@@ -138,6 +163,41 @@ export default function Hub() {
       // Fallback to world detail if no rooms exist
       navigate(`/worlds/${worldId}`);
     }
+  };
+
+  const handleJoinWorld = async (worldId: string) => {
+    if (!user) return;
+    
+    setJoiningWorldId(worldId);
+    
+    const { error } = await supabase
+      .from('world_members')
+      .insert({
+        world_id: worldId,
+        user_id: user.id,
+        role: 'member'
+      });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to join world',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Joined!',
+        description: 'You are now a member of this world'
+      });
+      
+      // Update joined worlds set
+      setJoinedWorldIds(prev => new Set([...prev, worldId]));
+      
+      // Remove from discover list
+      setWorlds(prev => prev.filter(w => w.id !== worldId));
+    }
+    
+    setJoiningWorldId(null);
   };
 
   const handleConversationSelect = (friendshipId: string, _friendId: string) => {
@@ -263,11 +323,6 @@ export default function Hub() {
               </motion.div>
             ) : (
               <div className="space-y-4">
-                {worldsTab === 'discover' && (
-                  <p className="text-sm text-muted-foreground text-center mb-2">
-                    Tap a world to view details and join
-                  </p>
-                )}
                 {worlds.map((world, index) => (
                   <motion.div
                     key={world.id}
@@ -277,6 +332,10 @@ export default function Hub() {
                   >
                     <WorldCard
                       world={world}
+                      currentUserId={user?.id}
+                      showJoinButton={worldsTab === 'discover'}
+                      isJoining={joiningWorldId === world.id}
+                      onJoin={() => handleJoinWorld(world.id)}
                       onClick={() => handleWorldClick(world.id)}
                     />
                   </motion.div>
