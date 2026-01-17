@@ -7,28 +7,37 @@ interface World {
   name: string;
   description: string | null;
   image_url: string | null;
-  tags: string[];
-  is_public: boolean;
+  tags: string[] | null;
+  is_public?: boolean;
   is_nsfw: boolean;
   owner_id: string;
 }
 
 interface WorldCardProps {
   world: World;
-  index: number;
+  index?: number;
   currentUserId?: string;
+  onClick?: () => void;
 }
 
-export const WorldCard = ({ world, index, currentUserId }: WorldCardProps) => {
+export const WorldCard = ({ world, index = 0, currentUserId, onClick }: WorldCardProps) => {
   const navigate = useNavigate();
   const isOwner = currentUserId === world.owner_id;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(`/worlds/${world.id}`);
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      onClick={() => navigate(`/worlds/${world.id}`)}
+      onClick={handleClick}
       className="glass-card overflow-hidden cursor-pointer group hover:neon-border transition-all"
     >
       {/* Cover Image */}
@@ -53,7 +62,7 @@ export const WorldCard = ({ world, index, currentUserId }: WorldCardProps) => {
               18+
             </span>
           )}
-          {!world.is_public && (
+          {world.is_public === false && (
             <span className="px-2 py-1 rounded-full bg-background/80 backdrop-blur text-foreground text-xs flex items-center gap-1">
               <Lock className="w-3 h-3" />
               Private
@@ -80,7 +89,7 @@ export const WorldCard = ({ world, index, currentUserId }: WorldCardProps) => {
         )}
 
         {/* Tags */}
-        {world.tags.length > 0 && (
+        {world.tags && world.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-2">
             {world.tags.slice(0, 3).map(tag => (
               <span

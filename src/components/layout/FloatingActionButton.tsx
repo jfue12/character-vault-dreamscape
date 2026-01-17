@@ -10,11 +10,11 @@ interface FloatingActionButtonProps {
 export const FloatingActionButton = ({ to, onClick }: FloatingActionButtonProps) => {
   const buttonContent = (
     <motion.div
-      whileHover={{ scale: 1.05 }}
+      whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      className="w-14 h-14 rounded-full border-2 border-primary flex items-center justify-center bg-background"
+      className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg neon-border cursor-pointer"
     >
-      <Plus className="w-7 h-7 text-primary" />
+      <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
     </motion.div>
   );
 
@@ -22,7 +22,7 @@ export const FloatingActionButton = ({ to, onClick }: FloatingActionButtonProps)
     return (
       <Link 
         to={to}
-        className="fixed bottom-20 right-6 z-50"
+        className="fixed bottom-24 right-4 z-40"
       >
         {buttonContent}
       </Link>
@@ -32,7 +32,7 @@ export const FloatingActionButton = ({ to, onClick }: FloatingActionButtonProps)
   return (
     <button 
       onClick={onClick}
-      className="fixed bottom-20 right-6 z-50"
+      className="fixed bottom-24 right-4 z-40"
     >
       {buttonContent}
     </button>

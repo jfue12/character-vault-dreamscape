@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { CharacterCard } from '@/components/characters/CharacterCard';
+import { CharacterScroller } from '@/components/profile/CharacterScroller';
+import { CharacterDetailView } from '@/components/profile/CharacterDetailView';
 import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
-import { Hash } from 'lucide-react';
 
 interface Character {
   id: string;
@@ -16,15 +16,18 @@ interface Character {
   gender: string | null;
   species: string | null;
   pronouns: string | null;
-  likes: string[];
-  dislikes: string[];
+  bio: string | null;
+  likes: string[] | null;
+  dislikes: string[] | null;
   is_hidden: boolean;
+  created_at: string;
 }
 
 export default function Profile() {
   const { user, profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
 
@@ -51,6 +54,10 @@ export default function Profile() {
 
     if (!error && data) {
       setCharacters(data);
+      // Auto-select first character if none selected
+      if (!selectedCharacterId && data.length > 0) {
+        setSelectedCharacterId(data[0].id);
+      }
     }
     setLoadingCharacters(false);
   };
@@ -59,6 +66,8 @@ export default function Profile() {
     await signOut();
     navigate('/auth');
   };
+
+  const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
 
   if (loading) {
     return (
@@ -72,53 +81,50 @@ export default function Profile() {
 
   return (
     <AppLayout 
-      title="Profile"
-      headerLeftIcon="avatar"
-      headerRightIcon="menu"
+      title={profile?.username || 'Profile'}
+      headerLeftIcon="add-friend"
+      headerRightIcon="notifications"
       onHeaderRightAction={handleSignOut}
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
-      <div className="max-w-lg mx-auto">
-        {/* Plots Section */}
-        <div className="mb-6">
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={() => navigate('/plots')}
-            className="flex flex-col items-center"
-          >
-            <div className="w-16 h-16 dashed-circle flex items-center justify-center mb-2">
-              <Hash className="w-8 h-8 text-primary" />
-            </div>
-            <span className="text-sm text-primary">Plots</span>
-          </motion.button>
-        </div>
+      <div className="max-w-lg mx-auto space-y-6">
+        {/* Character Scroller */}
+        <CharacterScroller
+          characters={characters}
+          selectedId={selectedCharacterId}
+          onSelect={setSelectedCharacterId}
+          onAddNew={() => setIsCreateModalOpen(true)}
+        />
 
-        {/* Characters Grid */}
+        {/* Character Detail View */}
         {loadingCharacters ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : characters.length === 0 ? (
+        ) : selectedCharacter ? (
+          <CharacterDetailView
+            character={selectedCharacter}
+            followersCount={profile?.followers_count || 0}
+            followingCount={profile?.following_count || 0}
+            isOwnProfile={true}
+            onEdit={() => {/* TODO: Open edit modal */}}
+            onArrange={() => {/* TODO: Open arrange modal */}}
+          />
+        ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="py-20 text-center"
           >
-            <p className="text-muted-foreground">No characters yet</p>
+            <p className="text-muted-foreground mb-4">No characters yet</p>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="text-primary hover:underline"
+            >
+              Create your first character
+            </button>
           </motion.div>
-        ) : (
-          <div className="grid gap-4 grid-cols-2">
-            {characters.map((character, index) => (
-              <CharacterCard
-                key={character.id}
-                character={character}
-                index={index}
-                onUpdate={fetchCharacters}
-              />
-            ))}
-          </div>
         )}
       </div>
 

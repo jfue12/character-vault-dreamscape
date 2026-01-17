@@ -8,6 +8,8 @@ interface Profile {
   dob: string;
   bio: string | null;
   is_minor: boolean;
+  followers_count: number;
+  following_count: number;
 }
 
 interface AuthContextType {
