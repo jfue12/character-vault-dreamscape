@@ -10,6 +10,7 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { AITypingIndicator } from '@/components/chat/AITypingIndicator';
 import { ChatMemberList } from '@/components/chat/ChatMemberList';
 import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
 import { usePhantomAI } from '@/hooks/usePhantomAI';
@@ -111,7 +112,7 @@ export default function RoomChat() {
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
   // Phantom AI hook
-  const { triggerPhantomAI } = usePhantomAI(worldId || '', roomId || '');
+  const { triggerPhantomAI, isAIThinking, thinkingPhase } = usePhantomAI(worldId || '', roomId || '');
   
   // Spam detection hook
   const { validateMessage } = useSpamDetection(worldId || '', user?.id || '');
@@ -701,6 +702,13 @@ export default function RoomChat() {
           <div ref={messagesEndRef} />
         </div>
       </main>
+
+      {/* AI Typing Indicator */}
+      <div className="fixed bottom-40 left-0 right-0 z-40 px-4">
+        <div className="max-w-lg mx-auto">
+          <AITypingIndicator isThinking={isAIThinking} thinkingPhase={thinkingPhase || undefined} />
+        </div>
+      </div>
 
       {/* Typing Indicator */}
       <div className="fixed bottom-36 left-0 right-0 z-40">
