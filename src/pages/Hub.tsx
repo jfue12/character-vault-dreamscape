@@ -7,7 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { WorldCard } from '@/components/worlds/WorldCard';
 import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
-import { Globe, MessageCircle } from 'lucide-react';
+import { Globe, MessageCircle, Compass } from 'lucide-react';
 
 interface World {
   id: string;
@@ -23,7 +23,7 @@ export default function Hub() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'worlds' | 'messages'>('worlds');
-  const [worldsTab, setWorldsTab] = useState<'joined' | 'owned'>('joined');
+  const [worldsTab, setWorldsTab] = useState<'joined' | 'owned' | 'discover'>('joined');
   const [worlds, setWorlds] = useState<World[]>([]);
   const [loadingWorlds, setLoadingWorlds] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -54,7 +54,36 @@ export default function Hub() {
       if (!error && data) {
         setWorlds(data);
       }
+    } else if (worldsTab === 'discover') {
+      // Fetch public worlds user hasn't joined
+      const { data: memberData } = await supabase
+        .from('world_members')
+        .select('world_id')
+        .eq('user_id', user.id);
+
+      const joinedWorldIds = memberData?.map(m => m.world_id) || [];
+
+      let query = supabase
+        .from('worlds')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      // Filter NSFW for minors
+      if (profile?.is_minor) {
+        query = query.eq('is_nsfw', false);
+      }
+
+      const { data, error } = await query;
+      
+      if (!error && data) {
+        // Filter out already joined worlds
+        const discoverableWorlds = data.filter(w => !joinedWorldIds.includes(w.id));
+        setWorlds(discoverableWorlds);
+      }
     } else {
+      // Joined worlds
       const { data: memberData, error: memberError } = await supabase
         .from('world_members')
         .select('world_id')
@@ -90,6 +119,12 @@ export default function Hub() {
 
   // Navigate directly to the first room of a world
   const handleWorldClick = async (worldId: string) => {
+    // For discover tab, go to world detail to join
+    if (worldsTab === 'discover') {
+      navigate(`/worlds/${worldId}`);
+      return;
+    }
+
     const { data: rooms } = await supabase
       .from('world_rooms')
       .select('id')
@@ -160,7 +195,7 @@ export default function Hub() {
             <div className="flex gap-2 mb-6">
               <button
                 onClick={() => setWorldsTab('joined')}
-                className={`flex-1 py-2 px-4 rounded-full text-xs font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-full text-xs font-medium transition-all ${
                   worldsTab === 'joined'
                     ? 'bg-accent text-accent-foreground'
                     : 'bg-muted text-muted-foreground hover:text-foreground'
@@ -170,13 +205,24 @@ export default function Hub() {
               </button>
               <button
                 onClick={() => setWorldsTab('owned')}
-                className={`flex-1 py-2 px-4 rounded-full text-xs font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-full text-xs font-medium transition-all ${
                   worldsTab === 'owned'
                     ? 'bg-accent text-accent-foreground'
                     : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
               >
                 My Worlds
+              </button>
+              <button
+                onClick={() => setWorldsTab('discover')}
+                className={`flex-1 py-2 px-3 rounded-full text-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                  worldsTab === 'discover'
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Compass className="w-3 h-3" />
+                Discover
               </button>
             </div>
 
@@ -192,17 +238,36 @@ export default function Hub() {
                 className="py-20 text-center"
               >
                 <p className="text-muted-foreground mb-4">
-                  {worldsTab === 'joined' ? 'No worlds joined yet' : 'No worlds created yet'}
+                  {worldsTab === 'joined' 
+                    ? 'No worlds joined yet' 
+                    : worldsTab === 'owned'
+                      ? 'No worlds created yet'
+                      : 'No public worlds to discover'}
                 </p>
                 <button
-                  onClick={() => worldsTab === 'joined' ? navigate('/') : navigate('/create-world')}
+                  onClick={() => {
+                    if (worldsTab === 'joined') {
+                      setWorldsTab('discover');
+                    } else if (worldsTab === 'owned') {
+                      navigate('/create-world');
+                    }
+                  }}
                   className="text-primary hover:underline"
                 >
-                  {worldsTab === 'joined' ? 'Discover worlds' : 'Create a world'}
+                  {worldsTab === 'joined' 
+                    ? 'Discover worlds' 
+                    : worldsTab === 'owned'
+                      ? 'Create a world'
+                      : null}
                 </button>
               </motion.div>
             ) : (
               <div className="space-y-4">
+                {worldsTab === 'discover' && (
+                  <p className="text-sm text-muted-foreground text-center mb-2">
+                    Tap a world to view details and join
+                  </p>
+                )}
                 {worlds.map((world, index) => (
                   <motion.div
                     key={world.id}
