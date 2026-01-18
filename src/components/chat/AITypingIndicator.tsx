@@ -12,13 +12,13 @@ export const AITypingIndicator = ({ isThinking, thinkingPhase = 'analyzing' }: A
   const getMessage = () => {
     switch (thinkingPhase) {
       case 'analyzing':
-        return 'Phantom AI is reading the scene...';
+        return 'The Narrator reads the scene...';
       case 'generating':
-        return 'A character stirs...';
+        return 'A character enters the story...';
       case 'responding':
-        return 'Composing a response...';
+        return 'Writing their lines...';
       default:
-        return 'Phantom AI is thinking...';
+        return 'The Stage Manager stirs...';
     }
   };
 
