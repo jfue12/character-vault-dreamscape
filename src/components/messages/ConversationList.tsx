@@ -13,6 +13,8 @@ interface Conversation {
   last_message: string;
   last_message_at: string;
   unread_count: number;
+  is_online?: boolean;
+  last_seen?: string | null;
 }
 
 interface ConversationListProps {
@@ -186,11 +188,15 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                 </div>
               )}
             </div>
+            {/* Online/Offline indicator */}
+            <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card ${
+              convo.is_online ? 'bg-green-500' : 'bg-muted-foreground/40'
+            }`} />
             {convo.unread_count > 0 && (
               <motion.span 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
+                className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
               >
                 {convo.unread_count}
               </motion.span>
@@ -199,13 +205,23 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-foreground truncate">
-                {convo.friend_character_name || convo.friend_username || 'Friend'}
-              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold text-foreground truncate">
+                  {convo.friend_character_name || convo.friend_username || 'Friend'}
+                </span>
+                {convo.is_online && (
+                  <span className="text-[10px] text-green-500 font-medium shrink-0">Online</span>
+                )}
+              </div>
               <span className="text-[11px] text-muted-foreground shrink-0">
                 {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
               </span>
             </div>
+            {!convo.is_online && convo.last_seen && (
+              <p className="text-[10px] text-muted-foreground">
+                Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
+              </p>
+            )}
             <p className={`text-sm truncate ${
               convo.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
             }`}>

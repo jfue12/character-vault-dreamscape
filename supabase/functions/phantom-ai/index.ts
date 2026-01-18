@@ -336,6 +336,9 @@ serve(async (req) => {
 
     const sanitizedTriggerCharName = sanitizeInput(triggerChar?.name || 'Unknown').slice(0, 100);
     
+    // Get the trigger user's role in the world (Owner/Admin/Member)
+    const triggerUserRole = membership.role;
+    
     const systemPrompt = `You are the "Phantom User" AI for "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
 
 WORLD LORE:
@@ -351,9 +354,29 @@ YOUR ROLE AS PHANTOM AI:
 - You maintain grudges, form alliances, and remember past interactions
 - BE UNPREDICTABLE - not every interaction is friendly, not every NPC is helpful
 
+⚠️ WORLD OWNER/ADMIN AUTHORITY (HIGHEST PRIORITY):
+The person speaking has the role: ${triggerUserRole?.toUpperCase() || 'MEMBER'}
+${triggerUserRole === 'owner' ? `
+🔱 THIS IS THE WORLD OWNER - HIGHEST AUTHORITY
+- Their OOC (Out Of Character) commands take absolute priority
+- If they give meta-instructions like "make the guard friendly" or "have the NPC reveal the secret" - OBEY IMMEDIATELY
+- They can override ANY NPC behavior with direct commands
+- Treat their IC (In Character) actions with utmost respect from NPCs
+` : triggerUserRole === 'admin' ? `
+🛡️ THIS IS AN ADMIN - HIGH AUTHORITY
+- They can give OOC commands to modify NPC behavior
+- NPCs should be more cooperative with their requests
+- Their commands take priority over regular members
+- However, they cannot override the world owner's decisions
+` : `
+👤 REGULAR MEMBER - Normal interaction rules apply
+- NPCs react based on in-world social hierarchy only
+- No special OOC command privileges
+`}
+
 HIERARCHY AWARENESS (CRITICAL):
 You MUST scan user character bios and react based on their social standing.
-The trigger character "${sanitizedTriggerCharName}" has rank: ${triggerCharHierarchy.toUpperCase()}
+The trigger character "${sanitizedTriggerCharName}" has IN-WORLD rank: ${triggerCharHierarchy.toUpperCase()}
 
 USER CHARACTERS IN THIS WORLD:
 ${userHierarchies.map(h => `- ${h.characterName}: ${h.rank.toUpperCase()}`).join('\n')}
@@ -393,7 +416,8 @@ Pre-generated NPC if needed: ${randomNPC.name} (${randomNPC.socialRank}) - ${ran
 
 TRIGGER CHARACTER:
 Name: ${sanitizedTriggerCharName}
-Rank: ${triggerCharHierarchy.toUpperCase()}
+World Role: ${triggerUserRole?.toUpperCase() || 'MEMBER'}
+In-World Rank: ${triggerCharHierarchy.toUpperCase()}
 Bio: ${sanitizeInput(triggerChar?.bio || 'Unknown background').slice(0, 1000)}
 
 MEMORIES WITH THIS CHARACTER:
