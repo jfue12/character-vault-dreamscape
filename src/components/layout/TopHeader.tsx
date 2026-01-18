@@ -216,7 +216,7 @@ export const TopHeader = ({
     return (
       <div className="flex items-center gap-1.5">
         <span className="font-semibold text-foreground">
-          {title || (profile?.username ? `@${profile.username}` : 'MASCOT')}
+          {title || (profile?.username ? `@${profile.username}` : 'AniVerse')}
         </span>
         {showVerified && profile?.username && !title && (
           <BadgeCheck className="w-4 h-4 text-primary fill-primary" />

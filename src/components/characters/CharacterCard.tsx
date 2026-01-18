@@ -58,7 +58,7 @@ export const CharacterCard = ({ character, index, onUpdate }: CharacterCardProps
     } else {
       toast({
         title: 'Character deleted',
-        description: `${character.name} has been removed from your vault.`,
+        description: `${character.name} has been removed from your collection.`,
       });
       onUpdate();
     }

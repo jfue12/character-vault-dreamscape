@@ -80,7 +80,7 @@ export default function Auth() {
           });
         } else {
           toast({
-            title: 'Welcome to OC Vault!',
+            title: 'Welcome to AniVerse!',
             description: 'Your account has been created successfully.',
           });
           navigate('/profile');
@@ -134,7 +134,7 @@ export default function Auth() {
           <div className="flex items-center justify-center gap-2 mb-8">
             <Sparkles className="w-8 h-8 text-primary neon-glow" />
             <h1 className="font-display text-3xl font-bold text-primary neon-text">
-              OC Vault
+              AniVerse
             </h1>
           </div>
 
