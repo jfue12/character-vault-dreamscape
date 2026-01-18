@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Search, Globe, MessageCircle, UserSearch, Compass } from 'lucide-react';
+import { Users, Search, Globe, MessageCircle, Compass } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,9 +10,7 @@ import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
 import { UserSearchPanel } from '@/components/hub/UserSearchPanel';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { usePresence } from '@/hooks/usePresence';
 
 interface World {
   id: string;
@@ -30,14 +28,13 @@ export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'my-worlds' | 'discover' | 'messages'>('my-worlds');
+  const [activeTab, setActiveTab] = useState<'my-worlds' | 'discover' | 'messages' | 'people'>('my-worlds');
   const [worlds, setWorlds] = useState<World[]>([]);
   const [loadingWorlds, setLoadingWorlds] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
-  const [showUserSearch, setShowUserSearch] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const { isUserOnline } = usePresence();
+  
 
   useEffect(() => {
     if (!loading && !user) {
@@ -226,22 +223,22 @@ export default function Index() {
       fabTo="/create-world"
     >
       <div className="max-w-lg mx-auto">
-        {/* Tab Switcher - My Worlds / Discover Worlds / Messages */}
+        {/* Tab Switcher - My Worlds / Discover Worlds / Messages / People */}
         <div className="flex gap-1 mb-5 p-1 bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a]">
           <button
             onClick={() => setActiveTab('my-worlds')}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
               activeTab === 'my-worlds' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
                 : 'text-muted-foreground hover:text-white'
             }`}
           >
             <Globe className="w-4 h-4" />
-            My Worlds
+            <span className="hidden sm:inline">My</span> Worlds
           </button>
           <button
             onClick={() => setActiveTab('discover')}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
               activeTab === 'discover' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
                 : 'text-muted-foreground hover:text-white'
@@ -251,19 +248,30 @@ export default function Index() {
             Discover
           </button>
           <button
+            onClick={() => setActiveTab('people')}
+            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+              activeTab === 'people' 
+                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
+                : 'text-muted-foreground hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            People
+          </button>
+          <button
             onClick={() => setActiveTab('messages')}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
               activeTab === 'messages' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
                 : 'text-muted-foreground hover:text-white'
             }`}
           >
             <MessageCircle className="w-4 h-4" />
-            Messages
+            DMs
           </button>
         </div>
 
-        {activeTab !== 'messages' && (
+        {(activeTab === 'my-worlds' || activeTab === 'discover') && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -275,38 +283,31 @@ export default function Index() {
           </div>
         )}
 
-        {activeTab === 'messages' ? (
-          <div className="space-y-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowUserSearch(!showUserSearch)}
-              className="w-full justify-start gap-2"
-            >
-              <UserSearch className="w-4 h-4" />
-              Find Users
-            </Button>
-
+        {activeTab === 'people' ? (
+          <div className="space-y-6">
+            {/* User Search - Always Open */}
             <UserSearchPanel 
-              isOpen={showUserSearch}
-              onClose={() => setShowUserSearch(false)}
+              isOpen={true}
+              onClose={() => {}}
             />
 
+            {/* Friend Requests */}
             <FriendRequestsLobby 
               key={refreshKey}
               onRequestHandled={() => setRefreshKey(k => k + 1)} 
             />
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-primary" />
-                Conversations
-              </h3>
-              
-              <ConversationList 
-                key={`convos-${refreshKey}`}
-                onSelectConversation={handleConversationSelect} 
-              />
-            </div>
+          </div>
+        ) : activeTab === 'messages' ? (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              Conversations
+            </h3>
+            
+            <ConversationList 
+              key={`convos-${refreshKey}`}
+              onSelectConversation={handleConversationSelect} 
+            />
           </div>
         ) : loadingWorlds ? (
           <div className="flex items-center justify-center py-12">
