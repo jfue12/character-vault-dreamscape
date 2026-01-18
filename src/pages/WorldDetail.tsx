@@ -549,6 +549,7 @@ export default function WorldDetail() {
             fetchRooms();
             fetchMembers();
           }}
+          onWorldDeleted={() => navigate('/worlds')}
         />
       )}
     </AppLayout>

@@ -63,6 +63,7 @@ interface ManageWorldModalProps {
   rooms: Room[];
   members: Member[];
   onUpdate: () => void;
+  onWorldDeleted?: () => void;
 }
 
 const TIMEOUT_DURATIONS = [
@@ -81,6 +82,7 @@ export const ManageWorldModal = ({
   rooms,
   members,
   onUpdate,
+  onWorldDeleted,
 }: ManageWorldModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -90,6 +92,8 @@ export const ManageWorldModal = ({
   const [roomImagePreview, setRoomImagePreview] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -179,6 +183,68 @@ export const ManageWorldModal = ({
       await logAudit('room_deleted', null, roomId, { room_name: roomName });
       toast({ title: 'Room deleted' });
       onUpdate();
+    }
+  };
+
+  const handleDeleteWorld = async () => {
+    if (!user) return;
+    setIsDeleting(true);
+
+    try {
+      // Delete all related data first (rooms, members, messages, etc.)
+      // These will cascade due to foreign keys, but we need to delete messages manually
+      const { data: worldRooms } = await supabase
+        .from('world_rooms')
+        .select('id')
+        .eq('world_id', world.id);
+
+      if (worldRooms) {
+        for (const room of worldRooms) {
+          await supabase.from('messages').delete().eq('room_id', room.id);
+          await supabase.from('system_messages').delete().eq('room_id', room.id);
+        }
+      }
+
+      // Delete world rooms
+      await supabase.from('world_rooms').delete().eq('world_id', world.id);
+      
+      // Delete world members
+      await supabase.from('world_members').delete().eq('world_id', world.id);
+      
+      // Delete AI characters
+      await supabase.from('ai_characters').delete().eq('world_id', world.id);
+      
+      // Delete temp AI characters
+      await supabase.from('temp_ai_characters').delete().eq('world_id', world.id);
+      
+      // Delete world invites
+      await supabase.from('world_invites').delete().eq('world_id', world.id);
+      
+      // Delete audit logs
+      await supabase.from('audit_logs').delete().eq('world_id', world.id);
+      
+      // Delete moderation logs
+      await supabase.from('moderation_logs').delete().eq('world_id', world.id);
+      
+      // Delete timeouts
+      await supabase.from('timeouts').delete().eq('world_id', world.id);
+      
+      // Delete world events
+      await supabase.from('world_events').delete().eq('world_id', world.id);
+
+      // Finally delete the world itself
+      const { error } = await supabase.from('worlds').delete().eq('id', world.id);
+
+      if (error) throw error;
+
+      toast({ title: 'World deleted successfully' });
+      onOpenChange(false);
+      onWorldDeleted?.();
+    } catch (error: any) {
+      toast({ title: 'Failed to delete world', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -400,6 +466,9 @@ export const ManageWorldModal = ({
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex-1 min-w-[80px]">
               <FileText className="w-4 h-4 mr-1" /> Logs
+            </TabsTrigger>
+            <TabsTrigger value="danger" className="flex-1 min-w-[80px] text-destructive">
+              <AlertTriangle className="w-4 h-4 mr-1" /> Danger
             </TabsTrigger>
           </TabsList>
 
@@ -658,6 +727,53 @@ export const ManageWorldModal = ({
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Danger Zone */}
+          <TabsContent value="danger" className="mt-4">
+            <div className="p-4 rounded-lg border border-destructive/50 bg-destructive/10">
+              <h4 className="font-semibold text-destructive flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                Danger Zone
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Permanently delete this world and all its data. This action cannot be undone.
+              </p>
+              
+              {!showDeleteConfirm ? (
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete World
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-destructive font-medium">
+                    Are you sure? Type the world name to confirm: <strong>{world.name}</strong>
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={handleDeleteWorld}
+                      disabled={isDeleting}
+                      className="flex-1"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
