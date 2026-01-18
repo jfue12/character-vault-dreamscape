@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, UserPlus, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe } from 'lucide-react';
+import { X, Bell, UserPlus, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe, ThumbsUp, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface Notification {
   id: string;
@@ -24,8 +26,10 @@ interface NotificationPanelProps {
 export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user && isOpen) {
@@ -104,46 +108,98 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
+  const handleAcceptFriendRequest = async (notification: Notification, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!notification.data?.friendship_id) return;
+
+    setProcessingIds(prev => new Set(prev).add(notification.id));
+
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', notification.data.friendship_id);
+
+    if (error) {
+      toast({ title: 'Failed to accept request', variant: 'destructive' });
+    } else {
+      toast({ title: 'Friend request accepted!' });
+      deleteNotification(notification.id);
+    }
+
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.delete(notification.id);
+      return next;
+    });
+  };
+
+  const handleDeclineFriendRequest = async (notification: Notification, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!notification.data?.friendship_id) return;
+
+    setProcessingIds(prev => new Set(prev).add(notification.id));
+
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'rejected' })
+      .eq('id', notification.data.friendship_id);
+
+    if (error) {
+      toast({ title: 'Failed to decline request', variant: 'destructive' });
+    } else {
+      toast({ title: 'Friend request declined' });
+      deleteNotification(notification.id);
+    }
+
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.delete(notification.id);
+      return next;
+    });
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
     
     switch (notification.type) {
       case 'friend_request':
-        // Navigate to Hub's messages tab where FriendRequestsLobby is
-        navigate('/hub');
+        // Friend requests are handled inline with accept/decline buttons
         break;
       case 'dm':
         if (notification.data?.friendship_id) {
           navigate(`/dm/${notification.data.friendship_id}`);
-        } else {
-          navigate('/hub');
+          onClose();
         }
         break;
       case 'world_invite':
+      case 'world_join':
         if (notification.data?.world_id) {
           navigate(`/worlds/${notification.data.world_id}`);
+          onClose();
         }
         break;
       case 'moderation':
         if (notification.data?.world_id) {
           navigate(`/worlds/${notification.data.world_id}`);
+          onClose();
         }
         break;
       case 'follow':
         if (notification.data?.follower_id) {
           navigate(`/user/${notification.data.follower_id}`);
+          onClose();
         }
         break;
-      case 'world_join':
-        if (notification.data?.world_id) {
-          navigate(`/worlds/${notification.data.world_id}`);
+      case 'post_like':
+      case 'post_comment':
+        if (notification.data?.post_id) {
+          navigate(`/post/${notification.data.post_id}`);
+          onClose();
         }
         break;
       default:
         break;
     }
-    
-    onClose();
   };
 
   const getNotificationIcon = (type: string) => {
@@ -160,8 +216,38 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
         return <Globe className="w-5 h-5 text-primary" />;
       case 'world_invite':
         return <Users className="w-5 h-5 text-primary" />;
+      case 'post_like':
+        return <ThumbsUp className="w-5 h-5 text-primary" />;
+      case 'post_comment':
+        return <MessageSquare className="w-5 h-5 text-primary" />;
       default:
         return <Bell className="w-5 h-5 text-primary" />;
+    }
+  };
+
+  const getNotificationMessage = (notification: Notification): string => {
+    const data = notification.data || {};
+    const username = data.username || data.character_name || 'Someone';
+    
+    switch (notification.type) {
+      case 'friend_request':
+        return `${username} sent you a friend request!`;
+      case 'dm':
+        return `${username} sent you a message`;
+      case 'follow':
+        return `${username} followed you!`;
+      case 'world_join':
+        return `${username} joined your world "${data.world_name || 'your world'}"`;
+      case 'world_invite':
+        return `You've been invited to join "${data.world_name || 'a world'}"`;
+      case 'post_like':
+        return `${username} liked your post`;
+      case 'post_comment':
+        return `${username} commented on your post`;
+      case 'moderation':
+        return notification.body || 'Moderation action taken';
+      default:
+        return notification.body || notification.title;
     }
   };
 
@@ -231,52 +317,87 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {notifications.map((notification) => (
-                    <motion.div
-                      key={notification.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 hover:bg-secondary/30 transition-colors cursor-pointer relative group ${
-                        !notification.is_read ? 'bg-primary/5' : ''
-                      }`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex gap-3">
-                        <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium ${!notification.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {notification.title}
+                  {notifications.map((notification) => {
+                    const isFriendRequest = notification.type === 'friend_request';
+                    const isProcessing = processingIds.has(notification.id);
+                    
+                    return (
+                      <motion.div
+                        key={notification.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-4 hover:bg-secondary/30 transition-colors cursor-pointer relative group ${
+                          !notification.is_read ? 'bg-primary/5' : ''
+                        }`}
+                        onClick={() => !isFriendRequest && handleNotificationClick(notification)}
+                      >
+                        <div className="flex gap-3">
+                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-sm font-medium ${!notification.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                {getNotificationMessage(notification)}
+                              </p>
+                              {!notification.is_read && (
+                                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
+                              )}
+                            </div>
+                            
+                            {/* Show starter message for friend requests */}
+                            {isFriendRequest && notification.data?.starter_message && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2 italic">
+                                "{notification.data.starter_message}"
+                              </p>
+                            )}
+                            
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(notification.created_at), 'MMM d, h:mm a')}
                             </p>
-                            {!notification.is_read && (
-                              <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
+                            
+                            {/* Accept/Decline buttons for friend requests */}
+                            {isFriendRequest && notification.data?.friendship_id && (
+                              <div className="flex gap-2 mt-3">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={(e) => handleDeclineFriendRequest(notification, e)}
+                                  disabled={isProcessing}
+                                  className="flex-1"
+                                >
+                                  <X className="w-3.5 h-3.5 mr-1" />
+                                  Decline
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => handleAcceptFriendRequest(notification, e)}
+                                  disabled={isProcessing}
+                                  className="flex-1 bg-gradient-to-r from-primary to-purple-600"
+                                >
+                                  <Check className="w-3.5 h-3.5 mr-1" />
+                                  Accept
+                                </Button>
+                              </div>
                             )}
                           </div>
-                          {notification.body && (
-                            <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                              {notification.body}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(notification.created_at), 'MMM d, h:mm a')}
-                          </p>
                         </div>
-                      </div>
-                      
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }}
-                        className="absolute top-4 right-4 p-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </motion.div>
-                  ))}
+                        
+                        {/* Delete button - not for friend requests with pending action */}
+                        {!isFriendRequest && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                            className="absolute top-4 right-4 p-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>

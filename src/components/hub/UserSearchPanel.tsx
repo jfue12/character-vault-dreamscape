@@ -269,16 +269,16 @@ export const UserSearchPanel = ({ isOpen, onClose }: UserSearchPanelProps) => {
         )}
       </AnimatePresence>
 
-      {/* Friend Request Modal */}
+      {/* Friend Request Modal - targetCharacter.owner_id is the user we're sending to */}
       {friendRequestTarget && (
         <FriendRequestModal
           open={!!friendRequestTarget}
           onOpenChange={(open) => !open && setFriendRequestTarget(null)}
           targetCharacter={{
-            id: friendRequestTarget.id,
-            owner_id: friendRequestTarget.id,
-            name: friendRequestTarget.username,
-            avatar_url: null,
+            id: friendRequestTarget.id, // This is the profile/user ID
+            owner_id: friendRequestTarget.id, // owner_id should be the user ID we're sending to
+            name: friendRequestTarget.username || 'User',
+            avatar_url: results.find(r => r.id === friendRequestTarget.id)?.avatar_url || null,
             profiles: { username: friendRequestTarget.username }
           }}
           onSuccess={() => {

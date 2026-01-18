@@ -64,25 +64,42 @@ export const FriendRequestModal = ({
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from('friendships').insert({
+      // Insert friendship and get the ID back
+      const { data: friendshipData, error } = await supabase.from('friendships').insert({
         requester_id: user.id,
         addressee_id: targetCharacter.owner_id,
         requester_character_id: selectedCharacterId,
         starter_message: starterMessage.trim(),
         status: 'pending',
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
-      // Create notification for the addressee
+      // Get the requester's character name for the notification
+      let requesterCharacterName = profile?.username || 'Someone';
+      if (selectedCharacterId) {
+        const { data: charData } = await supabase
+          .from('characters')
+          .select('name')
+          .eq('id', selectedCharacterId)
+          .single();
+        if (charData) {
+          requesterCharacterName = charData.name;
+        }
+      }
+
+      // Create notification for the addressee with friendship_id for accept/decline
       await supabase.from('notifications').insert({
         user_id: targetCharacter.owner_id,
         type: 'friend_request',
         title: 'New Friend Request',
-        body: `${profile?.username || 'Someone'} wants to connect!`,
+        body: `${requesterCharacterName} wants to connect!`,
         data: { 
           requester_id: user.id,
-          character_name: targetCharacter.name 
+          username: profile?.username,
+          character_name: requesterCharacterName,
+          friendship_id: friendshipData.id,
+          starter_message: starterMessage.trim()
         },
       });
 
