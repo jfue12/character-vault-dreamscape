@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PushNotificationProvider } from "@/components/notifications/PushNotificationManager";
+import { GlobalUsernamePrompt } from "@/components/profile/GlobalUsernamePrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -29,6 +30,7 @@ const App = () => (
         <PushNotificationProvider>
           <Toaster />
           <Sonner />
+          <GlobalUsernamePrompt />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
