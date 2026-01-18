@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FriendRequestsLobby } from '@/components/messages/FriendRequestsLobby';
 import { ConversationList } from '@/components/messages/ConversationList';
-import { MessageCircle } from 'lucide-react';
+import { UserSearchPanel } from '@/components/hub/UserSearchPanel';
+import { MessageCircle, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Messages() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -30,7 +32,17 @@ export default function Messages() {
       onHeaderLeftAction={() => navigate('/hub')}
       showFab
     >
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-lg mx-auto space-y-4">
+        {/* Find Friends Button */}
+        <Button
+          onClick={() => setShowUserSearch(true)}
+          variant="outline"
+          className="w-full border-primary/50 text-primary hover:bg-primary/10"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Find & Add Friends
+        </Button>
+
         {/* Friend Requests Lobby */}
         <FriendRequestsLobby 
           key={refreshKey}
@@ -50,6 +62,12 @@ export default function Messages() {
           />
         </div>
       </div>
+
+      {/* User Search Panel */}
+      <UserSearchPanel 
+        isOpen={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+      />
     </AppLayout>
   );
 }

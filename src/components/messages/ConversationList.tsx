@@ -1,8 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Search, Trash2, MoreHorizontal, Ban, Flag } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Conversation {
   id: string;
@@ -23,8 +42,11 @@ interface ConversationListProps {
 
 export const ConversationList = ({ onSelectConversation }: ConversationListProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -142,6 +164,47 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
     setLoading(false);
   };
 
+  const handleDeleteConversation = async () => {
+    if (!deleteTarget) return;
+    
+    // Delete all messages in this conversation
+    await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('friendship_id', deleteTarget.id);
+    
+    // Delete the friendship
+    await supabase
+      .from('friendships')
+      .delete()
+      .eq('id', deleteTarget.id);
+    
+    setConversations(prev => prev.filter(c => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    toast({ title: 'Conversation deleted' });
+  };
+
+  const handleBlockUser = async (friendId: string) => {
+    if (!user) return;
+    
+    await supabase.from('user_blocks').insert({
+      blocker_id: user.id,
+      blocked_id: friendId
+    });
+    
+    toast({ title: 'User blocked' });
+    fetchConversations();
+  };
+
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const query = searchQuery.toLowerCase();
+    return conversations.filter(c => 
+      c.friend_character_name?.toLowerCase().includes(query) ||
+      c.friend_username?.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -162,74 +225,135 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
   }
 
   return (
-    <div className="space-y-1.5">
-      {conversations.map((convo, index) => (
-        <motion.button
-          key={convo.id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: index * 0.03 }}
-          onClick={() => onSelectConversation(convo.id, convo.friend_id)}
-          className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card/50 hover:bg-card border border-transparent hover:border-border transition-all text-left group"
-        >
-          <div className="relative">
-            <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
-              {convo.friend_avatar_url ? (
-                <img 
-                  src={convo.friend_avatar_url} 
-                  alt={convo.friend_character_name || 'Friend'}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
-                  <span className="text-xl font-bold text-white">
-                    {convo.friend_character_name?.[0] || convo.friend_username?.[0] || '?'}
-                  </span>
-                </div>
-              )}
-            </div>
-            {/* Online/Offline indicator */}
-            <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card ${
-              convo.is_online ? 'bg-green-500' : 'bg-muted-foreground/40'
-            }`} />
-            {convo.unread_count > 0 && (
-              <motion.span 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
+    <div className="space-y-3">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search conversations..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <div className="space-y-1.5">
+        {filteredConversations.length === 0 ? (
+          <p className="text-center text-muted-foreground py-4">No conversations match your search</p>
+        ) : (
+          filteredConversations.map((convo, index) => (
+            <motion.div
+              key={convo.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.03 }}
+              className="relative group"
+            >
+              <button
+                onClick={() => onSelectConversation(convo.id, convo.friend_id)}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card/50 hover:bg-card border border-transparent hover:border-border transition-all text-left"
               >
-                {convo.unread_count}
-              </motion.span>
-            )}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-foreground truncate">
-                  {convo.friend_character_name || convo.friend_username || 'Friend'}
-                </span>
-                {convo.is_online && (
-                  <span className="text-[10px] text-green-500 font-medium shrink-0">Online</span>
-                )}
-              </div>
-              <span className="text-[11px] text-muted-foreground shrink-0">
-                {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
-              </span>
-            </div>
-            {!convo.is_online && convo.last_seen && (
-              <p className="text-[10px] text-muted-foreground">
-                Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
-              </p>
-            )}
-            <p className={`text-sm truncate ${
-              convo.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
-            }`}>
-              {convo.last_message}
-            </p>
-          </div>
-        </motion.button>
-      ))}
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                    {convo.friend_avatar_url ? (
+                      <img 
+                        src={convo.friend_avatar_url} 
+                        alt={convo.friend_character_name || 'Friend'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+                        <span className="text-xl font-bold text-white">
+                          {convo.friend_character_name?.[0] || convo.friend_username?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Online/Offline indicator */}
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card ${
+                    convo.is_online ? 'bg-green-500' : 'bg-muted-foreground/40'
+                  }`} />
+                  {convo.unread_count > 0 && (
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
+                    >
+                      {convo.unread_count}
+                    </motion.span>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-foreground truncate">
+                        {convo.friend_character_name || convo.friend_username || 'Friend'}
+                      </span>
+                      {convo.is_online && (
+                        <span className="text-[10px] text-green-500 font-medium shrink-0">Online</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
+                    </span>
+                  </div>
+                  {!convo.is_online && convo.last_seen && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
+                    </p>
+                  )}
+                  <p className={`text-sm truncate ${
+                    convo.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  }`}>
+                    {convo.last_message}
+                  </p>
+                </div>
+              </button>
+              
+              {/* Context Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-card rounded-full hover:bg-secondary">
+                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDeleteTarget(convo)} className="text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Conversation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBlockUser(convo.friend_id)} className="text-destructive">
+                    <Ban className="w-4 h-4 mr-2" />
+                    Block User
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toast({ title: 'Report submitted' })}>
+                    <Flag className="w-4 h-4 mr-2" />
+                    Report
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </motion.div>
+          ))
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all messages with {deleteTarget?.friend_character_name || deleteTarget?.friend_username}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConversation} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

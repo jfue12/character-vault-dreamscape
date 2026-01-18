@@ -10,10 +10,10 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
-// AI typing indicator disabled
 import { ChatMemberList } from '@/components/chat/ChatMemberList';
 import { InviteFriendsModal } from '@/components/chat/InviteFriendsModal';
 import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
+import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
 import { usePhantomAI } from '@/hooks/usePhantomAI';
 import { useSpamDetection } from '@/hooks/useSpamDetection';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -106,6 +106,7 @@ export default function RoomChat() {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showMemberList, setShowMemberList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const [hasAI, setHasAI] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
@@ -799,6 +800,7 @@ export default function RoomChat() {
             selectedId={selectedCharacterId}
             onSelect={handleCharacterSelect}
             baseProfileName={profile?.username || 'You'}
+            onCreateNew={() => setShowCreateCharacter(true)}
           />
         </div>
         
@@ -810,6 +812,16 @@ export default function RoomChat() {
           roomId={currentRoom?.id || ''}
         />
       </div>
+
+      {/* Create Character Modal */}
+      <CreateCharacterModal
+        open={showCreateCharacter}
+        onOpenChange={setShowCreateCharacter}
+        onSuccess={() => {
+          fetchUserCharacters();
+          setShowCreateCharacter(false);
+        }}
+      />
 
       {/* Member List Panel */}
       <ChatMemberList

@@ -119,17 +119,23 @@ export const ChatBubble = ({
     >
       {/* Timestamp + Character Name + Username + Avatar Row */}
       <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
-          {characterAvatar ? (
-            <img 
-              src={characterAvatar} 
-              alt={characterName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/40 to-purple-900/40 flex items-center justify-center text-xs font-bold text-foreground">
-              {characterName[0]?.toUpperCase()}
-            </div>
+        <div className="relative">
+          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
+            {characterAvatar ? (
+              <img 
+                src={characterAvatar} 
+                alt={characterName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-purple-900/40 flex items-center justify-center text-xs font-bold text-foreground">
+                {characterName[0]?.toUpperCase()}
+              </div>
+            )}
+          </div>
+          {/* Online indicator - shown for other users' messages */}
+          {!isOwnMessage && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
           )}
         </div>
         <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
