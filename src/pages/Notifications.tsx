@@ -20,7 +20,7 @@ interface Notification {
 }
 
 export default function Notifications() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -28,6 +28,9 @@ export default function Notifications() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Wait for auth to finish loading before redirecting
+    if (authLoading) return;
+    
     if (!user) {
       navigate('/auth');
       return;
@@ -54,7 +57,7 @@ export default function Notifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -277,6 +280,17 @@ export default function Notifications() {
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  // Show loading while auth is being determined
+  if (authLoading) {
+    return (
+      <AppLayout title="Notifications" headerLeftIcon="back" onHeaderLeftAction={() => navigate(-1)} showNav={true}>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout 
