@@ -179,6 +179,23 @@ export default function Feed() {
     }
   };
 
+  const handleDelete = async (postId: string) => {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+      .eq('author_id', user.id);
+    
+    if (error) {
+      toast({ title: 'Failed to delete post', variant: 'destructive' });
+    } else {
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      toast({ title: 'Post deleted' });
+    }
+  };
+
   const handlePostCreated = () => {
     setShowCreateModal(false);
     fetchPosts();
@@ -214,6 +231,7 @@ export default function Feed() {
                   <PostCard
                     post={post}
                     onLike={handleLike}
+                    onDelete={handleDelete}
                   />
                 </motion.div>
               ))}
