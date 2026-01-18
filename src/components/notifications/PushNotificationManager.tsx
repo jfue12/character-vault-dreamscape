@@ -177,10 +177,96 @@ export const usePushNotifications = () => {
       )
       .subscribe();
 
+    // Subscribe to friendship status updates (accepted requests)
+    const friendshipUpdateChannel = supabase
+      .channel('friendship-update-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'friendships'
+        },
+        async (payload) => {
+          const friendship = payload.new as any;
+          const oldFriendship = payload.old as any;
+          
+          // Only notify if status changed to accepted and we're the requester
+          if (oldFriendship.status !== 'pending' || friendship.status !== 'accepted') return;
+          if (friendship.requester_id !== user.id) return;
+          
+          // Get addressee info
+          const { data: addressee } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', friendship.addressee_id)
+            .maybeSingle();
+          
+          showNotification(
+            'Roleplay Accepted!',
+            `${addressee?.username || 'Someone'} accepted your roleplay proposal!`,
+            { url: `/dm/${friendship.id}` }
+          );
+        }
+      )
+      .subscribe();
+
+    // Subscribe to group chat messages (world rooms)
+    const groupChatChannel = supabase
+      .channel('group-chat-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        async (payload) => {
+          const message = payload.new as any;
+          
+          // Don't notify for own messages or AI messages
+          if (message.sender_id === user.id || message.is_ai) return;
+          
+          // Check if user is a member of this room's world
+          const { data: room } = await supabase
+            .from('world_rooms')
+            .select('id, name, world_id')
+            .eq('id', message.room_id)
+            .maybeSingle();
+          
+          if (!room) return;
+          
+          const { data: membership } = await supabase
+            .from('world_members')
+            .select('id')
+            .eq('world_id', room.world_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (!membership) return;
+          
+          // Get sender info
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', message.sender_id)
+            .maybeSingle();
+          
+          showNotification(
+            `New message in ${room.name}`,
+            `${sender?.username || 'Someone'}: ${message.content.substring(0, 80)}`,
+            { url: `/worlds/${room.world_id}/rooms/${room.id}` }
+          );
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(friendshipChannel);
       supabase.removeChannel(dmChannel);
+      supabase.removeChannel(friendshipUpdateChannel);
+      supabase.removeChannel(groupChatChannel);
     };
   }, [user, requestPermission, showNotification]);
 
