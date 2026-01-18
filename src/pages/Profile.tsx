@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -189,6 +190,7 @@ export default function Profile() {
             character={selectedCharacter}
             followersCount={profile?.followers_count || 0}
             followingCount={profile?.following_count || 0}
+            daysActive={profile?.created_at ? differenceInDays(new Date(), new Date(profile.created_at)) : 0}
             storiesCount={profile?.stories_count || 0}
             isOwnProfile={true}
             onEdit={() => setIsEditModalOpen(true)}

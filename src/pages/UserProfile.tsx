@@ -211,8 +211,9 @@ export default function UserProfile() {
     );
   }
 
-  const daysActive = selectedCharacter 
-    ? differenceInDays(new Date(), new Date(selectedCharacter.created_at))
+  // Days active from USER profile (account creation), not character
+  const daysActive = profile?.created_at 
+    ? differenceInDays(new Date(), new Date(profile.created_at))
     : 0;
 
   const zodiac = selectedCharacter ? getZodiac(selectedCharacter) : { emoji: '♊', color: 'text-pink-400' };
@@ -292,10 +293,10 @@ export default function UserProfile() {
             key={selectedCharacter.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-5"
           >
-            {/* Large Avatar */}
-            <div className="relative mx-auto w-72 aspect-[3/4] rounded-2xl overflow-hidden bg-card">
+            {/* 1. Large Rounded Portrait (CHARACTER image) */}
+            <div className="relative mx-auto w-56 h-56 rounded-full overflow-hidden ring-4 ring-primary/30">
               {selectedCharacter.avatar_url ? (
                 <img 
                   src={selectedCharacter.avatar_url} 
@@ -311,48 +312,52 @@ export default function UserProfile() {
               )}
             </div>
 
-            {/* Character Name with emoji */}
-            <h2 className="text-xl font-semibold text-center text-foreground">
-              {selectedCharacter.name} 💫
+            {/* 2. Character Name (CHARACTER data) */}
+            <h2 className="text-2xl font-bold text-center text-foreground">
+              {selectedCharacter.name}
             </h2>
 
-            {/* Stats Row */}
-            <div className="flex justify-center gap-8">
+            {/* 3. User Stats Row - 4 column (USER profile data) */}
+            <div className="grid grid-cols-4 gap-2 px-4">
               <div className="text-center">
-                <span className="font-bold text-foreground">{profile.followers_count || 0}</span>
+                <span className="font-bold text-xl text-foreground">{profile.followers_count || 0}</span>
                 <p className="text-xs text-muted-foreground">Followers</p>
               </div>
               <div className="text-center">
-                <span className="font-bold text-foreground">{profile.following_count || 0}</span>
+                <span className="font-bold text-xl text-foreground">{profile.following_count || 0}</span>
                 <p className="text-xs text-muted-foreground">Following</p>
               </div>
               <div className="text-center">
-                <span className="font-bold text-foreground">{daysActive}</span>
+                <span className="font-bold text-xl text-foreground">{daysActive}</span>
                 <p className="text-xs text-muted-foreground">Days</p>
               </div>
               <div className="text-center">
-                <span className="font-bold text-foreground">{profile.stories_count || 0}</span>
+                <span className="font-bold text-xl text-foreground">{profile.stories_count || 0}</span>
                 <p className="text-xs text-muted-foreground">Stories</p>
               </div>
             </div>
 
-            {/* Identity Row */}
-            <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+            {/* 4. Character Age (CHARACTER data - prominent display) */}
+            {selectedCharacter.age && (
+              <div className="flex justify-center">
+                <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/30">
+                  <span className="text-2xl font-bold text-primary">{selectedCharacter.age}</span>
+                  <span className="text-sm text-muted-foreground ml-2">years old</span>
+                </div>
+              </div>
+            )}
+
+            {/* Identity Row: Pronouns | Zodiac */}
+            <div className="flex items-center justify-center gap-3 text-sm">
               {selectedCharacter.pronouns && (
-                <span>{selectedCharacter.pronouns}</span>
+                <span className="text-primary font-medium">{selectedCharacter.pronouns}</span>
               )}
               <span className={zodiac.color}>{zodiac.emoji}</span>
-              {selectedCharacter.age && (
-                <span>{selectedCharacter.age}</span>
-              )}
-              {selectedCharacter.gender && (
-                <span>🐱</span>
-              )}
             </div>
 
-            {/* Bio */}
+            {/* 5. Bio (CHARACTER data) */}
             {selectedCharacter.bio && (
-              <p className="text-center text-muted-foreground px-4 text-sm leading-relaxed">
+              <p className="text-center text-muted-foreground px-6 text-sm leading-relaxed">
                 {selectedCharacter.bio}
               </p>
             )}
