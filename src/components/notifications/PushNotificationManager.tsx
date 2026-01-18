@@ -68,25 +68,69 @@ export const usePushNotifications = () => {
           // Determine URL based on notification type
           switch (notification.type) {
             case 'friend_request':
-              url = '/hub';
+            case 'roleplay_proposal':
+              url = notification.data?.friendship_id ? `/dm/${notification.data.friendship_id}` : '/messages';
               break;
             case 'dm':
-              url = notification.data?.friendship_id ? `/dm/${notification.data.friendship_id}` : '/hub';
+              url = notification.data?.friendship_id ? `/dm/${notification.data.friendship_id}` : '/messages';
               break;
             case 'follow':
               url = notification.data?.follower_id ? `/user/${notification.data.follower_id}` : undefined;
               break;
             case 'world_join':
-              url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/hub';
+              url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/';
               break;
             case 'world_invite':
-              url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/hub';
+              url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/';
               break;
             default:
-              url = undefined;
+              url = '/';
           }
 
           showNotification(notification.title, notification.body || '', { url });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new friendship requests (roleplay proposals)
+    const friendshipChannel = supabase
+      .channel('friendship-push-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friendships'
+        },
+        async (payload) => {
+          const friendship = payload.new as any;
+          
+          // Only notify if we're the addressee (receiving the request)
+          if (friendship.addressee_id !== user.id) return;
+          
+          // Get requester info
+          const { data: requester } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', friendship.requester_id)
+            .maybeSingle();
+          
+          // Get character name if available
+          let characterName = requester?.username || 'Someone';
+          if (friendship.requester_character_id) {
+            const { data: char } = await supabase
+              .from('characters')
+              .select('name')
+              .eq('id', friendship.requester_character_id)
+              .maybeSingle();
+            if (char) characterName = char.name;
+          }
+          
+          showNotification(
+            'New Roleplay Proposal',
+            `${characterName} wants to start a story with you!`,
+            { url: `/dm/${friendship.id}` }
+          );
         }
       )
       .subscribe();
@@ -112,7 +156,7 @@ export const usePushNotifications = () => {
             .from('friendships')
             .select('id, requester_id, addressee_id')
             .eq('id', message.friendship_id)
-            .single();
+            .maybeSingle();
           
           if (!friendship) return;
           if (friendship.requester_id !== user.id && friendship.addressee_id !== user.id) return;
@@ -122,7 +166,7 @@ export const usePushNotifications = () => {
             .from('profiles')
             .select('username')
             .eq('id', message.sender_id)
-            .single();
+            .maybeSingle();
           
           showNotification(
             `New message from ${sender?.username || 'Someone'}`,
@@ -135,6 +179,7 @@ export const usePushNotifications = () => {
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(friendshipChannel);
       supabase.removeChannel(dmChannel);
     };
   }, [user, requestPermission, showNotification]);
