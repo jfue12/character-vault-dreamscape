@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Share2, Image, Gamepad2, BookOpen, MessageSquare } from 'lucide-react';
+import { Share2, Image, Gamepad2, BookOpen, MessageSquare, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { differenceInDays } from 'date-fns';
 import { CharacterRelationships } from './CharacterRelationships';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,8 +27,10 @@ interface Character {
 
 interface CharacterDetailViewProps {
   character: Character;
+  // User profile stats
   followersCount: number;
   followingCount: number;
+  daysActive: number;
   storiesCount?: number;
   isOwnProfile?: boolean;
   onEdit?: () => void;
@@ -43,6 +44,7 @@ export const CharacterDetailView = ({
   character,
   followersCount,
   followingCount,
+  daysActive,
   storiesCount = 0,
   isOwnProfile = true,
   onEdit,
@@ -53,7 +55,6 @@ export const CharacterDetailView = ({
 }: CharacterDetailViewProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>('Gallery');
-  const daysActive = differenceInDays(new Date(), new Date(character.created_at));
 
   const identityTags = character.identity_tags as { sexuality?: string; rp_style?: string; zodiac?: string } | null;
   
@@ -77,8 +78,8 @@ export const CharacterDetailView = ({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      {/* Large Avatar - Rounded Square */}
-      <div className="relative mx-auto w-64 aspect-[3/4] rounded-2xl overflow-hidden">
+      {/* 1. Large Rounded Portrait */}
+      <div className="relative mx-auto w-56 h-56 rounded-full overflow-hidden ring-4 ring-primary/30">
         {character.avatar_url ? (
           <img 
             src={character.avatar_url} 
@@ -94,15 +95,16 @@ export const CharacterDetailView = ({
         )}
       </div>
 
-      {/* Action Buttons Row */}
+      {/* 2. Action Buttons Row */}
       {isOwnProfile ? (
         <div className="flex gap-2 justify-center items-center px-4">
           <Button 
             variant="outline" 
             onClick={onArrange}
-            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10 gap-2"
           >
-            Set as Active
+            <Layers className="w-4 h-4" />
+            Arrange
           </Button>
           <Button 
             variant="outline"
@@ -138,6 +140,7 @@ export const CharacterDetailView = ({
           <Button
             variant="outline"
             size="icon"
+            onClick={onShare}
             className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
           >
             <Share2 className="w-4 h-4" />
@@ -145,30 +148,40 @@ export const CharacterDetailView = ({
         </div>
       )}
 
-      {/* Character Name */}
-      <h2 className="text-xl font-semibold text-center text-foreground">
+      {/* 3. Character Name (from CHARACTER data) */}
+      <h2 className="text-2xl font-bold text-center text-foreground">
         {character.name}
       </h2>
 
-      {/* Stats Row */}
-      <div className="flex justify-center gap-10">
+      {/* 4. User Stats Row (4-column, from USER profile) */}
+      <div className="grid grid-cols-4 gap-2 px-4">
         <div className="text-center">
-          <span className="font-bold text-lg text-foreground">{followersCount}</span>
+          <span className="font-bold text-xl text-foreground">{followersCount}</span>
           <p className="text-xs text-muted-foreground">Followers</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-lg text-foreground">{followingCount}</span>
+          <span className="font-bold text-xl text-foreground">{followingCount}</span>
           <p className="text-xs text-muted-foreground">Following</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-lg text-foreground">{daysActive}</span>
+          <span className="font-bold text-xl text-foreground">{daysActive}</span>
           <p className="text-xs text-muted-foreground">Days</p>
         </div>
         <div className="text-center">
-          <span className="font-bold text-lg text-foreground">{storiesCount}</span>
+          <span className="font-bold text-xl text-foreground">{storiesCount}</span>
           <p className="text-xs text-muted-foreground">Stories</p>
         </div>
       </div>
+
+      {/* 5. Character Age (prominent display, from CHARACTER data) */}
+      {character.age && (
+        <div className="flex justify-center">
+          <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/30">
+            <span className="text-2xl font-bold text-primary">{character.age}</span>
+            <span className="text-sm text-muted-foreground ml-2">years old</span>
+          </div>
+        </div>
+      )}
 
       {/* Identity Row: Pronouns | Sexuality | RP Style */}
       {identityParts.length > 0 && (
@@ -179,7 +192,7 @@ export const CharacterDetailView = ({
         </div>
       )}
 
-      {/* Bio */}
+      {/* 6. Bio (from CHARACTER data) */}
       {character.bio && (
         <p className="text-center text-muted-foreground px-6 text-sm leading-relaxed">
           {character.bio}
