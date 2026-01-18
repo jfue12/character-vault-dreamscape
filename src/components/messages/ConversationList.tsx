@@ -186,10 +186,15 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           unreadCount = count || 0;
         }
 
+        // Filter out email-like usernames (shouldn't happen but safety check)
+        const displayUsername = friendProfile?.username && !friendProfile.username.includes('@') 
+          ? friendProfile.username 
+          : null;
+
         return {
           id: f.id,
           friend_id: friendId,
-          friend_username: friendProfile?.username || null,
+          friend_username: displayUsername,
           friend_character_name: friendCharName,
           friend_avatar_url: friendAvatarUrl,
           last_message: lastMessage,
@@ -342,7 +347,7 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-[#7C3AED] to-purple-900 flex items-center justify-center">
                         <span className="text-2xl font-bold text-white">
-                          {convo.friend_character_name?.[0] || convo.friend_username?.[0] || '?'}
+                          {convo.friend_character_name?.[0] || (convo.friend_username && !convo.friend_username.includes('@') ? convo.friend_username[0] : '?')}
                         </span>
                       </div>
                     )}
@@ -360,9 +365,9 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-bold text-white text-base truncate">
-                        {convo.friend_character_name || convo.friend_username || 'Friend'}
+                        {convo.friend_character_name || convo.friend_username || 'New User'}
                       </span>
-                      {convo.friend_username && convo.friend_character_name && (
+                      {convo.friend_username && convo.friend_character_name && !convo.friend_username.includes('@') && (
                         <span className="text-xs text-muted-foreground shrink-0">
                           @{convo.friend_username}
                         </span>
