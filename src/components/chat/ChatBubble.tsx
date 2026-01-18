@@ -23,6 +23,7 @@ interface ChatBubbleProps {
   showReadReceipt?: boolean;
   role?: 'owner' | 'admin' | 'member'; // User's role in the world
   isAI?: boolean; // Is this an AI message
+  onAICharacterClick?: () => void; // Callback when AI character name is clicked
 }
 
 // Narrative-focused reactions for storytelling
@@ -47,7 +48,8 @@ export const ChatBubble = ({
   isRead = false,
   showReadReceipt = false,
   role,
-  isAI = false
+  isAI = false,
+  onAICharacterClick
 }: ChatBubbleProps) => {
   const [showReactions, setShowReactions] = useState(false);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
@@ -140,7 +142,10 @@ export const ChatBubble = ({
           )}
         </div>
         <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-sm font-medium text-primary">
+          <span 
+            className={`text-sm font-medium text-primary ${isAI && onAICharacterClick ? 'cursor-pointer hover:underline' : ''}`}
+            onClick={isAI && onAICharacterClick ? onAICharacterClick : undefined}
+          >
             {decoratedName}
           </span>
           {role === 'owner' && (
