@@ -19,6 +19,7 @@ import Create from "./pages/Create";
 import Feed from "./pages/Feed";
 import PostDetail from "./pages/PostDetail";
 import Invite from "./pages/Invite";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/feed" element={<Feed />} />
               <Route path="/post/:postId" element={<PostDetail />} />
               <Route path="/invite/:code" element={<Invite />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
