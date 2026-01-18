@@ -169,6 +169,20 @@ export default function WorldDetail() {
   const handleJoin = async () => {
     if (!worldId || !user) return;
 
+    // Check if already a member to prevent duplicate joins
+    const { data: existingMember } = await supabase
+      .from('world_members')
+      .select('id')
+      .eq('world_id', worldId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingMember) {
+      // Already a member, just refresh membership state
+      fetchMembership();
+      return;
+    }
+
     const { error } = await supabase.from('world_members').insert({
       world_id: worldId,
       user_id: user.id,
@@ -185,14 +199,15 @@ export default function WorldDetail() {
         .eq('id', user.id)
         .single();
 
-      // Send "joined" system message to all rooms in this world
+      // Send "joined" system message ONLY to first room (main room)
       const { data: worldRooms } = await supabase
         .from('world_rooms')
         .select('id')
-        .eq('world_id', worldId);
+        .eq('world_id', worldId)
+        .order('sort_order', { ascending: true })
+        .limit(1);
 
       if (worldRooms && worldRooms.length > 0) {
-        // Only send to first room (main room) to avoid spam
         await supabase.from('system_messages').insert({
           room_id: worldRooms[0].id,
           message_type: 'join',

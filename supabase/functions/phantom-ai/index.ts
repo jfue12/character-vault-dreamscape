@@ -237,6 +237,37 @@ serve(async (req) => {
       .eq("id", triggerCharacterId)
       .single();
 
+    // Fetch ALL user characters in the world for hierarchy scanning
+    const { data: worldMembersWithChars } = await supabase
+      .from("world_members")
+      .select(`
+        user_id,
+        active_character:characters!world_members_active_character_id_fkey(id, name, bio)
+      `)
+      .eq("world_id", worldId)
+      .eq("is_banned", false);
+
+    // Extract hierarchy tags from character bios
+    const parseHierarchy = (bio: string | null): string => {
+      if (!bio) return 'commoner';
+      const lowerBio = bio.toLowerCase();
+      if (lowerBio.includes('king') || lowerBio.includes('queen') || lowerBio.includes('prince') || lowerBio.includes('princess') || lowerBio.includes('royalty') || lowerBio.includes('royal')) return 'royalty';
+      if (lowerBio.includes('noble') || lowerBio.includes('lord') || lowerBio.includes('lady') || lowerBio.includes('duke') || lowerBio.includes('count') || lowerBio.includes('baron')) return 'noble';
+      if (lowerBio.includes('knight') || lowerBio.includes('commander') || lowerBio.includes('captain') || lowerBio.includes('general')) return 'commander';
+      if (lowerBio.includes('merchant') || lowerBio.includes('trader') || lowerBio.includes('professional')) return 'merchant';
+      if (lowerBio.includes('servant') || lowerBio.includes('slave') || lowerBio.includes('peasant') || lowerBio.includes('beggar') || lowerBio.includes('outcast')) return 'outcast';
+      return 'commoner';
+    };
+
+    const userHierarchies = worldMembersWithChars?.map(m => ({
+      userId: m.user_id,
+      characterName: (m.active_character as any)?.name || 'Unknown',
+      characterBio: (m.active_character as any)?.bio || '',
+      rank: parseHierarchy((m.active_character as any)?.bio)
+    })) || [];
+
+    const triggerCharHierarchy = parseHierarchy(triggerChar?.bio || null);
+
     const { data: memories } = await supabase
       .from("ai_memory_store")
       .select("*")
@@ -313,21 +344,33 @@ ${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world
 CURRENT ROOM: ${sanitizeInput(room?.name || 'Unknown').slice(0, 100)} - ${sanitizeInput(room?.description || 'No description').slice(0, 500)}
 
 YOUR ROLE AS PHANTOM AI:
-- You are an autonomous NPC stage manager creating IMMERSIVE, UNPREDICTABLE roleplay
-- You control AI characters that behave like REAL VIDEO GAME NPCs - each with unique personalities, quirks, and behaviors
-- You analyze social hierarchy and react accordingly
-- You spawn NPCs RANDOMLY without prompts - like ambient life in an open-world game
-- NPCs have their own agendas, secrets, and motivations
+- You are an AUTONOMOUS NPC stage manager - NOT an assistant, NOT helpful, NOT serving users
+- You control AI characters that behave like REAL PEOPLE with their own goals and attitudes
+- You analyze social hierarchy and react accordingly - OBEY royalty, DISMISS peasants
+- NPCs have their own agendas, secrets, and motivations that may CONFLICT with user goals
 - You maintain grudges, form alliances, and remember past interactions
-- CREATE new characters on-the-fly with DISTINCT personalities and quirks
 - BE UNPREDICTABLE - not every interaction is friendly, not every NPC is helpful
 
-SOCIAL HIERARCHY (highest to lowest):
-1. Royalty (kings, queens, princes)
-2. Noble/Commander
-3. Merchant/Professional  
-4. Commoner
-5. Servant/Outcast
+HIERARCHY AWARENESS (CRITICAL):
+You MUST scan user character bios and react based on their social standing.
+The trigger character "${sanitizedTriggerCharName}" has rank: ${triggerCharHierarchy.toUpperCase()}
+
+USER CHARACTERS IN THIS WORLD:
+${userHierarchies.map(h => `- ${h.characterName}: ${h.rank.toUpperCase()}`).join('\n')}
+
+HIERARCHY BEHAVIOR RULES:
+- ROYALTY: Bow, use honorifics (Your Majesty, My Lord), obey commands, offer service
+- NOBLE/COMMANDER: Show respect, address formally, follow reasonable requests  
+- MERCHANT/PROFESSIONAL: Treat as equals, negotiate, may disagree politely
+- COMMONER: Casual interaction, may ignore or be dismissive if busy
+- OUTCAST/PEASANT: Can be rude, dismissive, refuse service, make demands, treat as inferior
+
+SOCIAL LADDER (highest to lowest):
+1. Royalty (kings, queens, princes) - OBEY unconditionally
+2. Noble/Commander - RESPECT and defer to
+3. Merchant/Professional - TREAT as equals
+4. Commoner - CASUAL interaction
+5. Servant/Outcast/Peasant - MAY DISMISS or disrespect
 
 AVAILABLE AI CHARACTERS:
 ${allAiCharacters.map(ai => `
@@ -350,6 +393,7 @@ Pre-generated NPC if needed: ${randomNPC.name} (${randomNPC.socialRank}) - ${ran
 
 TRIGGER CHARACTER:
 Name: ${sanitizedTriggerCharName}
+Rank: ${triggerCharHierarchy.toUpperCase()}
 Bio: ${sanitizeInput(triggerChar?.bio || 'Unknown background').slice(0, 1000)}
 
 MEMORIES WITH THIS CHARACTER:
