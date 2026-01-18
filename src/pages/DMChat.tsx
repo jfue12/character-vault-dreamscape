@@ -415,7 +415,7 @@ export default function DMChat() {
             </div>
             <div className="flex flex-col">
               <span className="font-semibold text-foreground text-sm">{displayName}</span>
-              {friend?.username && friend.active_character && (
+              {friend?.username && (
                 <span className="text-xs text-muted-foreground">@{friend.username}</span>
               )}
             </div>
@@ -426,7 +426,7 @@ export default function DMChat() {
       </header>
 
       {/* Messages Area */}
-      <main className="flex-1 pb-44 px-4 overflow-y-auto pt-4">
+      <main className="flex-1 pb-56 px-4 overflow-y-auto pt-4">
         <div className="max-w-lg mx-auto space-y-4">
           {messages.length === 0 ? (
             <motion.div

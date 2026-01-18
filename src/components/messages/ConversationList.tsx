@@ -276,11 +276,18 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  {/* Bold Title */}
+                  {/* Bold Title + Username */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-white text-base truncate">
-                      {convo.friend_character_name || convo.friend_username || 'Friend'}
-                    </span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-white text-base truncate">
+                        {convo.friend_character_name || convo.friend_username || 'Friend'}
+                      </span>
+                      {convo.friend_username && convo.friend_character_name && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          @{convo.friend_username}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[11px] text-muted-foreground shrink-0">
                       {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
                     </span>
