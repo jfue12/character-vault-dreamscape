@@ -34,6 +34,31 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
   useEffect(() => {
     if (user) {
       fetchRequests();
+
+      // Subscribe to realtime updates for new friendship requests
+      const channel = supabase
+        .channel('friendship-lobby-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+          },
+          (payload) => {
+            const newData = payload.new as any;
+            const oldData = payload.old as any;
+            // Refetch if the current user is the addressee (receiving request)
+            if (newData?.addressee_id === user.id || oldData?.addressee_id === user.id) {
+              fetchRequests();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 

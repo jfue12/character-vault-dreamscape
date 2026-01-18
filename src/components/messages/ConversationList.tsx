@@ -52,8 +52,8 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
     if (user) {
       fetchConversations();
       
-      // Subscribe to realtime updates
-      const channel = supabase
+      // Subscribe to realtime updates for messages
+      const dmChannel = supabase
         .channel('dm-updates')
         .on(
           'postgres_changes',
@@ -66,8 +66,35 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
         )
         .subscribe();
 
+      // Subscribe to realtime updates for new friendships/proposals
+      const friendshipChannel = supabase
+        .channel('friendship-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+          },
+          (payload) => {
+            // Refetch when a friendship involves the current user
+            const newData = payload.new as any;
+            const oldData = payload.old as any;
+            if (
+              newData?.requester_id === user.id || 
+              newData?.addressee_id === user.id ||
+              oldData?.requester_id === user.id ||
+              oldData?.addressee_id === user.id
+            ) {
+              fetchConversations();
+            }
+          }
+        )
+        .subscribe();
+
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(dmChannel);
+        supabase.removeChannel(friendshipChannel);
       };
     }
   }, [user]);
