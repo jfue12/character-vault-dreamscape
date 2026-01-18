@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Check, CheckCheck } from 'lucide-react';
+import { Check, CheckCheck, Trash2 } from 'lucide-react';
 
 interface ChatBubbleProps {
   messageId: string;
@@ -14,6 +14,7 @@ interface ChatBubbleProps {
   attachmentUrl?: string | null;
   emojiReactions?: Record<string, string[]>;
   onReact?: (messageId: string, emoji: string) => void;
+  onDelete?: (messageId: string) => void;
   bubbleColor?: string;
   textColor?: string;
   bubbleAlignment?: 'auto' | 'left' | 'right';
@@ -34,6 +35,7 @@ export const ChatBubble = ({
   attachmentUrl,
   emojiReactions = {},
   onReact,
+  onDelete,
   bubbleColor,
   textColor,
   bubbleAlignment = 'auto',
@@ -170,14 +172,14 @@ export const ChatBubble = ({
           </p>
         </div>
 
-        {/* Reaction Picker */}
-        {showReactions && onReact && (
+        {/* Reaction Picker & Delete */}
+        {showReactions && (onReact || (onDelete && isOwnMessage)) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             className={`absolute -top-8 ${isRightAligned ? 'right-0' : 'left-0'} flex gap-0.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg`}
           >
-            {REACTION_EMOJIS.map(emoji => (
+            {onReact && REACTION_EMOJIS.map(emoji => (
               <button
                 key={emoji}
                 onClick={() => onReact(messageId, emoji)}
@@ -186,6 +188,14 @@ export const ChatBubble = ({
                 {emoji}
               </button>
             ))}
+            {onDelete && isOwnMessage && (
+              <button
+                onClick={() => onDelete(messageId)}
+                className="text-sm hover:scale-125 transition-transform p-0.5 text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </motion.div>
         )}
       </div>

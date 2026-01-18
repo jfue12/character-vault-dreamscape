@@ -271,6 +271,19 @@ export default function DMChat() {
           ));
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'direct_messages',
+          filter: `friendship_id=eq.${friendshipId}`
+        },
+        (payload) => {
+          const deletedMessage = payload.old as any;
+          setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id));
+        }
+      )
       .subscribe();
 
     // Presence for typing
@@ -348,6 +361,19 @@ export default function DMChat() {
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    const { error } = await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to delete message', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
     }
   };
 
@@ -441,6 +467,7 @@ export default function DMChat() {
                   attachmentUrl={msg.attachment_url}
                   isRead={msg.is_read}
                   showReadReceipt={true}
+                  onDelete={handleDeleteMessage}
                 />
               );
             })
