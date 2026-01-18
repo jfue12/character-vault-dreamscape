@@ -146,26 +146,132 @@ export const UserSearchPanel = ({ isOpen, onClose }: UserSearchPanelProps) => {
 
   const getFriendshipStatus = (userId: string) => friendshipStatuses[userId] || null;
 
+  // If isOpen is always true (embedded mode), don't use AnimatePresence wrapper
+  const isEmbedded = isOpen;
+  
+  const panelContent = (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="bg-card border border-border rounded-xl p-4"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
+          <Search className="w-4 h-4 text-primary" />
+          Find Users
+        </h3>
+        {onClose && !isEmbedded && (
+          <button onClick={onClose} className="p-1 hover:bg-muted rounded-full">
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* Search Input */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by username..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Results */}
+      <div className="max-h-64 overflow-y-auto space-y-2">
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        )}
+
+        {!loading && searchQuery.length >= 2 && results.length === 0 && (
+          <p className="text-center text-muted-foreground text-sm py-4">
+            No users found
+          </p>
+        )}
+
+        {!loading && results.map((u) => {
+          const status = getFriendshipStatus(u.id);
+          return (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+            >
+              {/* Avatar */}
+              <button 
+                onClick={() => handleViewProfile(u.id)}
+                className="w-10 h-10 rounded-full overflow-hidden border border-border flex-shrink-0"
+              >
+                {u.avatar_url ? (
+                  <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary/20 flex items-center justify-center text-sm font-medium text-primary">
+                    {(u.username || u.character_name || '?')[0]?.toUpperCase()}
+                  </div>
+                )}
+              </button>
+
+              {/* Info */}
+              <button 
+                onClick={() => handleViewProfile(u.id)}
+                className="flex-1 min-w-0 text-left"
+              >
+                <p className="font-medium text-foreground truncate">
+                  @{u.username || 'unknown'}
+                </p>
+                {u.character_name && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    Playing as {u.character_name}
+                  </p>
+                )}
+              </button>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {status === 'accepted' ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleMessage(u.id)}
+                    className="gap-1"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </Button>
+                ) : status === 'pending' ? (
+                  <Button size="sm" variant="outline" disabled className="text-xs">
+                    Pending
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSendRequest(u.id, u.username || 'User')}
+                    className="gap-1"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {searchQuery.length < 2 && results.length === 0 && !loading && (
+        <p className="text-center text-muted-foreground text-sm py-4">
+          Type at least 2 characters to search
+        </p>
+      )}
+    </motion.div>
+  );
+
   return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-card border border-border rounded-xl p-4 mb-4"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Search className="w-4 h-4 text-primary" />
-                Find Users
-              </h3>
-              <button onClick={onClose} className="p-1 hover:bg-muted rounded-full">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
+      {isOpen && panelContent}
 
             {/* Search Input */}
             <div className="relative mb-4">
@@ -265,25 +371,22 @@ export const UserSearchPanel = ({ isOpen, onClose }: UserSearchPanelProps) => {
                 Type at least 2 characters to search
               </p>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Friend Request Modal - targetCharacter.owner_id is the user we're sending to */}
+      {/* Friend Request Modal */}
       {friendRequestTarget && (
         <FriendRequestModal
           open={!!friendRequestTarget}
           onOpenChange={(open) => !open && setFriendRequestTarget(null)}
           targetCharacter={{
-            id: friendRequestTarget.id, // This is the profile/user ID
-            owner_id: friendRequestTarget.id, // owner_id should be the user ID we're sending to
+            id: friendRequestTarget.id,
+            owner_id: friendRequestTarget.id,
             name: friendRequestTarget.username || 'User',
             avatar_url: results.find(r => r.id === friendRequestTarget.id)?.avatar_url || null,
             profiles: { username: friendRequestTarget.username }
           }}
           onSuccess={() => {
             setFriendRequestTarget(null);
-            searchUsers(); // Refresh to update status
+            searchUsers();
           }}
         />
       )}
