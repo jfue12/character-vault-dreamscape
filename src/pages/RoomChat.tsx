@@ -918,9 +918,13 @@ export default function RoomChat() {
           onCreateCharacter={() => setShowCreateCharacter(true)}
           baseProfileName={profile?.username || 'You'}
           isStaff={isOwner || isAdmin}
-          onStyleUpdated={() => {
-            fetchUserCharacters();
-            if (roomId) fetchMessages(roomId);
+          onStyleUpdated={async () => {
+            await fetchUserCharacters();
+            if (roomId) {
+              // Small delay to ensure DB update is committed before refetch
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await fetchMessages(roomId);
+            }
           }}
         />
       </div>

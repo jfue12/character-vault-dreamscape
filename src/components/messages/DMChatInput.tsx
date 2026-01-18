@@ -202,7 +202,7 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
                 .from('characters')
                 .select('bubble_color, text_color')
                 .eq('id', selectedCharacterId)
-                .single()
+                .maybeSingle()
                 .then(({ data }) => {
                   if (data) {
                     setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });

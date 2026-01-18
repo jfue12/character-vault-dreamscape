@@ -382,7 +382,7 @@ export const MascotChatInput = ({
                     .from('characters')
                     .select('bubble_color, text_color')
                     .eq('id', selectedCharacterId)
-                    .single()
+                    .maybeSingle()
                     .then(({ data }) => {
                       if (data) {
                         setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
@@ -395,7 +395,7 @@ export const MascotChatInput = ({
                     .select('bubble_side')
                     .eq('world_id', worldId)
                     .eq('user_id', user.id)
-                    .single()
+                    .maybeSingle()
                     .then(({ data }) => {
                       if (data) {
                         setBubbleSide(data.bubble_side);

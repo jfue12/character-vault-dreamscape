@@ -514,7 +514,11 @@ export default function DMChat() {
             disabled={false}
             friendshipId={friendshipId || ''}
             selectedCharacterId={selectedCharacterId}
-            onStyleUpdated={fetchMessages}
+            onStyleUpdated={async () => {
+              // Small delay to ensure DB update is committed before refetch
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await fetchMessages();
+            }}
           />
         </div>
       </div>
