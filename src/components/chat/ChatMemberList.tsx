@@ -1,7 +1,9 @@
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Crown, Shield, LogOut, UserPlus } from 'lucide-react';
+import { X, Crown, Shield, LogOut, UserPlus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface Member {
   userId: string;
@@ -34,6 +36,16 @@ export const ChatMemberList = ({
   onInviteFriends
 }: ChatMemberListProps) => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery.trim()) return members;
+    const query = searchQuery.toLowerCase();
+    return members.filter(member => 
+      member.username.toLowerCase().includes(query) ||
+      member.characterName.toLowerCase().includes(query)
+    );
+  }, [members, searchQuery]);
 
   const handleViewProfile = (userId: string) => {
     if (userId !== currentUserId) {
@@ -73,9 +85,22 @@ export const ChatMemberList = ({
               </button>
             </div>
 
+            {/* Search Input */}
+            <div className="p-4 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or username..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
             {/* Invite Friends Button */}
             {onInviteFriends && (
-              <div className="p-4 border-b border-border">
+              <div className="px-4 py-3 border-b border-border">
                 <Button
                   variant="outline"
                   className="w-full gap-2"
@@ -89,7 +114,7 @@ export const ChatMemberList = ({
 
             {/* Member List */}
             <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-              {members.map((member) => (
+              {filteredMembers.map((member) => (
                 <button
                   key={member.userId}
                   onClick={() => handleViewProfile(member.userId)}
@@ -144,7 +169,13 @@ export const ChatMemberList = ({
                 </button>
               ))}
 
-              {members.length === 0 && (
+              {filteredMembers.length === 0 && searchQuery && (
+                <p className="text-center text-muted-foreground text-sm py-8">
+                  No members match "{searchQuery}"
+                </p>
+              )}
+
+              {filteredMembers.length === 0 && !searchQuery && (
                 <p className="text-center text-muted-foreground text-sm py-8">
                   No members online
                 </p>
