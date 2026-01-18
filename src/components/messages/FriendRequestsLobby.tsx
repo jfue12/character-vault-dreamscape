@@ -121,10 +121,15 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
 
   return (
     <div className="space-y-4 mb-6">
-      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <MessageSquare className="w-5 h-5 text-primary" />
-        Friend Requests ({requests.length})
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-primary" />
+          Friend Requests
+        </h3>
+        <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+          {requests.length} pending
+        </span>
+      </div>
       
       <AnimatePresence>
         {requests.map((request) => (

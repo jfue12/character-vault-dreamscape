@@ -40,6 +40,7 @@ export const TopHeader = ({
   const navigate = useNavigate();
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -51,9 +52,10 @@ export const TopHeader = ({
   useEffect(() => {
     if (user) {
       fetchUnreadNotifications();
+      fetchPendingFriendRequests();
       
       // Subscribe to notifications for real-time updates
-      const channel = supabase
+      const notificationChannel = supabase
         .channel('notification-count')
         .on(
           'postgres_changes',
@@ -67,8 +69,23 @@ export const TopHeader = ({
         )
         .subscribe();
 
+      // Subscribe to friendships for pending request updates
+      const friendshipChannel = supabase
+        .channel('friendship-pending-count')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+          },
+          () => fetchPendingFriendRequests()
+        )
+        .subscribe();
+
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(notificationChannel);
+        supabase.removeChannel(friendshipChannel);
       };
     }
   }, [user]);
@@ -95,6 +112,18 @@ export const TopHeader = ({
       .eq('is_read', false);
     
     setUnreadNotifications(count || 0);
+  };
+
+  const fetchPendingFriendRequests = async () => {
+    if (!user) return;
+    
+    const { count } = await supabase
+      .from('friendships')
+      .select('*', { count: 'exact', head: true })
+      .eq('addressee_id', user.id)
+      .eq('status', 'pending');
+    
+    setPendingFriendRequests(count || 0);
   };
 
   const renderLeftIcon = () => {
@@ -131,6 +160,7 @@ export const TopHeader = ({
   const renderRightIcon = () => {
     switch (rightIcon) {
       case 'notifications':
+        const totalBadgeCount = unreadNotifications + pendingFriendRequests;
         return (
           <>
             <button 
@@ -138,8 +168,10 @@ export const TopHeader = ({
               className="p-2 -mr-2 text-foreground hover:text-primary transition-colors relative"
             >
               <Bell className="w-5 h-5" />
-              {unreadNotifications > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+              {totalBadgeCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-destructive rounded-full flex items-center justify-center text-[10px] font-bold text-destructive-foreground">
+                  {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+                </span>
               )}
             </button>
             <NotificationPanel 
