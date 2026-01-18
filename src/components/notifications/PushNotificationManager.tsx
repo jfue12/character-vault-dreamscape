@@ -37,7 +37,8 @@ export const usePushNotifications = () => {
     notification.onclick = () => {
       window.focus();
       if (data?.url) {
-        window.location.href = data.url;
+        const target = data.url.startsWith('/') ? `${window.location.origin}${data.url}` : data.url;
+        window.location.href = target;
       }
       notification.close();
     };
@@ -69,17 +70,23 @@ export const usePushNotifications = () => {
           switch (notification.type) {
             case 'friend_request':
             case 'roleplay_proposal':
-              url = notification.data?.friendship_id ? `/dm/${notification.data.friendship_id}` : '/messages';
-              break;
+            case 'friend_accepted':
             case 'dm':
               url = notification.data?.friendship_id ? `/dm/${notification.data.friendship_id}` : '/messages';
+              break;
+            case 'room_message':
+              url = notification.data?.world_id && notification.data?.room_id
+                ? `/worlds/${notification.data.world_id}/rooms/${notification.data.room_id}`
+                : '/';
+              break;
+            case 'post_like':
+            case 'post_comment':
+              url = notification.data?.post_id ? `/post/${notification.data.post_id}` : '/feed';
               break;
             case 'follow':
               url = notification.data?.follower_id ? `/user/${notification.data.follower_id}` : undefined;
               break;
             case 'world_join':
-              url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/';
-              break;
             case 'world_invite':
               url = notification.data?.world_id ? `/worlds/${notification.data.world_id}` : '/';
               break;
