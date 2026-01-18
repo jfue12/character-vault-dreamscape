@@ -224,36 +224,43 @@ export default function Index() {
       fabTo="/create-world"
     >
       <div className="max-w-lg mx-auto">
-        {/* Tab Switcher - Pill Style */}
-        <div className="flex gap-1.5 mb-5 p-1 bg-secondary/40 rounded-full">
+        {/* Tab Switcher - Mascot Style: Roleplays + Direct Messages */}
+        <div className="flex gap-1 mb-5 p-1 bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a]">
           <button
             onClick={() => setActiveTab('my-worlds')}
-            className={`tab-pill flex-1 flex items-center justify-center gap-1.5 ${
-              activeTab === 'my-worlds' ? 'tab-pill-active' : 'tab-pill-inactive'
+            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'my-worlds' 
+                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
+                : 'text-muted-foreground hover:text-white'
             }`}
           >
-            <Globe className="w-4 h-4" />
-            <span className="hidden sm:inline">My</span> Worlds
-          </button>
-          <button
-            onClick={() => setActiveTab('discover')}
-            className={`tab-pill flex-1 flex items-center justify-center gap-1.5 ${
-              activeTab === 'discover' ? 'tab-pill-active' : 'tab-pill-inactive'
-            }`}
-          >
-            <Search className="w-4 h-4" />
-            Discover
+            Roleplays
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`tab-pill flex-1 flex items-center justify-center gap-1.5 ${
-              activeTab === 'messages' ? 'tab-pill-active' : 'tab-pill-inactive'
+            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'messages' 
+                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
+                : 'text-muted-foreground hover:text-white'
             }`}
           >
-            <MessageCircle className="w-4 h-4" />
-            DMs
+            Direct Messages
           </button>
         </div>
+
+        {/* Discover toggle - subtle secondary option */}
+        {activeTab !== 'messages' && (
+          <button
+            onClick={() => setActiveTab(activeTab === 'discover' ? 'my-worlds' : 'discover')}
+            className={`w-full mb-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+              activeTab === 'discover'
+                ? 'text-[#7C3AED] bg-[#7C3AED]/10'
+                : 'text-muted-foreground hover:text-white'
+            }`}
+          >
+            {activeTab === 'discover' ? '← Back to My Worlds' : 'Discover New Worlds →'}
+          </button>
+        )}
 
         {activeTab !== 'messages' && (
           <div className="relative mb-4">

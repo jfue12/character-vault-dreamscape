@@ -78,8 +78,8 @@ export const CharacterDetailView = ({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      {/* 1. Large Rounded Portrait */}
-      <div className="relative mx-auto w-56 h-56 rounded-full overflow-hidden ring-4 ring-primary/30">
+      {/* 1. Large Portrait with 20px rounded corners - Mascot Style */}
+      <div className="relative mx-auto w-64 aspect-[3/4] rounded-[20px] overflow-hidden bg-[#0a0a0a] border border-[#1a1a1a]">
         {character.avatar_url ? (
           <img 
             src={character.avatar_url} 
@@ -87,29 +87,29 @@ export const CharacterDetailView = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/30 to-purple-900/30 flex items-center justify-center">
-            <span className="text-7xl font-display font-bold text-primary/60">
+          <div className="w-full h-full bg-gradient-to-br from-[#7C3AED]/30 to-purple-900/30 flex items-center justify-center">
+            <span className="text-7xl font-display font-bold text-[#7C3AED]/60">
               {character.name[0]?.toUpperCase()}
             </span>
           </div>
         )}
       </div>
 
-      {/* 2. Action Buttons Row */}
+      {/* 2. Action Buttons Row - Horizontal Flex */}
       {isOwnProfile ? (
         <div className="flex gap-2 justify-center items-center px-4">
           <Button 
             variant="outline" 
             onClick={onArrange}
-            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10 gap-2"
+            className="flex-1 border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED]/10 rounded-xl h-11 font-semibold"
           >
-            <Layers className="w-4 h-4" />
+            <Layers className="w-4 h-4 mr-2" />
             Arrange
           </Button>
           <Button 
             variant="outline"
             onClick={onEdit}
-            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+            className="flex-1 border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED]/10 rounded-xl h-11 font-semibold"
           >
             Edit Character
           </Button>
@@ -117,7 +117,7 @@ export const CharacterDetailView = ({
             variant="outline"
             size="icon"
             onClick={onShare}
-            className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
+            className="border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED]/10 rounded-xl h-11 w-11"
           >
             <Share2 className="w-4 h-4" />
           </Button>
@@ -126,14 +126,14 @@ export const CharacterDetailView = ({
         <div className="flex gap-2 justify-center items-center px-4">
           <Button 
             onClick={onFollow}
-            className="flex-1 bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground rounded-lg h-10"
+            className="flex-1 bg-[#7C3AED] hover:bg-[#7C3AED]/90 text-white rounded-xl h-11 font-semibold"
           >
             Follow
           </Button>
           <Button 
             variant="outline"
             onClick={onMessage}
-            className="flex-1 border-primary text-primary hover:bg-primary/10 rounded-lg h-10"
+            className="flex-1 border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED]/10 rounded-xl h-11 font-semibold"
           >
             Message
           </Button>
@@ -141,44 +141,44 @@ export const CharacterDetailView = ({
             variant="outline"
             size="icon"
             onClick={onShare}
-            className="border-primary text-primary hover:bg-primary/10 rounded-lg h-10 w-10"
+            className="border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED]/10 rounded-xl h-11 w-11"
           >
             <Share2 className="w-4 h-4" />
           </Button>
         </div>
       )}
 
-      {/* 3. Character Name (from CHARACTER data) */}
-      <h2 className="text-2xl font-bold text-center text-foreground">
+      {/* 3. Character Name */}
+      <h2 className="text-2xl font-bold text-center text-white">
         {character.name}
       </h2>
 
-      {/* 4. User Stats Row (4-column, from USER profile) */}
+      {/* 4. User Stats Grid - 4 columns (from USER profile) */}
       <div className="grid grid-cols-4 gap-2 px-4">
-        <div className="text-center">
-          <span className="font-bold text-xl text-foreground">{followersCount}</span>
-          <p className="text-xs text-muted-foreground">Followers</p>
+        <div className="text-center py-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+          <span className="font-bold text-xl text-white">{followersCount}</span>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Followers</p>
         </div>
-        <div className="text-center">
-          <span className="font-bold text-xl text-foreground">{followingCount}</span>
-          <p className="text-xs text-muted-foreground">Following</p>
+        <div className="text-center py-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+          <span className="font-bold text-xl text-white">{followingCount}</span>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Following</p>
         </div>
-        <div className="text-center">
-          <span className="font-bold text-xl text-foreground">{daysActive}</span>
-          <p className="text-xs text-muted-foreground">Days</p>
+        <div className="text-center py-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+          <span className="font-bold text-xl text-white">{daysActive}</span>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Days</p>
         </div>
-        <div className="text-center">
-          <span className="font-bold text-xl text-foreground">{storiesCount}</span>
-          <p className="text-xs text-muted-foreground">Stories</p>
+        <div className="text-center py-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+          <span className="font-bold text-xl text-white">{storiesCount}</span>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Stories</p>
         </div>
       </div>
 
-      {/* 5. Character Age (prominent display, from CHARACTER data) */}
+      {/* 5. Character Age - Large Standalone Number (from CHARACTER data) */}
       {character.age && (
         <div className="flex justify-center">
-          <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/30">
-            <span className="text-2xl font-bold text-primary">{character.age}</span>
-            <span className="text-sm text-muted-foreground ml-2">years old</span>
+          <div className="text-center">
+            <span className="text-5xl font-bold text-[#7C3AED]">{character.age}</span>
+            <p className="text-xs text-gray-500 uppercase tracking-wide mt-1">Years Old</p>
           </div>
         </div>
       )}
@@ -186,15 +186,15 @@ export const CharacterDetailView = ({
       {/* Identity Row: Pronouns | Sexuality | RP Style */}
       {identityParts.length > 0 && (
         <div className="flex items-center justify-center">
-          <span className="text-sm text-primary font-medium">
+          <span className="text-sm text-[#7C3AED] font-medium">
             {identityParts.join(' | ')}
           </span>
         </div>
       )}
 
-      {/* 6. Bio (from CHARACTER data) */}
+      {/* 6. Bio - Narrative text only (from CHARACTER data) */}
       {character.bio && (
-        <p className="text-center text-muted-foreground px-6 text-sm leading-relaxed">
+        <p className="text-center text-gray-400 px-6 text-sm leading-relaxed italic">
           {character.bio}
         </p>
       )}

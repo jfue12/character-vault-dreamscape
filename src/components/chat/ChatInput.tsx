@@ -103,21 +103,21 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
   ];
 
   return (
-    <div className="p-3 pb-6">
-      {/* Message Type Selector */}
-      <div className="flex gap-1.5 mb-2">
+    <div className="p-3 pb-6 bg-[#000] border-t border-[#1a1a1a]">
+      {/* Message Type Selector - Mascot Style: Talk, Think, Narrate */}
+      <div className="flex gap-2 mb-3 justify-center">
         {typeOptions.map(({ type, label, icon }) => (
           <button
             key={type}
             onClick={() => setMessageType(type)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
               messageType === type
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30'
+                : 'bg-[#0a0a0a] text-gray-400 border border-[#1a1a1a] hover:text-white hover:border-[#7C3AED]/50'
             }`}
           >
-            <span>{icon}</span>
-            {label}
+            <span className="text-base">{icon}</span>
+            <span>{label}</span>
           </button>
         ))}
       </div>
@@ -129,13 +129,13 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="flex gap-1 mb-2 p-2 bg-secondary rounded-lg"
+            className="flex gap-1 mb-3 p-3 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]"
           >
             {EMOJI_SHORTCUTS.map(emoji => (
               <button
                 key={emoji}
                 onClick={() => insertEmoji(emoji)}
-                className="text-xl hover:scale-125 transition-transform"
+                className="text-xl hover:scale-125 transition-transform p-1"
               >
                 {emoji}
               </button>
@@ -144,8 +144,8 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
         )}
       </AnimatePresence>
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+      {/* Input Form - Mascot Style */}
+      <form onSubmit={handleSubmit} className="flex gap-3 items-center">
         {/* Photo Upload */}
         <input
           ref={fileInputRef}
@@ -158,7 +158,7 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading || disabled}
-          className="p-2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+          className="p-2.5 text-gray-500 hover:text-[#7C3AED] transition-colors disabled:opacity-50 rounded-xl hover:bg-[#7C3AED]/10"
         >
           <Image className="w-5 h-5" />
         </button>
@@ -167,7 +167,7 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
         <button
           type="button"
           onClick={() => setShowEmojis(!showEmojis)}
-          className="p-2 text-muted-foreground hover:text-primary transition-colors"
+          className="p-2.5 text-gray-500 hover:text-[#7C3AED] transition-colors rounded-xl hover:bg-[#7C3AED]/10"
         >
           <Smile className="w-5 h-5" />
         </button>
@@ -180,20 +180,20 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
             messageType === 'narrator' 
               ? 'Describe the scene...' 
               : messageType === 'thought'
-                ? 'What are they thinking... (or use parentheses)'
+                ? 'What are they thinking...'
                 : 'Say something...'
           }
           disabled={disabled || isUploading}
-          className="flex-1 bg-secondary/50 border border-border rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
+          className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C3AED] placeholder:text-gray-600"
         />
         
         <motion.button
           whileTap={{ scale: 0.95 }}
           type="submit"
           disabled={!content.trim() || disabled || isUploading}
-          className="w-10 h-10 rounded-full bg-primary flex items-center justify-center disabled:opacity-40"
+          className="w-11 h-11 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30"
         >
-          <Send className="w-4 h-4 text-primary-foreground" />
+          <Send className="w-4 h-4 text-white" />
         </motion.button>
       </form>
     </div>
