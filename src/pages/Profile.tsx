@@ -10,6 +10,8 @@ import { CharacterScroller } from '@/components/profile/CharacterScroller';
 import { CharacterDetailView } from '@/components/profile/CharacterDetailView';
 import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
 import { EditCharacterModal } from '@/components/characters/EditCharacterModal';
+import { ProfileIncompleteIndicator } from '@/components/profile/ProfileIncompleteIndicator';
+import { UsernameSetupModal } from '@/components/profile/UsernameSetupModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface Character {
@@ -38,8 +40,12 @@ export default function Profile() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Check if profile is incomplete (no username or has email-like username)
+  const isProfileIncomplete = !profile?.username || profile.username.includes('@');
   
 
   useEffect(() => {
@@ -124,6 +130,16 @@ export default function Profile() {
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
       <div className="max-w-lg mx-auto pb-8">
+        {/* Profile Incomplete Indicator */}
+        {isProfileIncomplete && (
+          <div className="px-4 mb-4">
+            <ProfileIncompleteIndicator 
+              onClick={() => setIsUsernameModalOpen(true)}
+              message="Set up your username to connect with others"
+            />
+          </div>
+        )}
+
         {/* Settings Panel */}
         {showSettings && (
           <motion.div
@@ -213,6 +229,12 @@ export default function Profile() {
           }}
         />
       )}
+
+      <UsernameSetupModal
+        isOpen={isUsernameModalOpen}
+        onClose={() => setIsUsernameModalOpen(false)}
+        onSuccess={() => setIsUsernameModalOpen(false)}
+      />
     </AppLayout>
   );
 }

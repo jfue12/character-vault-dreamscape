@@ -163,7 +163,18 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
     
     switch (notification.type) {
       case 'friend_request':
+      case 'roleplay_proposal':
         // Friend requests are handled inline with accept/decline buttons
+        if (notification.data?.friendship_id) {
+          navigate(`/dm/${notification.data.friendship_id}`);
+          onClose();
+        }
+        break;
+      case 'friend_accepted':
+        if (notification.data?.friendship_id) {
+          navigate(`/dm/${notification.data.friendship_id}`);
+          onClose();
+        }
         break;
       case 'dm':
         if (notification.data?.friendship_id) {
@@ -175,6 +186,12 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       case 'world_join':
         if (notification.data?.world_id) {
           navigate(`/worlds/${notification.data.world_id}`);
+          onClose();
+        }
+        break;
+      case 'room_message':
+        if (notification.data?.world_id && notification.data?.room_id) {
+          navigate(`/worlds/${notification.data.world_id}/rooms/${notification.data.room_id}`);
           onClose();
         }
         break;
@@ -207,6 +224,8 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       case 'roleplay_proposal':
       case 'friend_request':
         return <Scroll className="w-5 h-5 text-primary" />;
+      case 'friend_accepted':
+        return <Check className="w-5 h-5 text-green-500" />;
       case 'dm':
         return <MessageCircle className="w-5 h-5 text-primary" />;
       case 'moderation':
@@ -218,9 +237,12 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       case 'world_invite':
         return <Users className="w-5 h-5 text-primary" />;
       case 'story_reaction':
-        return <Sparkles className="w-5 h-5 text-amber-500" />;
+      case 'post_like':
+        return <Heart className="w-5 h-5 text-pink-500" />;
       case 'post_comment':
         return <MessageSquare className="w-5 h-5 text-primary" />;
+      case 'room_message':
+        return <MessageCircle className="w-5 h-5 text-primary" />;
       default:
         return <Bell className="w-5 h-5 text-primary" />;
     }
@@ -234,18 +256,24 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       case 'roleplay_proposal':
       case 'friend_request':
         return `${characterName} wants to start a story with you!`;
+      case 'friend_accepted':
+        return `${characterName} accepted your roleplay proposal!`;
       case 'dm':
-        return `${characterName} continues your story`;
+        return `${characterName} sent you a message`;
       case 'follow':
-        return `${characterName} is following your journey!`;
+        return `${characterName} started following you`;
       case 'world_join':
-        return `${characterName} joined your world "${data.world_name || 'your world'}"`;
+        return `${characterName} joined ${data.world_name || 'your world'}`;
       case 'world_invite':
-        return `You've been invited to explore "${data.world_name || 'a world'}"`;
+        return `You've been invited to ${data.world_name || 'a world'}`;
       case 'story_reaction':
-        return `${characterName} reacted to your story beat`;
+        return `${characterName} reacted to your story`;
+      case 'post_like':
+        return `${characterName} liked your post`;
       case 'post_comment':
-        return `${characterName} commented on your lore`;
+        return `${characterName} commented on your post`;
+      case 'room_message':
+        return `${characterName} posted in ${data.room_name || 'a room'}`;
       case 'moderation':
         return notification.body || 'Moderation action taken';
       default:
@@ -331,7 +359,7 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                         className={`p-4 hover:bg-secondary/30 transition-colors cursor-pointer relative group ${
                           !notification.is_read ? 'bg-primary/5' : ''
                         }`}
-                        onClick={() => !isRoleplayProposal && handleNotificationClick(notification)}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         <div className="flex gap-3">
                           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
