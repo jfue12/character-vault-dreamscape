@@ -7,6 +7,7 @@ interface ChatBubbleProps {
   messageId: string;
   characterName: string;
   characterAvatar: string | null;
+  username?: string; // The @username of the sender
   content: string;
   type: 'dialogue' | 'thought' | 'narrator';
   isOwnMessage: boolean;
@@ -28,6 +29,7 @@ export const ChatBubble = ({
   messageId,
   characterName,
   characterAvatar,
+  username,
   content,
   type,
   isOwnMessage,
@@ -111,7 +113,7 @@ export const ChatBubble = ({
       onMouseEnter={() => setShowReactions(true)}
       onMouseLeave={() => setShowReactions(false)}
     >
-      {/* Timestamp + Character Name + Avatar Row */}
+      {/* Timestamp + Character Name + Username + Avatar Row */}
       <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
           {characterAvatar ? (
@@ -126,9 +128,16 @@ export const ChatBubble = ({
             </div>
           )}
         </div>
-        <span className="text-sm font-medium text-primary">
-          {decoratedName}
-        </span>
+        <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
+          <span className="text-sm font-medium text-primary">
+            {decoratedName}
+          </span>
+          {username && (
+            <span className="text-xs text-muted-foreground">
+              @{username}
+            </span>
+          )}
+        </div>
         <span className="text-[11px] text-muted-foreground">
           {formattedTime}
         </span>

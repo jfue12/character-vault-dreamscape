@@ -441,6 +441,7 @@ export default function DMChat() {
               const isOwn = msg.sender_id === user?.id;
               const charName = msg.character?.name || (isOwn ? (userProfile?.username || 'You') : (friend?.username || 'Friend'));
               const charAvatar = msg.character?.avatar_url || null;
+              const senderUsername = isOwn ? userProfile?.username : friend?.username;
               
               // Detect message type from content
               let type: 'dialogue' | 'thought' | 'narrator' = 'dialogue';
@@ -460,6 +461,7 @@ export default function DMChat() {
                   messageId={msg.id}
                   characterName={charName}
                   characterAvatar={charAvatar}
+                  username={senderUsername || undefined}
                   content={displayContent}
                   type={type}
                   isOwnMessage={isOwn}

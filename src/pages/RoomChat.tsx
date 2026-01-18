@@ -53,6 +53,7 @@ interface Message {
   attachment_url: string | null;
   emoji_reactions: Record<string, string[]> | null;
   character?: Character;
+  sender_username?: string;
 }
 
 interface SystemMsg {
@@ -290,7 +291,10 @@ export default function RoomChat() {
 
     if (!error && data) {
       const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id as string))];
+      const senderIds = [...new Set(data.map(m => m.sender_id))];
+      
       let characterMap: Record<string, Character> = {};
+      let usernameMap: Record<string, string> = {};
       
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
@@ -303,11 +307,24 @@ export default function RoomChat() {
         }
       }
 
+      // Fetch usernames for all senders
+      if (senderIds.length > 0) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', senderIds);
+        
+        if (profileData) {
+          usernameMap = Object.fromEntries(profileData.map(p => [p.id, p.username || 'anonymous']));
+        }
+      }
+
       const messagesWithChars = data.map(m => ({
         ...m,
         type: m.type as 'dialogue' | 'thought' | 'narrator',
         emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
-        character: m.character_id ? characterMap[m.character_id] : undefined
+        character: m.character_id ? characterMap[m.character_id] : undefined,
+        sender_username: usernameMap[m.sender_id] || 'anonymous'
       }));
 
       setMessages(messagesWithChars);
@@ -343,6 +360,8 @@ export default function RoomChat() {
           const newMessage = payload.new as any;
           
           let character: Character | undefined;
+          let sender_username = 'anonymous';
+          
           if (newMessage.character_id) {
             const { data } = await supabase
               .from('characters')
@@ -352,9 +371,21 @@ export default function RoomChat() {
             if (data) character = data;
           }
 
+          // Fetch sender username
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', newMessage.sender_id)
+            .maybeSingle();
+          
+          if (profileData?.username) {
+            sender_username = profileData.username;
+          }
+
           setMessages(prev => [...prev, { 
             ...newMessage, 
             character,
+            sender_username,
             emoji_reactions: newMessage.emoji_reactions || {}
           }]);
         }
@@ -708,12 +739,14 @@ export default function RoomChat() {
               const msg = item as Message & { isSystem: boolean };
               const isOwnMessage = msg.sender_id === user?.id;
               const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone');
+              const senderUsername = msg.sender_username || (isOwnMessage ? profile?.username : undefined);
               return (
                 <ChatBubble
                   key={msg.id}
                   messageId={msg.id}
                   characterName={displayName}
                   characterAvatar={msg.character?.avatar_url || null}
+                  username={senderUsername}
                   content={msg.content}
                   type={msg.type}
                   isOwnMessage={isOwnMessage}
