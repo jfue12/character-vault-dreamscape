@@ -1,26 +1,65 @@
-import { useState, useRef } from 'react';
-import { Send, Image, Smile, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Image, Smile } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { CharacterStylePanel } from '@/components/chat/CharacterStylePanel';
 
 interface ChatInputProps {
   onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
   onTypingChange: (isTyping: boolean) => void;
   disabled?: boolean;
   roomId: string;
+  worldId?: string;
+  selectedCharacterId?: string | null;
+  isStaff?: boolean;
+  onStyleUpdated?: () => void;
 }
 
 const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺'];
 
-export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInputProps) => {
+export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, selectedCharacterId, isStaff, onStyleUpdated }: ChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [messageType, setMessageType] = useState<'dialogue' | 'thought' | 'narrator'>('dialogue');
   const [showEmojis, setShowEmojis] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [characterStyle, setCharacterStyle] = useState<{ bubble_color?: string | null; text_color?: string | null }>({});
+  const [bubbleSide, setBubbleSide] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch character style when character changes
+  useEffect(() => {
+    const fetchStyles = async () => {
+      if (selectedCharacterId) {
+        const { data } = await supabase
+          .from('characters')
+          .select('bubble_color, text_color')
+          .eq('id', selectedCharacterId)
+          .single();
+        if (data) {
+          setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+        }
+      } else {
+        setCharacterStyle({});
+      }
+
+      // Fetch bubble_side if staff and worldId
+      if (isStaff && worldId && user) {
+        const { data: memberData } = await supabase
+          .from('world_members')
+          .select('bubble_side')
+          .eq('world_id', worldId)
+          .eq('user_id', user.id)
+          .single();
+        if (memberData) {
+          setBubbleSide(memberData.bubble_side);
+        }
+      }
+    };
+    fetchStyles();
+  }, [selectedCharacterId, isStaff, worldId, user]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setContent(e.target.value);
@@ -171,6 +210,45 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId }: ChatInpu
         >
           <Smile className="w-5 h-5" />
         </button>
+
+        {/* Style Panel */}
+        <CharacterStylePanel
+          characterId={selectedCharacterId || null}
+          currentBubbleColor={characterStyle.bubble_color}
+          currentTextColor={characterStyle.text_color}
+          currentBubbleSide={bubbleSide}
+          isStaff={isStaff}
+          worldId={worldId}
+          onStyleUpdated={() => {
+            onStyleUpdated?.();
+            // Refetch styles
+            if (selectedCharacterId) {
+              supabase
+                .from('characters')
+                .select('bubble_color, text_color')
+                .eq('id', selectedCharacterId)
+                .single()
+                .then(({ data }) => {
+                  if (data) {
+                    setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+                  }
+                });
+            }
+            if (isStaff && worldId && user) {
+              supabase
+                .from('world_members')
+                .select('bubble_side')
+                .eq('world_id', worldId)
+                .eq('user_id', user.id)
+                .single()
+                .then(({ data }) => {
+                  if (data) {
+                    setBubbleSide(data.bubble_side);
+                  }
+                });
+            }
+          }}
+        />
 
         <input
           type="text"

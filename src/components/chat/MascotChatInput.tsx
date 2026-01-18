@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
-import { Send, Image, Smile, Plus, Keyboard, User } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Image, Smile, Plus, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { CharacterStylePanel } from '@/components/chat/CharacterStylePanel';
 
 interface Character {
   id: string;
@@ -15,11 +16,14 @@ interface MascotChatInputProps {
   onTypingChange: (isTyping: boolean) => void;
   disabled?: boolean;
   roomId: string;
+  worldId?: string;
   characters: Character[];
   selectedCharacterId: string | null;
   onSelectCharacter: (id: string | null) => void;
   onCreateCharacter: () => void;
   baseProfileName?: string;
+  isStaff?: boolean;
+  onStyleUpdated?: () => void;
 }
 
 const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺', '😈', '💜'];
@@ -29,11 +33,14 @@ export const MascotChatInput = ({
   onTypingChange, 
   disabled, 
   roomId,
+  worldId,
   characters,
   selectedCharacterId,
   onSelectCharacter,
   onCreateCharacter,
-  baseProfileName = 'You'
+  baseProfileName = 'You',
+  isStaff = false,
+  onStyleUpdated,
 }: MascotChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
@@ -42,11 +49,45 @@ export const MascotChatInput = ({
   const [showCharacterPicker, setShowCharacterPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [characterStyle, setCharacterStyle] = useState<{ bubble_color?: string | null; text_color?: string | null }>({});
+  const [bubbleSide, setBubbleSide] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
+
+  // Fetch character style when character changes
+  useEffect(() => {
+    const fetchStyles = async () => {
+      if (selectedCharacterId) {
+        const { data } = await supabase
+          .from('characters')
+          .select('bubble_color, text_color')
+          .eq('id', selectedCharacterId)
+          .single();
+        if (data) {
+          setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+        }
+      } else {
+        setCharacterStyle({});
+      }
+
+      // Fetch bubble_side if staff and worldId
+      if (isStaff && worldId && user) {
+        const { data: memberData } = await supabase
+          .from('world_members')
+          .select('bubble_side')
+          .eq('world_id', worldId)
+          .eq('user_id', user.id)
+          .single();
+        if (memberData) {
+          setBubbleSide(memberData.bubble_side);
+        }
+      }
+    };
+    fetchStyles();
+  }, [selectedCharacterId, isStaff, worldId, user]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -326,6 +367,43 @@ export const MascotChatInput = ({
             >
               <Smile className="w-5 h-5" />
             </button>
+            <CharacterStylePanel
+              characterId={selectedCharacterId}
+              currentBubbleColor={characterStyle.bubble_color}
+              currentTextColor={characterStyle.text_color}
+              currentBubbleSide={bubbleSide}
+              isStaff={isStaff}
+              worldId={worldId}
+              onStyleUpdated={() => {
+                onStyleUpdated?.();
+                // Refetch styles
+                if (selectedCharacterId) {
+                  supabase
+                    .from('characters')
+                    .select('bubble_color, text_color')
+                    .eq('id', selectedCharacterId)
+                    .single()
+                    .then(({ data }) => {
+                      if (data) {
+                        setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+                      }
+                    });
+                }
+                if (isStaff && worldId && user) {
+                  supabase
+                    .from('world_members')
+                    .select('bubble_side')
+                    .eq('world_id', worldId)
+                    .eq('user_id', user.id)
+                    .single()
+                    .then(({ data }) => {
+                      if (data) {
+                        setBubbleSide(data.bubble_side);
+                      }
+                    });
+                }
+              }}
+            />
           </div>
 
           {/* Text Input */}
