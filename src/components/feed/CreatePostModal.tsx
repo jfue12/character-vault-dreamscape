@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, Image, Loader2 } from 'lucide-react';
+import { X, Image, Video, Loader2, Globe, Users, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 interface Character {
   id: string;
@@ -18,12 +19,13 @@ interface CreatePostModalProps {
 }
 
 export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostModalProps) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [content, setContent] = useState('');
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
@@ -32,6 +34,15 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
       fetchCharacters();
     }
   }, [user, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset state when modal closes
+      setContent('');
+      setMediaUrl(null);
+      setMediaType(null);
+    }
+  }, [isOpen]);
 
   const fetchCharacters = async () => {
     if (!user) return;
@@ -49,15 +60,26 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    // Validate file size (50MB for videos, 10MB for images)
+    const maxSize = type === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({ 
+        title: 'File too large', 
+        description: `Maximum size is ${type === 'video' ? '50MB' : '10MB'}`, 
+        variant: 'destructive' 
+      });
+      return;
+    }
 
     setIsUploading(true);
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('post-images')
       .upload(fileName, file);
 
@@ -68,7 +90,8 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
     }
 
     const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(fileName);
-    setImageUrl(urlData.publicUrl);
+    setMediaUrl(urlData.publicUrl);
+    setMediaType(type);
     setIsUploading(false);
   };
 
@@ -81,23 +104,29 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
       author_id: user.id,
       character_id: selectedCharacterId,
       content: content.trim(),
-      image_url: imageUrl
+      image_url: mediaUrl
     });
 
     if (error) {
+      console.error('Post creation error:', error);
       toast({ title: 'Error', description: 'Failed to create post', variant: 'destructive' });
       setIsPosting(false);
       return;
     }
 
-    toast({ title: 'Posted!', description: 'Your post is live' });
+    toast({ title: 'Posted!', description: 'Your post is now live' });
     setContent('');
-    setImageUrl(null);
+    setMediaUrl(null);
+    setMediaType(null);
     setIsPosting(false);
     onPostCreated();
   };
 
   const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
+  const displayName = selectedCharacter?.name || profile?.username || 'You';
+  const displayAvatar = selectedCharacter?.avatar_url;
+
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
@@ -108,123 +137,170 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-0 bg-black/60 z-50"
             onClick={onClose}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl z-50 max-h-[80vh] overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-card border border-border rounded-2xl z-50 flex flex-col max-h-[90vh] overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <button onClick={onClose} className="text-muted-foreground">
-                Cancel
+              <button 
+                onClick={onClose} 
+                className="p-2 hover:bg-muted rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
-              <h2 className="font-semibold text-foreground">New Post</h2>
-              <button
+              <h2 className="font-semibold text-foreground text-lg">Create Post</h2>
+              <Button
                 onClick={handleSubmit}
                 disabled={!content.trim() || isPosting}
-                className="px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-medium disabled:opacity-50"
+                size="sm"
+                className="px-6 rounded-full"
               >
                 {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post'}
-              </button>
+              </Button>
             </div>
 
-            {/* Character Selector */}
+            {/* Character Selection Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-border">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary flex-shrink-0">
+                {displayAvatar ? (
+                  <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary/20 flex items-center justify-center text-lg font-medium text-primary">
+                    {displayName[0]?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">{displayName}</p>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Globe className="w-3 h-3" />
+                  <span>Public</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Character Selector Pills */}
             {characters.length > 0 && (
               <div className="p-3 border-b border-border overflow-x-auto">
-                <div className="flex gap-2">
+                <p className="text-xs text-muted-foreground mb-2">Post as:</p>
+                <div className="flex gap-2 flex-wrap">
                   {characters.map((char) => (
                     <button
                       key={char.id}
                       onClick={() => setSelectedCharacterId(char.id)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
                         selectedCharacterId === char.id
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border text-muted-foreground hover:border-muted-foreground'
+                          ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                          : 'border-border text-muted-foreground hover:border-muted-foreground hover:bg-muted/50'
                       }`}
                     >
-                      <div className="w-5 h-5 rounded-full overflow-hidden">
+                      <div className="w-6 h-6 rounded-full overflow-hidden">
                         {char.avatar_url ? (
                           <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-primary/20 flex items-center justify-center text-[10px]">
+                          <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs font-medium">
                             {char.name[0]}
                           </div>
                         )}
                       </div>
-                      <span className="text-sm whitespace-nowrap">{char.name}</span>
+                      <span className="text-sm font-medium whitespace-nowrap">{char.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Content */}
-            <div className="p-4">
-              <div className="flex gap-3">
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-border flex-shrink-0">
-                  {selectedCharacter?.avatar_url ? (
-                    <img src={selectedCharacter.avatar_url} alt="" className="w-full h-full object-cover" />
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={`What's on ${displayName}'s mind?`}
+                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[120px] text-lg"
+                maxLength={1000}
+                autoFocus
+              />
+
+              {/* Media preview */}
+              {mediaUrl && (
+                <div className="relative mt-3 rounded-xl overflow-hidden border border-border bg-muted">
+                  {mediaType === 'video' ? (
+                    <video 
+                      src={mediaUrl} 
+                      controls 
+                      className="w-full h-auto max-h-64 object-contain"
+                    />
                   ) : (
-                    <div className="w-full h-full bg-primary/20 flex items-center justify-center text-sm font-medium text-primary">
-                      {(selectedCharacter?.name || 'U')[0]}
-                    </div>
+                    <img 
+                      src={mediaUrl} 
+                      alt="Upload" 
+                      className="w-full h-auto max-h-64 object-contain"
+                    />
                   )}
+                  <button
+                    onClick={() => {
+                      setMediaUrl(null);
+                      setMediaType(null);
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
                 </div>
-
-                {/* Text input */}
-                <div className="flex-1">
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="What's happening?"
-                    className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[100px]"
-                    maxLength={500}
-                  />
-
-                  {/* Image preview */}
-                  {imageUrl && (
-                    <div className="relative mt-3 rounded-xl overflow-hidden border border-border">
-                      <img src={imageUrl} alt="Upload" className="w-full h-auto max-h-48 object-cover" />
-                      <button
-                        onClick={() => setImageUrl(null)}
-                        className="absolute top-2 right-2 p-1 bg-black/50 rounded-full"
-                      >
-                        <X className="w-4 h-4 text-white" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between p-4 border-t border-border">
-              <div className="flex items-center gap-2">
-                <label className="p-2 hover:bg-muted rounded-full cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={isUploading}
-                  />
-                  {isUploading ? (
-                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                  ) : (
-                    <Image className="w-5 h-5 text-primary" />
-                  )}
-                </label>
+            {/* Actions Footer */}
+            <div className="border-t border-border p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground mr-2">Add to post:</span>
+                  
+                  {/* Image Upload */}
+                  <label className="p-2.5 hover:bg-muted rounded-full cursor-pointer transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleMediaUpload(e, 'image')}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                    {isUploading && mediaType === 'image' ? (
+                      <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+                    ) : (
+                      <Image className="w-5 h-5 text-green-500" />
+                    )}
+                  </label>
+
+                  {/* Video Upload */}
+                  <label className="p-2.5 hover:bg-muted rounded-full cursor-pointer transition-colors">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleMediaUpload(e, 'video')}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                    {isUploading && mediaType === 'video' ? (
+                      <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                    ) : (
+                      <Video className="w-5 h-5 text-red-500" />
+                    )}
+                  </label>
+                </div>
+
+                <span className="text-xs text-muted-foreground">
+                  {content.length}/1000
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {content.length}/500
-              </span>
             </div>
           </motion.div>
         </>

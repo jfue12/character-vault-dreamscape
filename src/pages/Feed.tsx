@@ -8,6 +8,8 @@ import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Access profile from useAuth
+
 interface Post {
   id: string;
   content: string;
@@ -28,7 +30,7 @@ interface Post {
 }
 
 export default function Feed() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,10 +208,24 @@ export default function Feed() {
       title="Feed" 
       headerLeftIcon="none"
       headerRightIcon="notifications"
-      showFab
-      fabOnClick={user ? () => setShowCreateModal(true) : undefined}
     >
       <div className="max-w-lg mx-auto">
+        {/* Create Post Button */}
+        {user && (
+          <div 
+            onClick={() => setShowCreateModal(true)}
+            className="p-4 border-b border-border flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-primary/20 flex items-center justify-center text-sm font-medium text-primary">
+              {profile?.username?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 bg-muted/50 rounded-full px-4 py-2.5 text-muted-foreground text-sm">
+              What's on your character's mind?
+            </div>
+            <Plus className="w-5 h-5 text-primary" />
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -217,6 +233,14 @@ export default function Feed() {
         ) : posts.length === 0 ? (
           <div className="text-center py-20 px-4">
             <p className="text-muted-foreground">No posts yet. Be the first to share!</p>
+            {user && (
+              <button 
+                onClick={() => setShowCreateModal(true)}
+                className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium"
+              >
+                Create Post
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border">
