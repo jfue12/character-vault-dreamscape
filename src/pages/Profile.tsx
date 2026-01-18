@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { LogOut, ChevronRight } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,7 +40,7 @@ export default function Profile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [ocTab, setOcTab] = useState<'visible' | 'hidden'>('visible');
+  
 
   useEffect(() => {
     if (!loading && !user) {
@@ -144,36 +144,11 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {/* OC Organization Tabs */}
-        <div className="flex gap-2 mb-4 mx-4">
-          <button
-            onClick={() => setOcTab('visible')}
-            className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-              ocTab === 'visible'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Eye className="w-4 h-4" />
-            Public ({characters.filter(c => !c.is_hidden).length})
-          </button>
-          <button
-            onClick={() => setOcTab('hidden')}
-            className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-              ocTab === 'hidden'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <EyeOff className="w-4 h-4" />
-            Hidden ({characters.filter(c => c.is_hidden).length})
-          </button>
-        </div>
 
-        {/* Character Scroller - filtered by tab */}
+        {/* Character Scroller */}
         <div className="mb-4">
           <CharacterScroller
-            characters={characters.filter(c => ocTab === 'visible' ? !c.is_hidden : c.is_hidden)}
+            characters={characters}
             selectedId={selectedCharacterId}
             onSelect={setSelectedCharacterId}
             onAddNew={() => setIsCreateModalOpen(true)}
