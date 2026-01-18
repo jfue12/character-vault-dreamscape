@@ -22,7 +22,7 @@ export default function Create() {
     {
       icon: Users,
       title: 'New Character',
-      description: 'Create a new OC for your vault',
+      description: 'Create a new OC for your collection',
       gradient: 'from-neon-purple to-neon-pink',
       action: () => setIsCharacterModalOpen(true),
     },

@@ -116,7 +116,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
 
       toast({
         title: 'Character created!',
-        description: `${formData.name} has been added to your vault.`,
+        description: `${formData.name} has been added to your collection.`,
       });
 
       // Reset form
@@ -144,7 +144,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
       <DialogContent className="glass-card border-glass-border max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl text-foreground">Create New OC</DialogTitle>
-          <DialogDescription>Add a new character to your vault.</DialogDescription>
+          <DialogDescription>Add a new character to your collection.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
