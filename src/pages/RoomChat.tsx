@@ -745,8 +745,11 @@ export default function RoomChat() {
               
               const msg = item as Message & { isSystem: boolean };
               const isOwnMessage = msg.sender_id === user?.id;
-              const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone');
+              // AI messages should show their character name, not "Someone"
+              const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : (msg.is_ai ? 'AI Character' : 'Someone'));
               const senderUsername = msg.sender_username || (isOwnMessage ? profile?.username : undefined);
+              // AI messages should always be on the left (not owner/admin)
+              const bubbleAlign = msg.is_ai ? 'left' : 'auto';
               return (
                 <ChatBubble
                   key={msg.id}
@@ -763,8 +766,8 @@ export default function RoomChat() {
                   onReact={handleReaction}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
-                  bubbleAlignment="auto"
-                  role={msg.sender_role}
+                  bubbleAlignment={bubbleAlign}
+                  role={msg.is_ai ? undefined : msg.sender_role}
                   isAI={msg.is_ai}
                 />
               );
