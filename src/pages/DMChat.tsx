@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Settings } from 'lucide-react';
+import { ChevronLeft, Settings, Check, X, Clock, Scroll } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +56,8 @@ export default function DMChat() {
   const [showSettings, setShowSettings] = useState(false);
   const [isRequester, setIsRequester] = useState(false);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const [friendshipStatus, setFriendshipStatus] = useState<'accepted' | 'pending'>('accepted');
+  const [starterMessage, setStarterMessage] = useState<string | null>(null);
 
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
@@ -88,18 +90,23 @@ export default function DMChat() {
   const fetchFriendship = async () => {
     if (!friendshipId || !user) return;
 
+    // Fetch both accepted AND pending friendships
     const { data: friendship, error } = await supabase
       .from('friendships')
-      .select('id, requester_id, addressee_id, status, requester_background_url, addressee_background_url')
+      .select('id, requester_id, addressee_id, status, starter_message, requester_background_url, addressee_background_url')
       .eq('id', friendshipId)
-      .eq('status', 'accepted')
+      .in('status', ['accepted', 'pending'])
       .maybeSingle();
 
     if (error || !friendship) {
       toast({ title: 'Conversation not found', variant: 'destructive' });
-      navigate('/hub');
+      navigate('/messages');
       return;
     }
+
+    // Set friendship status and starter message
+    setFriendshipStatus(friendship.status as 'accepted' | 'pending');
+    setStarterMessage(friendship.starter_message || null);
 
     // Set background and requester status
     const userIsRequester = friendship.requester_id === user.id;
@@ -386,6 +393,38 @@ export default function DMChat() {
     }
   };
 
+  const handleAcceptProposal = async () => {
+    if (!friendshipId) return;
+    
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', friendshipId);
+
+    if (error) {
+      toast({ title: 'Failed to accept', variant: 'destructive' });
+    } else {
+      toast({ title: 'Story begins! Roleplay accepted.' });
+      setFriendshipStatus('accepted');
+    }
+  };
+
+  const handleDeclineProposal = async () => {
+    if (!friendshipId) return;
+    
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('id', friendshipId);
+
+    if (error) {
+      toast({ title: 'Failed to decline', variant: 'destructive' });
+    } else {
+      toast({ title: 'Proposal declined' });
+      navigate('/messages');
+    }
+  };
+
   const displayName = friend?.active_character?.name || friend?.username || 'Chat';
 
   if (loading || authLoading) {
@@ -442,7 +481,63 @@ export default function DMChat() {
       {/* Messages Area */}
       <main className="flex-1 pb-56 px-4 overflow-y-auto pt-4">
         <div className="max-w-lg mx-auto space-y-4">
-          {messages.length === 0 ? (
+          {/* Pending Proposal UI */}
+          {friendshipStatus === 'pending' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-br from-[#7C3AED]/20 to-purple-900/20 border border-[#7C3AED]/40 rounded-2xl p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#7C3AED]/30 flex items-center justify-center">
+                  <Scroll className="w-5 h-5 text-[#7C3AED]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Roleplay Proposal</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {isRequester ? 'Waiting for response...' : 'You received a plot hook!'}
+                  </p>
+                </div>
+                <div className="ml-auto">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                </div>
+              </div>
+              
+              {starterMessage && (
+                <div className="bg-black/30 rounded-xl p-4">
+                  <p className="text-sm text-muted-foreground mb-1">Plot Hook:</p>
+                  <p className="text-white italic">"{starterMessage}"</p>
+                </div>
+              )}
+
+              {/* Show accept/decline only for the receiver */}
+              {!isRequester ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeclineProposal}
+                    className="flex-1 py-3 px-4 rounded-xl bg-secondary hover:bg-secondary/80 text-muted-foreground font-medium flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Decline
+                  </button>
+                  <button
+                    onClick={handleAcceptProposal}
+                    className="flex-1 py-3 px-4 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-medium flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                    Accept & Begin
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-2">
+                  Waiting for {displayName} to accept your proposal...
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {/* Normal messages view */}
+          {friendshipStatus === 'accepted' && messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -450,7 +545,7 @@ export default function DMChat() {
             >
               <p className="text-muted-foreground">Start the conversation!</p>
             </motion.div>
-          ) : (
+          ) : friendshipStatus === 'accepted' && (
             messages.map((msg) => {
               const isOwn = msg.sender_id === user?.id;
               const charName = msg.character?.name || (isOwn ? (userProfile?.username || 'You') : (friend?.username || 'Friend'));
@@ -498,30 +593,32 @@ export default function DMChat() {
         </div>
       </main>
 
-      {/* Character Switcher + Input */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border">
-        <div className="max-w-lg mx-auto">
-          <CompactPersonaSwitcher
-            characters={characters}
-            selectedId={selectedCharacterId}
-            onSelect={handleCharacterSelect}
-            baseProfileName={userProfile?.username || 'You'}
-          />
-          
-          <DMChatInput
-            onSend={handleSendMessage}
-            onTypingChange={handleTypingChange}
-            disabled={false}
-            friendshipId={friendshipId || ''}
-            selectedCharacterId={selectedCharacterId}
-            onStyleUpdated={async () => {
-              // Small delay to ensure DB update is committed before refetch
-              await new Promise(resolve => setTimeout(resolve, 100));
-              await fetchMessages();
-            }}
-          />
+      {/* Character Switcher + Input - Only show for accepted */}
+      {friendshipStatus === 'accepted' && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border">
+          <div className="max-w-lg mx-auto">
+            <CompactPersonaSwitcher
+              characters={characters}
+              selectedId={selectedCharacterId}
+              onSelect={handleCharacterSelect}
+              baseProfileName={userProfile?.username || 'You'}
+            />
+            
+            <DMChatInput
+              onSend={handleSendMessage}
+              onTypingChange={handleTypingChange}
+              disabled={false}
+              friendshipId={friendshipId || ''}
+              selectedCharacterId={selectedCharacterId}
+              onStyleUpdated={async () => {
+                // Small delay to ensure DB update is committed before refetch
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await fetchMessages();
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* DM Settings Panel */}
       <DMSettingsPanel
