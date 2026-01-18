@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { PersonaSwitcher } from '@/components/chat/PersonaSwitcher';
+import { CompactPersonaSwitcher } from '@/components/chat/CompactPersonaSwitcher';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { DMChatInput } from '@/components/messages/DMChatInput';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { DMSettingsPanel } from '@/components/chat/DMSettingsPanel';
 import { motion } from 'framer-motion';
 
 interface Character {
@@ -52,6 +53,9 @@ export default function DMChat() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isRequester, setIsRequester] = useState(false);
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
 
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
@@ -86,7 +90,7 @@ export default function DMChat() {
 
     const { data: friendship, error } = await supabase
       .from('friendships')
-      .select('id, requester_id, addressee_id, status')
+      .select('id, requester_id, addressee_id, status, requester_background_url, addressee_background_url')
       .eq('id', friendshipId)
       .eq('status', 'accepted')
       .maybeSingle();
@@ -96,6 +100,11 @@ export default function DMChat() {
       navigate('/hub');
       return;
     }
+
+    // Set background and requester status
+    const userIsRequester = friendship.requester_id === user.id;
+    setIsRequester(userIsRequester);
+    setBackgroundUrl(userIsRequester ? friendship.requester_background_url : friendship.addressee_background_url);
 
     const friendId = friendship.requester_id === user.id 
       ? friendship.addressee_id 
@@ -421,7 +430,12 @@ export default function DMChat() {
             </div>
           </div>
 
-          <div className="w-10" />
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="p-2 -mr-2"
+          >
+            <Settings className="w-5 h-5 text-muted-foreground" />
+          </button>
         </div>
       </header>
 
@@ -487,7 +501,7 @@ export default function DMChat() {
       {/* Character Switcher + Input */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border">
         <div className="max-w-lg mx-auto">
-          <PersonaSwitcher
+          <CompactPersonaSwitcher
             characters={characters}
             selectedId={selectedCharacterId}
             onSelect={handleCharacterSelect}
@@ -502,6 +516,16 @@ export default function DMChat() {
           />
         </div>
       </div>
+
+      {/* DM Settings Panel */}
+      <DMSettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        friendshipId={friendshipId || ''}
+        isRequester={isRequester}
+        currentBackgroundUrl={backgroundUrl}
+        onBackgroundChange={setBackgroundUrl}
+      />
     </div>
   );
 }
