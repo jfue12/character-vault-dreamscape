@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, Trash2, MoreHorizontal, Ban, Flag } from 'lucide-react';
+import { Search, Trash2, MoreHorizontal, Ban, Flag, Clock, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -32,6 +32,8 @@ interface Conversation {
   last_message: string;
   last_message_at: string;
   unread_count: number;
+  status: 'accepted' | 'pending';
+  is_incoming: boolean;
 }
 
 interface ConversationListProps {
@@ -73,16 +75,19 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
   const fetchConversations = async () => {
     if (!user) return;
 
-    // Get accepted friendships
+    // Get both accepted AND pending friendships
     const { data: friendships, error } = await supabase
       .from('friendships')
       .select(`
         id,
         requester_id,
         addressee_id,
+        status,
+        starter_message,
+        created_at,
         requester_character:characters!friendships_requester_character_id_fkey(name, avatar_url)
       `)
-      .eq('status', 'accepted')
+      .in('status', ['accepted', 'pending'])
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
 
     if (error || !friendships) {
@@ -94,6 +99,7 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
     const convos: Conversation[] = await Promise.all(
       friendships.map(async (f) => {
         const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
+        const isIncoming = f.addressee_id === user.id;
         const requesterChar = Array.isArray(f.requester_character) 
           ? f.requester_character[0] 
           : f.requester_character;
@@ -122,23 +128,36 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           }
         }
 
-        // Get latest message
-        const { data: messages } = await supabase
-          .from('direct_messages')
-          .select('content, created_at, is_read, sender_id')
-          .eq('friendship_id', f.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
+        // For pending, use starter_message; for accepted, get latest DM
+        let lastMessage = f.starter_message || 'Start chatting!';
+        let lastMessageAt = f.created_at;
+        let unreadCount = 0;
 
-        const lastMsg = messages?.[0];
+        if (f.status === 'accepted') {
+          // Get latest message
+          const { data: messages } = await supabase
+            .from('direct_messages')
+            .select('content, created_at, is_read, sender_id')
+            .eq('friendship_id', f.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-        // Count unread
-        const { count } = await supabase
-          .from('direct_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('friendship_id', f.id)
-          .eq('is_read', false)
-          .neq('sender_id', user.id);
+          const lastMsg = messages?.[0];
+          if (lastMsg) {
+            lastMessage = lastMsg.content;
+            lastMessageAt = lastMsg.created_at;
+          }
+
+          // Count unread
+          const { count } = await supabase
+            .from('direct_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('friendship_id', f.id)
+            .eq('is_read', false)
+            .neq('sender_id', user.id);
+
+          unreadCount = count || 0;
+        }
 
         return {
           id: f.id,
@@ -146,14 +165,16 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
           friend_username: friendProfile?.username || null,
           friend_character_name: friendCharName,
           friend_avatar_url: friendAvatarUrl,
-          last_message: lastMsg?.content || 'Start chatting!',
-          last_message_at: lastMsg?.created_at || new Date().toISOString(),
-          unread_count: count || 0,
+          last_message: lastMessage,
+          last_message_at: lastMessageAt,
+          unread_count: unreadCount,
+          status: f.status as 'accepted' | 'pending',
+          is_incoming: isIncoming,
         };
       })
     );
 
-    // Sort by latest message
+    // Sort by latest message/created_at
     convos.sort((a, b) => 
       new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
     );
@@ -192,6 +213,34 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
     
     toast({ title: 'User blocked' });
     fetchConversations();
+  };
+
+  const handleAcceptRequest = async (convoId: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', convoId);
+
+    if (error) {
+      toast({ title: 'Failed to accept', variant: 'destructive' });
+    } else {
+      toast({ title: 'Story begins! Roleplay accepted.' });
+      fetchConversations();
+    }
+  };
+
+  const handleDeclineRequest = async (convoId: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('id', convoId);
+
+    if (error) {
+      toast({ title: 'Failed to decline', variant: 'destructive' });
+    } else {
+      toast({ title: 'Proposal declined' });
+      setConversations(prev => prev.filter(c => c.id !== convoId));
+    }
   };
 
   const filteredConversations = useMemo(() => {
@@ -246,9 +295,13 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
               transition={{ delay: index * 0.03 }}
               className="relative group"
             >
-              <button
-                onClick={() => onSelectConversation(convo.id, convo.friend_id)}
-                className="w-full flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] hover:bg-[#111] border border-[#1a1a1a] hover:border-[#7C3AED]/30 transition-all text-left"
+              <div
+                onClick={() => convo.status === 'accepted' && onSelectConversation(convo.id, convo.friend_id)}
+                className={`w-full flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] hover:bg-[#111] border transition-all text-left ${
+                  convo.status === 'pending' 
+                    ? 'border-[#7C3AED]/40' 
+                    : 'border-[#1a1a1a] hover:border-[#7C3AED]/30 cursor-pointer'
+                }`}
               >
                 {/* Large Square Thumbnail - Mascot Style */}
                 <div className="relative flex-shrink-0">
@@ -267,10 +320,16 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                       </div>
                     )}
                   </div>
+                  {/* Pending indicator */}
+                  {convo.status === 'pending' && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                      <Clock className="w-3 h-3 text-white" />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  {/* Bold Title + Username */}
+                  {/* Bold Title + Username + Pending Badge */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-bold text-white text-base truncate">
@@ -281,6 +340,11 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                           @{convo.friend_username}
                         </span>
                       )}
+                      {convo.status === 'pending' && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full shrink-0">
+                          {convo.is_incoming ? 'Incoming' : 'Sent'}
+                        </span>
+                      )}
                     </div>
                     <span className="text-[11px] text-muted-foreground shrink-0">
                       {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
@@ -288,14 +352,34 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                   </div>
                   {/* Narrative Snippet - Italicized/Dimmed */}
                   <p className={`text-sm truncate mt-0.5 italic ${
-                    convo.unread_count > 0 ? 'text-gray-300' : 'text-gray-500'
+                    convo.unread_count > 0 || convo.status === 'pending' ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    {convo.last_message}
+                    {convo.status === 'pending' ? `"${convo.last_message}"` : convo.last_message}
                   </p>
+                  
+                  {/* Accept/Decline buttons for incoming pending */}
+                  {convo.status === 'pending' && convo.is_incoming && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeclineRequest(convo.id); }}
+                        className="flex-1 py-1.5 px-3 text-xs font-medium rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground flex items-center justify-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Decline
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleAcceptRequest(convo.id); }}
+                        className="flex-1 py-1.5 px-3 text-xs font-medium rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white flex items-center justify-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Accept
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Purple Badge for Unread - Mascot Style */}
-                {convo.unread_count > 0 && (
+                {convo.status === 'accepted' && convo.unread_count > 0 && (
                   <div className="flex-shrink-0">
                     <motion.span 
                       initial={{ scale: 0 }}
@@ -306,30 +390,32 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                     </motion.span>
                   </div>
                 )}
-              </button>
+              </div>
               
-              {/* Context Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-card rounded-full hover:bg-secondary">
-                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setDeleteTarget(convo)} className="text-destructive">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Conversation
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleBlockUser(convo.friend_id)} className="text-destructive">
-                    <Ban className="w-4 h-4 mr-2" />
-                    Block User
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toast({ title: 'Report submitted' })}>
-                    <Flag className="w-4 h-4 mr-2" />
-                    Report
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Context Menu - Only for accepted */}
+              {convo.status === 'accepted' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-card rounded-full hover:bg-secondary">
+                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setDeleteTarget(convo)} className="text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Conversation
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBlockUser(convo.friend_id)} className="text-destructive">
+                      <Ban className="w-4 h-4 mr-2" />
+                      Block User
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast({ title: 'Report submitted' })}>
+                      <Flag className="w-4 h-4 mr-2" />
+                      Report
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </motion.div>
           ))
         )}
