@@ -385,6 +385,39 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                               </div>
                             )}
                             
+                            {/* Post preview for likes/comments */}
+                            {(notification.type === 'post_like' || notification.type === 'post_comment') && (
+                              <div className="mt-2 flex gap-2">
+                                {/* Post thumbnail */}
+                                {notification.data?.post_image_url && (
+                                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
+                                    <img 
+                                      src={notification.data.post_image_url} 
+                                      alt="Post" 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  {/* Post snippet */}
+                                  {notification.data?.post_snippet && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2 bg-secondary/50 rounded px-2 py-1">
+                                      {notification.data.post_snippet}
+                                    </p>
+                                  )}
+                                  {/* Comment snippet for comments */}
+                                  {notification.type === 'post_comment' && notification.data?.comment_snippet && (
+                                    <div className="mt-1.5">
+                                      <span className="text-xs text-primary/70">Comment:</span>
+                                      <p className="text-xs text-foreground/80 line-clamp-2 italic mt-0.5">
+                                        "{notification.data.comment_snippet}"
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
                             <p className="text-xs text-muted-foreground mt-1">
                               {format(new Date(notification.created_at), 'MMM d, h:mm a')}
                             </p>
