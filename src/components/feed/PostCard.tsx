@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Smile, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '🔥', '👏', '💯'];
 
 interface Post {
   id: string;
@@ -26,11 +35,14 @@ interface Post {
 interface PostCardProps {
   post: Post;
   onLike: (postId: string) => void;
+  onDelete?: (postId: string) => void;
 }
 
-export const PostCard = ({ post, onLike }: PostCardProps) => {
+export const PostCard = ({ post, onLike, onDelete }: PostCardProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isLiking, setIsLiking] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -39,6 +51,7 @@ export const PostCard = ({ post, onLike }: PostCardProps) => {
     setIsLiking(false);
   };
 
+  const isOwnPost = user?.id === post.author.id;
   const displayName = post.character?.name || post.author.username || 'Unknown';
   const avatar = post.character?.avatar_url;
 
@@ -79,9 +92,27 @@ export const PostCard = ({ post, onLike }: PostCardProps) => {
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>
             </div>
-            <button className="p-1 hover:bg-muted rounded-full">
-              <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 hover:bg-muted rounded-full">
+                  <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isOwnPost && onDelete && (
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(post.id)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Post
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => navigate(`/post/${post.id}`)}>
+                  View Details
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Post content */}
@@ -129,6 +160,42 @@ export const PostCard = ({ post, onLike }: PostCardProps) => {
               </div>
               <span className="text-sm">{post.comments_count}</span>
             </button>
+
+            {/* Emoji Reaction Picker */}
+            <div className="relative">
+              <button
+                onClick={() => setShowReactions(!showReactions)}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors group"
+              >
+                <div className="p-2 -m-2 rounded-full group-hover:bg-primary/10">
+                  <Smile className="w-5 h-5" />
+                </div>
+              </button>
+              
+              <AnimatePresence>
+                {showReactions && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                    className="absolute bottom-full left-0 mb-2 flex gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg"
+                  >
+                    {REACTION_EMOJIS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => {
+                          setShowReactions(false);
+                          // Emoji reaction functionality can be extended
+                        }}
+                        className="text-lg hover:scale-125 transition-transform p-0.5"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>

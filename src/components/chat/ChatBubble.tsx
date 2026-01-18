@@ -21,6 +21,8 @@ interface ChatBubbleProps {
   bubbleAlignment?: 'auto' | 'left' | 'right';
   isRead?: boolean;
   showReadReceipt?: boolean;
+  role?: 'owner' | 'admin' | 'member'; // User's role in the world
+  isAI?: boolean; // Is this an AI message
 }
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
@@ -42,7 +44,9 @@ export const ChatBubble = ({
   textColor,
   bubbleAlignment = 'auto',
   isRead = false,
-  showReadReceipt = false
+  showReadReceipt = false,
+  role,
+  isAI = false
 }: ChatBubbleProps) => {
   const [showReactions, setShowReactions] = useState(false);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
@@ -132,6 +136,21 @@ export const ChatBubble = ({
           <span className="text-sm font-medium text-primary">
             {decoratedName}
           </span>
+          {role === 'owner' && (
+            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-medium">
+              Owner
+            </span>
+          )}
+          {role === 'admin' && (
+            <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full font-medium">
+              Admin
+            </span>
+          )}
+          {isAI && (
+            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-medium">
+              AI
+            </span>
+          )}
           {username && (
             <span className="text-xs text-muted-foreground">
               @{username}

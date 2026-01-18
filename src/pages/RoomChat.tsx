@@ -54,6 +54,7 @@ interface Message {
   emoji_reactions: Record<string, string[]> | null;
   character?: Character;
   sender_username?: string;
+  sender_role?: 'owner' | 'admin' | 'member';
 }
 
 interface SystemMsg {
@@ -295,6 +296,7 @@ export default function RoomChat() {
       
       let characterMap: Record<string, Character> = {};
       let usernameMap: Record<string, string> = {};
+      let roleMap: Record<string, 'owner' | 'admin' | 'member'> = {};
       
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
@@ -307,7 +309,7 @@ export default function RoomChat() {
         }
       }
 
-      // Fetch usernames for all senders
+      // Fetch usernames and roles for all senders
       if (senderIds.length > 0) {
         const { data: profileData } = await supabase
           .from('profiles')
@@ -317,6 +319,17 @@ export default function RoomChat() {
         if (profileData) {
           usernameMap = Object.fromEntries(profileData.map(p => [p.id, p.username || 'anonymous']));
         }
+
+        // Fetch roles from world_members
+        const { data: memberData } = await supabase
+          .from('world_members')
+          .select('user_id, role')
+          .eq('world_id', worldId)
+          .in('user_id', senderIds);
+        
+        if (memberData) {
+          roleMap = Object.fromEntries(memberData.map(m => [m.user_id, m.role as 'owner' | 'admin' | 'member']));
+        }
       }
 
       const messagesWithChars = data.map(m => ({
@@ -324,7 +337,8 @@ export default function RoomChat() {
         type: m.type as 'dialogue' | 'thought' | 'narrator',
         emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
         character: m.character_id ? characterMap[m.character_id] : undefined,
-        sender_username: usernameMap[m.sender_id] || 'anonymous'
+        sender_username: usernameMap[m.sender_id] || 'anonymous',
+        sender_role: roleMap[m.sender_id] || 'member'
       }));
 
       setMessages(messagesWithChars);
@@ -757,6 +771,8 @@ export default function RoomChat() {
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
                   bubbleAlignment="auto"
+                  role={msg.sender_role}
+                  isAI={msg.is_ai}
                 />
               );
             })
