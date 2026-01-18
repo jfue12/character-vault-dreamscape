@@ -13,6 +13,7 @@ import { ChatMemberList } from '@/components/chat/ChatMemberList';
 import { InviteFriendsModal } from '@/components/chat/InviteFriendsModal';
 import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
 import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
+import { AICharacterDetailModal } from '@/components/chat/AICharacterDetailModal';
 import { usePhantomAI } from '@/hooks/usePhantomAI';
 import { useSpamDetection } from '@/hooks/useSpamDetection';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -111,6 +112,15 @@ export default function RoomChat() {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('member');
   const [showInviteFriends, setShowInviteFriends] = useState(false);
+  const [showAICharacterDetail, setShowAICharacterDetail] = useState(false);
+  const [selectedAICharacter, setSelectedAICharacter] = useState<{
+    name: string;
+    bio?: string | null;
+    personality_traits?: string[] | null;
+    social_rank?: string | null;
+    avatar_url?: string | null;
+    avatar_description?: string | null;
+  } | null>(null);
 
   // Get current character
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
@@ -565,6 +575,73 @@ export default function RoomChat() {
       .eq('id', messageId);
   };
 
+  const handleAICharacterClick = async (characterId: string | null, characterName: string) => {
+    if (!characterId || !worldId) {
+      // Show basic info for characters without ID
+      setSelectedAICharacter({
+        name: characterName,
+        bio: null,
+        personality_traits: null,
+        social_rank: null,
+        avatar_url: null,
+        avatar_description: null
+      });
+      setShowAICharacterDetail(true);
+      return;
+    }
+
+    // Try to fetch from temp_ai_characters first
+    const { data: tempChar } = await supabase
+      .from('temp_ai_characters')
+      .select('name, bio, personality_traits, social_rank, avatar_description')
+      .eq('id', characterId)
+      .maybeSingle();
+
+    if (tempChar) {
+      setSelectedAICharacter({
+        name: tempChar.name,
+        bio: tempChar.bio,
+        personality_traits: tempChar.personality_traits as string[] | null,
+        social_rank: tempChar.social_rank,
+        avatar_url: null,
+        avatar_description: tempChar.avatar_description
+      });
+      setShowAICharacterDetail(true);
+      return;
+    }
+
+    // Try regular characters table
+    const { data: char } = await supabase
+      .from('characters')
+      .select('name, bio, avatar_url')
+      .eq('id', characterId)
+      .maybeSingle();
+
+    if (char) {
+      setSelectedAICharacter({
+        name: char.name,
+        bio: char.bio,
+        personality_traits: null,
+        social_rank: null,
+        avatar_url: char.avatar_url,
+        avatar_description: null
+      });
+      setShowAICharacterDetail(true);
+      return;
+    }
+
+    // Fallback
+    setSelectedAICharacter({
+      name: characterName,
+      bio: null,
+      personality_traits: null,
+      social_rank: null,
+      avatar_url: null,
+      avatar_description: null
+    });
+    setShowAICharacterDetail(true);
+  };
+
   const handleRoomChange = (roomId: string) => {
     navigate(`/worlds/${worldId}/rooms/${roomId}`);
   };
@@ -769,6 +846,7 @@ export default function RoomChat() {
                   bubbleAlignment={bubbleAlign}
                   role={msg.is_ai ? undefined : msg.sender_role}
                   isAI={msg.is_ai}
+                  onAICharacterClick={msg.is_ai ? () => handleAICharacterClick(msg.character_id, displayName) : undefined}
                 />
               );
             })
@@ -835,6 +913,13 @@ export default function RoomChat() {
         onLeaveWorld={handleLeaveWorld}
         onRoomCreated={handleRoomCreated}
         onRoomDeleted={handleRoomDeleted}
+      />
+
+      {/* AI Character Detail Modal */}
+      <AICharacterDetailModal
+        isOpen={showAICharacterDetail}
+        onClose={() => setShowAICharacterDetail(false)}
+        character={selectedAICharacter}
       />
     </div>
   );
