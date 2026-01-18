@@ -53,110 +53,100 @@ export const WorldCard = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: index * 0.03 }}
       onClick={handleClick}
-      className="glass-card overflow-hidden group transition-all cursor-pointer hover:border-primary/50"
+      className="flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] border border-[#1a1a1a] hover:border-[#7C3AED]/30 transition-all cursor-pointer group"
     >
-      {/* Cover Image */}
-      <div className="h-36 bg-gradient-to-br from-primary/20 via-purple-900/20 to-primary/10 relative overflow-hidden">
-        {world.image_url ? (
-          <img
-            src={world.image_url}
-            alt={world.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-purple-900/20">
-            <Globe className="w-14 h-14 text-primary/40" />
-          </div>
+      {/* Large Square Thumbnail - Mascot Style */}
+      <div className="relative flex-shrink-0">
+        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-[#7C3AED]/20 to-purple-900/20">
+          {world.image_url ? (
+            <img
+              src={world.image_url}
+              alt={world.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Globe className="w-8 h-8 text-[#7C3AED]/50" />
+            </div>
+          )}
+        </div>
+        
+        {/* Badges overlay */}
+        {world.is_nsfw && (
+          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded bg-red-500 text-white text-[10px] font-bold">
+            18+
+          </span>
         )}
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-        
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-2">
-          {world.is_nsfw && (
-            <span className="px-2.5 py-1 rounded-full bg-destructive/90 backdrop-blur-md text-destructive-foreground text-xs font-medium flex items-center gap-1 shadow-lg">
-              <AlertTriangle className="w-3 h-3" />
-              18+
-            </span>
-          )}
-          {world.is_public === false && (
-            <span className="px-2.5 py-1 rounded-full bg-card/90 backdrop-blur-md text-foreground text-xs font-medium flex items-center gap-1 shadow-lg">
-              <Lock className="w-3 h-3" />
-              Private
-            </span>
-          )}
+        {world.is_public === false && (
+          <Lock className="absolute bottom-1 right-1 w-4 h-4 text-white bg-black/50 rounded p-0.5" />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Bold World Title */}
+        <div className="flex items-center gap-2">
+          <h4 className="font-bold text-base text-white group-hover:text-[#7C3AED] transition-colors truncate">
+            {world.name}
+          </h4>
           {isOwner && (
-            <span className="px-2.5 py-1 rounded-full bg-primary/90 backdrop-blur-md text-primary-foreground text-xs font-medium shadow-lg">
+            <span className="px-2 py-0.5 rounded-full bg-[#7C3AED]/20 text-[#7C3AED] text-[10px] font-semibold shrink-0">
               Owner
             </span>
           )}
         </div>
-
-        {/* Member count badge */}
-        {memberCount !== undefined && (
-          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-card/90 backdrop-blur-md text-foreground text-xs font-medium flex items-center gap-1.5 shadow-lg">
-            <Users className="w-3.5 h-3.5 text-primary" />
-            <span>{memberCount}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-4 space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h4 className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors truncate">
-              {world.name}
-            </h4>
-          </div>
-          
-          {showJoinButton && (
-            <Button
-              size="sm"
-              onClick={handleJoin}
-              disabled={isJoining}
-              className="shrink-0 rounded-full px-4 shadow-lg"
-            >
-              {isJoining ? (
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4 mr-1.5" />
-                  Join
-                </>
-              )}
-            </Button>
-          )}
-        </div>
         
+        {/* Latest Message / Description - Narrative snippet, italicized */}
         {world.description && (
-          <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
+          <p className="text-sm text-gray-500 italic line-clamp-1 mt-0.5">
             {world.description}
           </p>
         )}
 
         {/* Tags */}
         {world.tags && world.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {world.tags.slice(0, 4).map(tag => (
+          <div className="flex gap-1.5 mt-2">
+            {world.tags.slice(0, 3).map(tag => (
               <span
                 key={tag}
-                className="px-2.5 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium"
+                className="px-2 py-0.5 rounded-full bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-medium"
               >
                 #{tag}
               </span>
             ))}
-            {world.tags.length > 4 && (
-              <span className="px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-                +{world.tags.length - 4}
-              </span>
-            )}
           </div>
+        )}
+      </div>
+
+      {/* Right side: Member count or Join button */}
+      <div className="flex-shrink-0 flex items-center gap-3">
+        {memberCount !== undefined && (
+          <div className="flex items-center gap-1 text-gray-500">
+            <Users className="w-4 h-4" />
+            <span className="text-sm font-medium">{memberCount}</span>
+          </div>
+        )}
+        
+        {showJoinButton && (
+          <Button
+            size="sm"
+            onClick={handleJoin}
+            disabled={isJoining}
+            className="rounded-xl px-4 bg-[#7C3AED] hover:bg-[#7C3AED]/90 shadow-lg shadow-[#7C3AED]/30"
+          >
+            {isJoining ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <LogIn className="w-4 h-4 mr-1" />
+                Join
+              </>
+            )}
+          </Button>
         )}
       </div>
     </motion.div>

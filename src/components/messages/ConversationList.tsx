@@ -250,10 +250,11 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
             >
               <button
                 onClick={() => onSelectConversation(convo.id, convo.friend_id)}
-                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card/50 hover:bg-card border border-transparent hover:border-border transition-all text-left"
+                className="w-full flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] hover:bg-[#111] border border-[#1a1a1a] hover:border-[#7C3AED]/30 transition-all text-left"
               >
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                {/* Large Square Thumbnail - Mascot Style */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden">
                     {convo.friend_avatar_url ? (
                       <img 
                         src={convo.friend_avatar_url} 
@@ -261,53 +262,54 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
-                        <span className="text-xl font-bold text-white">
+                      <div className="w-full h-full bg-gradient-to-br from-[#7C3AED] to-purple-900 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-white">
                           {convo.friend_character_name?.[0] || convo.friend_username?.[0] || '?'}
                         </span>
                       </div>
                     )}
                   </div>
-                  {/* Online/Offline indicator */}
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card ${
-                    convo.is_online ? 'bg-green-500' : 'bg-muted-foreground/40'
-                  }`} />
-                  {convo.unread_count > 0 && (
-                    <motion.span 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
-                    >
-                      {convo.unread_count}
-                    </motion.span>
+                  {/* Online indicator */}
+                  {convo.is_online && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-[#0a0a0a]" />
                   )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
+                  {/* Bold Title */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-semibold text-foreground truncate">
-                        {convo.friend_character_name || convo.friend_username || 'Friend'}
-                      </span>
-                      {convo.is_online && (
-                        <span className="text-[10px] text-green-500 font-medium shrink-0">Online</span>
-                      )}
-                    </div>
+                    <span className="font-bold text-white text-base truncate">
+                      {convo.friend_character_name || convo.friend_username || 'Friend'}
+                    </span>
                     <span className="text-[11px] text-muted-foreground shrink-0">
                       {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
                     </span>
                   </div>
-                  {!convo.is_online && convo.last_seen && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
-                    </p>
-                  )}
-                  <p className={`text-sm truncate ${
-                    convo.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  {/* Narrative Snippet - Italicized/Dimmed */}
+                  <p className={`text-sm truncate mt-0.5 italic ${
+                    convo.unread_count > 0 ? 'text-gray-300' : 'text-gray-500'
                   }`}>
                     {convo.last_message}
                   </p>
+                  {!convo.is_online && convo.last_seen && (
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
+                    </p>
+                  )}
                 </div>
+
+                {/* Purple Badge for Unread - Mascot Style */}
+                {convo.unread_count > 0 && (
+                  <div className="flex-shrink-0">
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="min-w-[24px] h-6 px-2 bg-[#7C3AED] rounded-full flex items-center justify-center text-xs font-bold text-white"
+                    >
+                      {convo.unread_count}
+                    </motion.span>
+                  </div>
+                )}
               </button>
               
               {/* Context Menu */}
