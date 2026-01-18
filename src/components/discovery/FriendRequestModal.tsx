@@ -91,9 +91,9 @@ export const FriendRequestModal = ({
       // Create notification for the addressee with friendship_id for accept/decline
       await supabase.from('notifications').insert({
         user_id: targetCharacter.owner_id,
-        type: 'friend_request',
-        title: 'New Friend Request',
-        body: `${requesterCharacterName} wants to connect!`,
+        type: 'roleplay_proposal',
+        title: 'New Roleplay Proposal',
+        body: `${requesterCharacterName} wants to start a story with you!`,
         data: { 
           requester_id: user.id,
           username: profile?.username,
@@ -104,8 +104,8 @@ export const FriendRequestModal = ({
       });
 
       toast({
-        title: 'Request sent!',
-        description: `Your friend request has been sent to ${targetCharacter.profiles?.username || 'this user'}`,
+        title: 'Proposal sent!',
+        description: `Your roleplay proposal has been sent to ${targetCharacter.profiles?.username || 'this user'}`,
       });
 
       setStarterMessage('');
@@ -113,7 +113,7 @@ export const FriendRequestModal = ({
       onOpenChange(false);
     } catch (error: any) {
       toast({
-        title: 'Failed to send request',
+        title: 'Failed to send proposal',
         description: error.message,
         variant: 'destructive',
       });
@@ -129,9 +129,9 @@ export const FriendRequestModal = ({
       <DialogContent className="glass-card border-glass-border max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display text-xl text-foreground">
-            Send Friend Request
+            Start a Story
           </DialogTitle>
-          <DialogDescription>Write a starter message to begin the conversation.</DialogDescription>
+          <DialogDescription>Propose a roleplay with a compelling plot hook.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -188,13 +188,13 @@ export const FriendRequestModal = ({
             </div>
           )}
 
-          {/* Starter Message */}
+          {/* Plot Hook */}
           <div className="space-y-2">
-            <Label className="text-foreground">Starter Message *</Label>
+            <Label className="text-foreground">Plot Hook *</Label>
             <Textarea
               value={starterMessage}
               onChange={(e) => setStarterMessage(e.target.value)}
-              placeholder="Write an opening message to start the conversation..."
+              placeholder="Set the scene... (e.g., 'A stranger approaches your character in the tavern, their cloak dripping from the storm outside...')"
               className="bg-input border-border min-h-[100px] resize-none"
               maxLength={500}
             />
@@ -219,7 +219,7 @@ export const FriendRequestModal = ({
               className="flex-1 bg-gradient-to-r from-neon-purple to-neon-pink text-primary-foreground"
             >
               <Send className="w-4 h-4 mr-2" />
-              {isLoading ? 'Sending...' : 'Send Request'}
+              {isLoading ? 'Sending...' : 'Propose Story'}
             </Button>
           </div>
         </div>

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, MessageSquare } from 'lucide-react';
+import { Check, X, Scroll } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-interface FriendRequest {
+interface RoleplayProposal {
   id: string;
   requester_id: string;
   starter_message: string;
@@ -28,7 +28,7 @@ interface FriendRequestsLobbyProps {
 export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [requests, setRequests] = useState<RoleplayProposal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,9 +84,9 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
       .eq('id', requestId);
 
     if (error) {
-      toast({ title: 'Failed to accept request', variant: 'destructive' });
+      toast({ title: 'Failed to accept proposal', variant: 'destructive' });
     } else {
-      toast({ title: 'Friend request accepted!' });
+      toast({ title: 'Story begins! Roleplay accepted.' });
       setRequests(prev => prev.filter(r => r.id !== requestId));
       onRequestHandled();
     }
@@ -99,9 +99,9 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
       .eq('id', requestId);
 
     if (error) {
-      toast({ title: 'Failed to decline request', variant: 'destructive' });
+      toast({ title: 'Failed to decline proposal', variant: 'destructive' });
     } else {
-      toast({ title: 'Friend request declined' });
+      toast({ title: 'Roleplay proposal declined' });
       setRequests(prev => prev.filter(r => r.id !== requestId));
       onRequestHandled();
     }
@@ -123,11 +123,11 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
     <div className="space-y-4 mb-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-primary" />
-          Friend Requests
+          <Scroll className="w-5 h-5 text-primary" />
+          Roleplay Proposals
         </h3>
-        <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-          {requests.length} pending
+        <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+          {requests.length} awaiting
         </span>
       </div>
       
@@ -166,9 +166,10 @@ export const FriendRequestsLobby = ({ onRequestHandled }: FriendRequestsLobbyPro
                     @{request.requester_profile?.username || 'anonymous'}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {request.starter_message}
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2 italic">
+                  "{request.starter_message}"
                 </p>
+                <span className="text-xs text-primary/70 mt-1">Plot Hook</span>
               </div>
             </div>
 

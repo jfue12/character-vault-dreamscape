@@ -25,7 +25,8 @@ interface ChatBubbleProps {
   isAI?: boolean; // Is this an AI message
 }
 
-const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+// Narrative-focused reactions for storytelling
+const REACTION_EMOJIS = ['❤️', '😱', '🔥', '💔', '✨', '🎭'];
 
 export const ChatBubble = ({
   messageId,
@@ -133,9 +134,9 @@ export const ChatBubble = ({
               </div>
             )}
           </div>
-          {/* Online indicator - shown for other users' messages */}
+          {/* Active in Story indicator - shown for other users' messages */}
           {!isOwnMessage && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background" title="Active in Story" />
           )}
         </div>
         <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>

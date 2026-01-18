@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, UserPlus, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe, ThumbsUp, MessageSquare } from 'lucide-react';
+import { X, Bell, Scroll, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe, Sparkles, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +108,7 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleAcceptFriendRequest = async (notification: Notification, e: React.MouseEvent) => {
+  const handleAcceptRoleplayProposal = async (notification: Notification, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!notification.data?.friendship_id) return;
 
@@ -120,9 +120,9 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       .eq('id', notification.data.friendship_id);
 
     if (error) {
-      toast({ title: 'Failed to accept request', variant: 'destructive' });
+      toast({ title: 'Failed to accept proposal', variant: 'destructive' });
     } else {
-      toast({ title: 'Friend request accepted!' });
+      toast({ title: 'Story begins! Roleplay accepted.' });
       deleteNotification(notification.id);
     }
 
@@ -133,7 +133,7 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
     });
   };
 
-  const handleDeclineFriendRequest = async (notification: Notification, e: React.MouseEvent) => {
+  const handleDeclineRoleplayProposal = async (notification: Notification, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!notification.data?.friendship_id) return;
 
@@ -145,9 +145,9 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
       .eq('id', notification.data.friendship_id);
 
     if (error) {
-      toast({ title: 'Failed to decline request', variant: 'destructive' });
+      toast({ title: 'Failed to decline proposal', variant: 'destructive' });
     } else {
-      toast({ title: 'Friend request declined' });
+      toast({ title: 'Roleplay proposal declined' });
       deleteNotification(notification.id);
     }
 
@@ -204,8 +204,9 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'roleplay_proposal':
       case 'friend_request':
-        return <UserPlus className="w-5 h-5 text-primary" />;
+        return <Scroll className="w-5 h-5 text-primary" />;
       case 'dm':
         return <MessageCircle className="w-5 h-5 text-primary" />;
       case 'moderation':
@@ -216,8 +217,8 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
         return <Globe className="w-5 h-5 text-primary" />;
       case 'world_invite':
         return <Users className="w-5 h-5 text-primary" />;
-      case 'post_like':
-        return <ThumbsUp className="w-5 h-5 text-primary" />;
+      case 'story_reaction':
+        return <Sparkles className="w-5 h-5 text-amber-500" />;
       case 'post_comment':
         return <MessageSquare className="w-5 h-5 text-primary" />;
       default:
@@ -227,23 +228,24 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
 
   const getNotificationMessage = (notification: Notification): string => {
     const data = notification.data || {};
-    const username = data.username || data.character_name || 'Someone';
+    const characterName = data.character_name || data.username || 'Someone';
     
     switch (notification.type) {
+      case 'roleplay_proposal':
       case 'friend_request':
-        return `${username} sent you a friend request!`;
+        return `${characterName} wants to start a story with you!`;
       case 'dm':
-        return `${username} sent you a message`;
+        return `${characterName} continues your story`;
       case 'follow':
-        return `${username} followed you!`;
+        return `${characterName} is following your journey!`;
       case 'world_join':
-        return `${username} joined your world "${data.world_name || 'your world'}"`;
+        return `${characterName} joined your world "${data.world_name || 'your world'}"`;
       case 'world_invite':
-        return `You've been invited to join "${data.world_name || 'a world'}"`;
-      case 'post_like':
-        return `${username} liked your post`;
+        return `You've been invited to explore "${data.world_name || 'a world'}"`;
+      case 'story_reaction':
+        return `${characterName} reacted to your story beat`;
       case 'post_comment':
-        return `${username} commented on your post`;
+        return `${characterName} commented on your lore`;
       case 'moderation':
         return notification.body || 'Moderation action taken';
       default:
@@ -318,7 +320,7 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
               ) : (
                 <div className="divide-y divide-border">
                   {notifications.map((notification) => {
-                    const isFriendRequest = notification.type === 'friend_request';
+                    const isRoleplayProposal = notification.type === 'roleplay_proposal' || notification.type === 'friend_request';
                     const isProcessing = processingIds.has(notification.id);
                     
                     return (
@@ -329,7 +331,7 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                         className={`p-4 hover:bg-secondary/30 transition-colors cursor-pointer relative group ${
                           !notification.is_read ? 'bg-primary/5' : ''
                         }`}
-                        onClick={() => !isFriendRequest && handleNotificationClick(notification)}
+                        onClick={() => !isRoleplayProposal && handleNotificationClick(notification)}
                       >
                         <div className="flex gap-3">
                           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -345,24 +347,27 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                               )}
                             </div>
                             
-                            {/* Show starter message for friend requests */}
-                            {isFriendRequest && notification.data?.starter_message && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2 italic">
-                                "{notification.data.starter_message}"
-                              </p>
+                            {/* Show plot hook for roleplay proposals */}
+                            {isRoleplayProposal && notification.data?.starter_message && (
+                              <div className="mt-2">
+                                <span className="text-xs text-primary/70">Plot Hook:</span>
+                                <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2 italic">
+                                  "{notification.data.starter_message}"
+                                </p>
+                              </div>
                             )}
                             
                             <p className="text-xs text-muted-foreground mt-1">
                               {format(new Date(notification.created_at), 'MMM d, h:mm a')}
                             </p>
                             
-                            {/* Accept/Decline buttons for friend requests */}
-                            {isFriendRequest && notification.data?.friendship_id && (
+                            {/* Accept/Decline buttons for roleplay proposals */}
+                            {isRoleplayProposal && notification.data?.friendship_id && (
                               <div className="flex gap-2 mt-3">
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  onClick={(e) => handleDeclineFriendRequest(notification, e)}
+                                  onClick={(e) => handleDeclineRoleplayProposal(notification, e)}
                                   disabled={isProcessing}
                                   className="flex-1"
                                 >
@@ -371,20 +376,20 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={(e) => handleAcceptFriendRequest(notification, e)}
+                                  onClick={(e) => handleAcceptRoleplayProposal(notification, e)}
                                   disabled={isProcessing}
                                   className="flex-1 bg-gradient-to-r from-primary to-purple-600"
                                 >
                                   <Check className="w-3.5 h-3.5 mr-1" />
-                                  Accept
+                                  Begin Story
                                 </Button>
                               </div>
                             )}
                           </div>
                         </div>
                         
-                        {/* Delete button - not for friend requests with pending action */}
-                        {!isFriendRequest && (
+                        {/* Delete button - not for roleplay proposals with pending action */}
+                        {!isRoleplayProposal && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

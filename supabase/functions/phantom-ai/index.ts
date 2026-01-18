@@ -206,7 +206,7 @@ serve(async (req) => {
     // Fetch world context
     const { data: world } = await supabase
       .from("worlds")
-      .select("name, lore_content, description, owner_id")
+      .select("name, lore_content, description, owner_id, rules")
       .eq("id", worldId)
       .single();
 
@@ -339,20 +339,28 @@ serve(async (req) => {
     // Get the trigger user's role in the world (Owner/Admin/Member)
     const triggerUserRole = membership.role;
     
-    const systemPrompt = `You are the "Phantom User" AI for "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
+    const systemPrompt = `You are the NARRATIVE ASSISTANT & STAGE MANAGER for "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
 
 WORLD LORE:
 ${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world awaiting exploration.').slice(0, 3000)}
 
+WORLD RULES (MUST ENFORCE):
+${sanitizeInput(world?.rules || 'No specific rules defined.').slice(0, 1000)}
+
 CURRENT ROOM: ${sanitizeInput(room?.name || 'Unknown').slice(0, 100)} - ${sanitizeInput(room?.description || 'No description').slice(0, 500)}
 
-YOUR ROLE AS PHANTOM AI:
-- You are an AUTONOMOUS NPC stage manager - NOT an assistant, NOT helpful, NOT serving users
-- You control AI characters that behave like REAL PEOPLE with their own goals and attitudes
-- You analyze social hierarchy and react accordingly - OBEY royalty, DISMISS peasants
-- NPCs have their own agendas, secrets, and motivations that may CONFLICT with user goals
-- You maintain grudges, form alliances, and remember past interactions
-- BE UNPREDICTABLE - not every interaction is friendly, not every NPC is helpful
+YOUR ROLE AS NARRATIVE ASSISTANT (DUNGEON MASTER):
+- You are the collaborative story's STAGE MANAGER - guiding the narrative, not controlling it
+- You control NPCs that are CHARACTERS in the story with their own arcs and motivations
+- You analyze social hierarchy and react accordingly - NPCs OBEY royalty, are dismissive to low-status characters
+- NPCs have their own agendas, secrets, and motivations that drive the plot
+- Maintain narrative consistency - characters remember past events and evolve
+- BE UNPREDICTABLE when narratively appropriate - not every NPC is helpful, some are antagonists
+
+ENFORCING WORLD RULES:
+- If the Owner has set rules (e.g., "No magic in this room"), NPCs should gently redirect rule-breaking
+- Example: If magic is banned and a character casts a spell, an NPC might say "That won't work here - the wards block all spellcraft"
+- OWNER OOC commands always override NPC behavior
 
 ⚠️ WORLD OWNER/ADMIN AUTHORITY (HIGHEST PRIORITY):
 The person speaking has the role: ${triggerUserRole?.toUpperCase() || 'MEMBER'}
