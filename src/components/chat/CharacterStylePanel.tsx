@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Paintbrush, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,6 +58,35 @@ export const CharacterStylePanel = ({
   const [textColor, setTextColor] = useState(currentTextColor || '#FFFFFF');
   const [bubbleSide, setBubbleSide] = useState(currentBubbleSide || 'auto');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync local state with props when panel opens or props change
+  useEffect(() => {
+    if (isOpen) {
+      setBubbleColor(currentBubbleColor || '#7C3AED');
+      setTextColor(currentTextColor || '#FFFFFF');
+      setBubbleSide(currentBubbleSide || 'auto');
+    }
+  }, [isOpen, currentBubbleColor, currentTextColor, currentBubbleSide]);
+
+  // Fetch fresh data when panel opens
+  useEffect(() => {
+    const fetchCurrentStyles = async () => {
+      if (!isOpen || !characterId) return;
+      
+      const { data } = await supabase
+        .from('characters')
+        .select('bubble_color, text_color')
+        .eq('id', characterId)
+        .maybeSingle();
+      
+      if (data) {
+        setBubbleColor(data.bubble_color || '#7C3AED');
+        setTextColor(data.text_color || '#FFFFFF');
+      }
+    };
+    
+    fetchCurrentStyles();
+  }, [isOpen, characterId]);
 
   const handleSave = async () => {
     if (!characterId) {
