@@ -32,12 +32,10 @@ interface Conversation {
   last_message: string;
   last_message_at: string;
   unread_count: number;
-  is_online?: boolean;
-  last_seen?: string | null;
 }
 
 interface ConversationListProps {
-  onSelectConversation: (friendshipId: string, friendId: string) => void;
+  onSelectConversation: (friendshipId: string, friendId?: string) => void;
 }
 
 export const ConversationList = ({ onSelectConversation }: ConversationListProps) => {
@@ -269,10 +267,6 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                       </div>
                     )}
                   </div>
-                  {/* Online indicator */}
-                  {convo.is_online && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-[#0a0a0a]" />
-                  )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -298,11 +292,6 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
                   }`}>
                     {convo.last_message}
                   </p>
-                  {!convo.is_online && convo.last_seen && (
-                    <p className="text-[10px] text-gray-600 mt-0.5">
-                      Active {formatDistanceToNow(new Date(convo.last_seen), { addSuffix: true })}
-                    </p>
-                  )}
                 </div>
 
                 {/* Purple Badge for Unread - Mascot Style */}

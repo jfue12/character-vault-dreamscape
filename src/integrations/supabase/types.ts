@@ -464,9 +464,11 @@ export type Database = {
       }
       friendships: {
         Row: {
+          addressee_background_url: string | null
           addressee_id: string
           created_at: string
           id: string
+          requester_background_url: string | null
           requester_character_id: string | null
           requester_id: string
           starter_message: string
@@ -474,9 +476,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          addressee_background_url?: string | null
           addressee_id: string
           created_at?: string
           id?: string
+          requester_background_url?: string | null
           requester_character_id?: string | null
           requester_id: string
           starter_message: string
@@ -484,9 +488,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          addressee_background_url?: string | null
           addressee_id?: string
           created_at?: string
           id?: string
+          requester_background_url?: string | null
           requester_character_id?: string | null
           requester_id?: string
           starter_message?: string
@@ -823,6 +829,7 @@ export type Database = {
           following_count: number | null
           id: string
           is_minor: boolean
+          nsfw_unlocked: boolean
           stories_count: number | null
           updated_at: string
           username: string | null
@@ -836,6 +843,7 @@ export type Database = {
           following_count?: number | null
           id: string
           is_minor?: boolean
+          nsfw_unlocked?: boolean
           stories_count?: number | null
           updated_at?: string
           username?: string | null
@@ -849,6 +857,7 @@ export type Database = {
           following_count?: number | null
           id?: string
           is_minor?: boolean
+          nsfw_unlocked?: boolean
           stories_count?: number | null
           updated_at?: string
           username?: string | null
@@ -1287,6 +1296,7 @@ export type Database = {
       world_members: {
         Row: {
           active_character_id: string | null
+          bubble_side: string | null
           id: string
           is_banned: boolean
           joined_at: string
@@ -1297,6 +1307,7 @@ export type Database = {
         }
         Insert: {
           active_character_id?: string | null
+          bubble_side?: string | null
           id?: string
           is_banned?: boolean
           joined_at?: string
@@ -1307,6 +1318,7 @@ export type Database = {
         }
         Update: {
           active_character_id?: string | null
+          bubble_side?: string | null
           id?: string
           is_banned?: boolean
           joined_at?: string
@@ -1332,6 +1344,54 @@ export type Database = {
           },
           {
             foreignKeyName: "world_members_world_id_fkey"
+            columns: ["world_id"]
+            isOneToOne: false
+            referencedRelation: "worlds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          updated_at: string
+          world_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          updated_at?: string
+          world_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          updated_at?: string
+          world_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_reports_world_id_fkey"
             columns: ["world_id"]
             isOneToOne: false
             referencedRelation: "worlds"

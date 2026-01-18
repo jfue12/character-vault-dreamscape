@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Search, Globe, MessageCircle, UserSearch } from 'lucide-react';
+import { Users, Search, Globe, MessageCircle, UserSearch, Compass } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -12,6 +12,7 @@ import { UserSearchPanel } from '@/components/hub/UserSearchPanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { usePresence } from '@/hooks/usePresence';
 
 interface World {
   id: string;
@@ -36,6 +37,7 @@ export default function Index() {
   const [joiningWorldId, setJoiningWorldId] = useState<string | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { isUserOnline } = usePresence();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -224,49 +226,48 @@ export default function Index() {
       fabTo="/create-world"
     >
       <div className="max-w-lg mx-auto">
-        {/* Tab Switcher - Mascot Style: Roleplays + Direct Messages */}
+        {/* Tab Switcher - My Worlds / Discover Worlds / Messages */}
         <div className="flex gap-1 mb-5 p-1 bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a]">
           <button
             onClick={() => setActiveTab('my-worlds')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'my-worlds' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
                 : 'text-muted-foreground hover:text-white'
             }`}
           >
-            Roleplays
+            <Globe className="w-4 h-4" />
+            My Worlds
+          </button>
+          <button
+            onClick={() => setActiveTab('discover')}
+            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'discover' 
+                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
+                : 'text-muted-foreground hover:text-white'
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            Discover
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'messages' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
                 : 'text-muted-foreground hover:text-white'
             }`}
           >
-            Direct Messages
+            <MessageCircle className="w-4 h-4" />
+            Messages
           </button>
         </div>
-
-        {/* Discover toggle - subtle secondary option */}
-        {activeTab !== 'messages' && (
-          <button
-            onClick={() => setActiveTab(activeTab === 'discover' ? 'my-worlds' : 'discover')}
-            className={`w-full mb-4 py-2 text-sm font-medium transition-colors rounded-lg ${
-              activeTab === 'discover'
-                ? 'text-[#7C3AED] bg-[#7C3AED]/10'
-                : 'text-muted-foreground hover:text-white'
-            }`}
-          >
-            {activeTab === 'discover' ? '← Back to My Worlds' : 'Discover New Worlds →'}
-          </button>
-        )}
 
         {activeTab !== 'messages' && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search worlds..."
+              placeholder={activeTab === 'discover' ? "Search by name, tags..." : "Search your worlds..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
