@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, Scroll, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe, Sparkles, MessageSquare } from 'lucide-react';
+import { X, Bell, Scroll, MessageCircle, Shield, Check, Trash2, Users, Heart, Globe, Sparkles, MessageSquare, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -304,9 +304,14 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 h-full w-full max-w-sm bg-background border-l border-border z-50 overflow-hidden flex flex-col"
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate('/notifications');
+                }}
+                className="flex items-center gap-2 hover:text-primary transition-colors"
+              >
                 <Bell className="w-5 h-5 text-primary" />
                 <h2 className="font-semibold text-foreground">Notifications</h2>
                 {unreadCount > 0 && (
@@ -314,7 +319,8 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
                     {unreadCount}
                   </span>
                 )}
-              </div>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
