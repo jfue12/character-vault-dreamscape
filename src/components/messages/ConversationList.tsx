@@ -323,11 +323,11 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
               className="relative group"
             >
               <div
-                onClick={() => convo.status === 'accepted' && onSelectConversation(convo.id, convo.friend_id)}
-                className={`w-full flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] hover:bg-[#111] border transition-all text-left ${
+                onClick={() => onSelectConversation(convo.id, convo.friend_id)}
+                className={`w-full flex items-center gap-4 p-3 rounded-2xl bg-[#0a0a0a] hover:bg-[#111] border transition-all text-left cursor-pointer ${
                   convo.status === 'pending' 
                     ? 'border-[#7C3AED]/40' 
-                    : 'border-[#1a1a1a] hover:border-[#7C3AED]/30 cursor-pointer'
+                    : 'border-[#1a1a1a] hover:border-[#7C3AED]/30'
                 }`}
               >
                 {/* Large Square Thumbnail - Mascot Style */}
