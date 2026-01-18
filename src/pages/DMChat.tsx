@@ -133,9 +133,14 @@ export default function DMChat() {
       if (charData) activeChar = charData;
     }
 
+    // Filter out email-like usernames
+    const displayUsername = profile?.username && !profile.username.includes('@') 
+      ? profile.username 
+      : null;
+
     setFriend({
       id: friendId,
-      username: profile?.username || null,
+      username: displayUsername,
       active_character: activeChar
     });
 
@@ -427,7 +432,7 @@ export default function DMChat() {
     }
   };
 
-  const displayName = friend?.active_character?.name || friend?.username || 'Chat';
+  const displayName = friend?.active_character?.name || friend?.username || 'New User';
 
   if (loading || authLoading) {
     return (
@@ -480,7 +485,7 @@ export default function DMChat() {
             </div>
             <div className="flex flex-col">
               <span className="font-semibold text-foreground text-sm">{displayName}</span>
-              {friend?.username && (
+              {friend?.username && friend.username !== displayName && (
                 <span className="text-xs text-muted-foreground">@{friend.username}</span>
               )}
             </div>
