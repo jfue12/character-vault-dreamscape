@@ -911,11 +911,17 @@ export default function RoomChat() {
           onTypingChange={handleTypingChange}
           disabled={false}
           roomId={currentRoom?.id || ''}
+          worldId={worldId}
           characters={characters}
           selectedCharacterId={selectedCharacterId}
           onSelectCharacter={handleCharacterSelect}
           onCreateCharacter={() => setShowCreateCharacter(true)}
           baseProfileName={profile?.username || 'You'}
+          isStaff={isOwner || isAdmin}
+          onStyleUpdated={() => {
+            fetchUserCharacters();
+            if (roomId) fetchMessages(roomId);
+          }}
         />
       </div>
 

@@ -513,6 +513,8 @@ export default function DMChat() {
             onTypingChange={handleTypingChange}
             disabled={false}
             friendshipId={friendshipId || ''}
+            selectedCharacterId={selectedCharacterId}
+            onStyleUpdated={fetchMessages}
           />
         </div>
       </div>

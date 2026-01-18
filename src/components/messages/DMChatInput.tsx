@@ -1,26 +1,49 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, Image, Smile } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { CharacterStylePanel } from '@/components/chat/CharacterStylePanel';
 
 interface DMChatInputProps {
   onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
   onTypingChange: (isTyping: boolean) => void;
   disabled?: boolean;
   friendshipId: string;
+  selectedCharacterId?: string | null;
+  onStyleUpdated?: () => void;
 }
 
 const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺'];
 
-export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId }: DMChatInputProps) => {
+export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, selectedCharacterId, onStyleUpdated }: DMChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [messageType, setMessageType] = useState<'dialogue' | 'thought' | 'narrator'>('dialogue');
   const [showEmojis, setShowEmojis] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [characterStyle, setCharacterStyle] = useState<{ bubble_color?: string | null; text_color?: string | null }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch character style when character changes
+  useEffect(() => {
+    const fetchCharacterStyle = async () => {
+      if (!selectedCharacterId) {
+        setCharacterStyle({});
+        return;
+      }
+      const { data } = await supabase
+        .from('characters')
+        .select('bubble_color, text_color')
+        .eq('id', selectedCharacterId)
+        .single();
+      if (data) {
+        setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+      }
+    };
+    fetchCharacterStyle();
+  }, [selectedCharacterId]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setContent(e.target.value);
@@ -166,6 +189,28 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId }: 
         >
           <Smile className="w-5 h-5" />
         </button>
+
+        <CharacterStylePanel
+          characterId={selectedCharacterId || null}
+          currentBubbleColor={characterStyle.bubble_color}
+          currentTextColor={characterStyle.text_color}
+          onStyleUpdated={() => {
+            onStyleUpdated?.();
+            // Refetch character style
+            if (selectedCharacterId) {
+              supabase
+                .from('characters')
+                .select('bubble_color, text_color')
+                .eq('id', selectedCharacterId)
+                .single()
+                .then(({ data }) => {
+                  if (data) {
+                    setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+                  }
+                });
+            }
+          }}
+        />
 
         <input
           type="text"
