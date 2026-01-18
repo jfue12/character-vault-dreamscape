@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronDown, Users, Settings } from 'lucide-react';
+import { ChevronLeft, Users, Settings, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RoomScroller } from '@/components/chat/RoomScroller';
-import { PersonaSwitcher } from '@/components/chat/PersonaSwitcher';
 import { ChatBubble } from '@/components/chat/ChatBubble';
-import { ChatInput } from '@/components/chat/ChatInput';
+import { MascotChatInput } from '@/components/chat/MascotChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { ChatMemberList } from '@/components/chat/ChatMemberList';
@@ -102,7 +101,7 @@ export default function RoomChat() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showRoomScroller, setShowRoomScroller] = useState(true);
+  // Room scroller is now always visible in Mascot style
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showMemberList, setShowMemberList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -652,89 +651,82 @@ export default function RoomChat() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-[#000] flex flex-col">
       {/* Background */}
       {currentRoom?.background_url && (
         <div 
-          className="fixed inset-0 bg-cover bg-center opacity-20 z-0"
+          className="fixed inset-0 bg-cover bg-center opacity-30 z-0"
           style={{ backgroundImage: `url(${currentRoom.background_url})` }}
         />
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
+      {/* Header - Mascot Style */}
+      <header className="sticky top-0 z-50 bg-[#000]/90 backdrop-blur-xl border-b border-[#1a1a1a]">
         <div className="flex items-center justify-between px-4 h-14">
           <button 
-            onClick={() => navigate('/hub')} 
-            className="p-2 -ml-2"
+            onClick={() => navigate('/')} 
+            className="p-2 -ml-2 text-white hover:text-[#7C3AED] transition-colors"
           >
-            <ChevronLeft className="w-6 h-6 text-foreground" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
           
-          <div className="flex flex-col items-center">
-            <h1 className="font-semibold text-foreground">{world?.name}</h1>
-            <button 
-              className="flex items-center gap-1 text-xs text-muted-foreground"
-              onClick={() => setShowRoomScroller(!showRoomScroller)}
-            >
-              {currentRoom?.name}
-              <ChevronDown className="w-3 h-3" />
-            </button>
+          <div className="flex flex-col items-center flex-1 min-w-0">
+            <h1 className="font-semibold text-white truncate max-w-[200px]">{world?.name}</h1>
+            {/* Typing Indicator in Header */}
+            {typingUsers.length > 0 ? (
+              <span className="text-xs text-[#7C3AED] animate-pulse">
+                {typingUsers.length === 1 
+                  ? `${typingUsers[0].name} is typing...`
+                  : `${typingUsers.length} people typing...`
+                }
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500">{currentRoom?.name}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setShowMemberList(true)}
-              className="p-2 relative"
+              className="p-2 relative text-white hover:text-[#7C3AED] transition-colors"
             >
-              <Users className="w-5 h-5 text-foreground" />
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-primary text-primary-foreground text-[10px] font-medium rounded-full flex items-center justify-center px-1">
+              <Users className="w-5 h-5" />
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[#7C3AED] text-white text-[10px] font-medium rounded-full flex items-center justify-center px-1">
                 {members.length}
               </span>
             </button>
             {(isOwner || isAdmin) && (
               <button 
                 onClick={() => setShowSettings(true)}
-                className="p-2"
+                className="p-2 text-white hover:text-[#7C3AED] transition-colors"
               >
-                <Settings className="w-5 h-5 text-foreground" />
+                <Settings className="w-5 h-5" />
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Collapsible Room Scroller */}
-      <AnimatePresence>
-        {showRoomScroller && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="z-40 bg-background/80 backdrop-blur-sm border-b border-border overflow-hidden"
-          >
-            <div className="py-2">
-              <RoomScroller
-                rooms={rooms}
-                selectedId={currentRoom?.id || null}
-                onSelect={handleRoomChange}
-                onCreateRoom={isOwner ? handleCreateRoom : undefined}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Room Scroller - Always Visible Mascot Style */}
+      <div className="z-40 bg-[#000]/80 backdrop-blur-sm border-b border-[#1a1a1a] py-2">
+        <RoomScroller
+          rooms={rooms}
+          selectedId={currentRoom?.id || null}
+          onSelect={handleRoomChange}
+          onCreateRoom={isOwner ? handleCreateRoom : undefined}
+        />
+      </div>
 
       {/* Messages Area */}
-      <main className="flex-1 pb-56 px-4 overflow-y-auto relative z-10 pt-4">
-        <div className="max-w-lg mx-auto space-y-2">
+      <main className="flex-1 pb-52 px-4 overflow-y-auto relative z-10 pt-4">
+        <div className="max-w-lg mx-auto space-y-3">
           {allMessages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-20"
             >
-              <p className="text-muted-foreground">No messages yet. Start the roleplay!</p>
+              <p className="text-gray-500">No messages yet. Start the roleplay!</p>
             </motion.div>
           ) : (
             allMessages.map((item) => {
@@ -782,34 +774,18 @@ export default function RoomChat() {
         </div>
       </main>
 
-      {/* AI Typing Indicator - disabled */}
-
-      {/* Typing Indicator */}
-      <div className="fixed bottom-36 left-0 right-0 z-40">
-        <div className="max-w-lg mx-auto">
-          <TypingIndicator typingUsers={typingUsers} />
-        </div>
-      </div>
-
-      {/* Bottom Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
-        {/* Persona Switcher */}
-        <div className="border-b border-border">
-          <PersonaSwitcher
-            characters={characters}
-            selectedId={selectedCharacterId}
-            onSelect={handleCharacterSelect}
-            baseProfileName={profile?.username || 'You'}
-            onCreateNew={() => setShowCreateCharacter(true)}
-          />
-        </div>
-        
-        {/* Chat Input */}
-        <ChatInput
+      {/* Bottom Input Area - Mascot Style */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <MascotChatInput
           onSend={handleSendMessage}
           onTypingChange={handleTypingChange}
           disabled={false}
           roomId={currentRoom?.id || ''}
+          characters={characters}
+          selectedCharacterId={selectedCharacterId}
+          onSelectCharacter={handleCharacterSelect}
+          onCreateCharacter={() => setShowCreateCharacter(true)}
+          baseProfileName={profile?.username || 'You'}
         />
       </div>
 
