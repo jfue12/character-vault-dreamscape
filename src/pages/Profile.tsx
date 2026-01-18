@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Settings, ChevronRight } from 'lucide-react';
+import { LogOut, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -39,6 +39,7 @@ export default function Profile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [ocTab, setOcTab] = useState<'visible' | 'hidden'>('visible');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -55,6 +56,7 @@ export default function Profile() {
   const fetchCharacters = async () => {
     if (!user) return;
 
+    // Only fetch characters owned by the user (not AI characters)
     const { data, error } = await supabase
       .from('characters')
       .select('*')
@@ -63,7 +65,11 @@ export default function Profile() {
 
     if (!error && data) {
       setCharacters(data);
-      if (!selectedCharacterId && data.length > 0) {
+      // Select first visible character by default
+      const visibleChars = data.filter(c => !c.is_hidden);
+      if (!selectedCharacterId && visibleChars.length > 0) {
+        setSelectedCharacterId(visibleChars[0].id);
+      } else if (!selectedCharacterId && data.length > 0) {
         setSelectedCharacterId(data[0].id);
       }
     }
@@ -137,10 +143,36 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {/* Character Scroller */}
+        {/* OC Organization Tabs */}
+        <div className="flex gap-2 mb-4 mx-4">
+          <button
+            onClick={() => setOcTab('visible')}
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              ocTab === 'visible'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Eye className="w-4 h-4" />
+            Public ({characters.filter(c => !c.is_hidden).length})
+          </button>
+          <button
+            onClick={() => setOcTab('hidden')}
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              ocTab === 'hidden'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <EyeOff className="w-4 h-4" />
+            Hidden ({characters.filter(c => c.is_hidden).length})
+          </button>
+        </div>
+
+        {/* Character Scroller - filtered by tab */}
         <div className="mb-4">
           <CharacterScroller
-            characters={characters}
+            characters={characters.filter(c => ocTab === 'visible' ? !c.is_hidden : c.is_hidden)}
             selectedId={selectedCharacterId}
             onSelect={setSelectedCharacterId}
             onAddNew={() => setIsCreateModalOpen(true)}

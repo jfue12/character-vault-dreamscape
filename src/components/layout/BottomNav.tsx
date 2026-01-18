@@ -1,4 +1,4 @@
-import { Layers, BookOpen, Hash, MessageCircle, Rss } from 'lucide-react';
+import { Globe, Hash, Rss } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -7,8 +7,7 @@ export const BottomNav = () => {
   const { profile } = useAuth();
 
   const navItems = [
-    { icon: Layers, label: 'Discovery', path: '/' },
-    { icon: BookOpen, label: 'Hub', path: '/hub' },
+    { icon: Globe, label: 'Worlds', path: '/' },
     { icon: Rss, label: 'Feed', path: '/feed' },
     { icon: Hash, label: 'Plots', path: '/plots' },
   ];

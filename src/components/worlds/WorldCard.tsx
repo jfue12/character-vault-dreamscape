@@ -22,6 +22,7 @@ interface WorldCardProps {
   isJoining?: boolean;
   onJoin?: () => void;
   onClick?: () => void;
+  memberCount?: number;
 }
 
 export const WorldCard = ({ 
@@ -31,7 +32,8 @@ export const WorldCard = ({
   showJoinButton = false,
   isJoining = false,
   onJoin,
-  onClick 
+  onClick,
+  memberCount
 }: WorldCardProps) => {
   const navigate = useNavigate();
   const isOwner = currentUserId === world.owner_id;
@@ -96,9 +98,17 @@ export const WorldCard = ({
       {/* Info */}
       <div className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-display font-bold text-foreground group-hover:text-primary transition-colors flex-1">
-            {world.name}
-          </h4>
+          <div className="flex-1">
+            <h4 className="font-display font-bold text-foreground group-hover:text-primary transition-colors">
+              {world.name}
+            </h4>
+            {memberCount !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                <Users className="w-3 h-3" />
+                <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+              </div>
+            )}
+          </div>
           
           {showJoinButton && (
             <Button
