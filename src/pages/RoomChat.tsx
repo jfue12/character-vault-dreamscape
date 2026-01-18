@@ -53,6 +53,7 @@ interface Message {
   attachment_url: string | null;
   emoji_reactions: Record<string, string[]> | null;
   character?: Character;
+  ai_character_name?: string; // For temp AI characters
   sender_username?: string;
   sender_role?: 'owner' | 'admin' | 'member';
 }
@@ -303,8 +304,10 @@ export default function RoomChat() {
     if (!error && data) {
       const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id as string))];
       const senderIds = [...new Set(data.map(m => m.sender_id))];
+      const aiMessageCharIds = [...new Set(data.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
       
       let characterMap: Record<string, Character> = {};
+      let tempAICharacterMap: Record<string, { name: string; bio?: string | null }> = {};
       let usernameMap: Record<string, string> = {};
       let roleMap: Record<string, 'owner' | 'admin' | 'member'> = {};
       
@@ -316,6 +319,18 @@ export default function RoomChat() {
         
         if (charData) {
           characterMap = Object.fromEntries(charData.map(c => [c.id, c]));
+        }
+      }
+
+      // Fetch temp AI characters for AI messages that don't have character data
+      if (aiMessageCharIds.length > 0) {
+        const { data: tempCharData } = await supabase
+          .from('temp_ai_characters')
+          .select('id, name, bio')
+          .in('id', aiMessageCharIds);
+        
+        if (tempCharData) {
+          tempAICharacterMap = Object.fromEntries(tempCharData.map(c => [c.id, { name: c.name, bio: c.bio }]));
         }
       }
 
@@ -342,14 +357,28 @@ export default function RoomChat() {
         }
       }
 
-      const messagesWithChars = data.map(m => ({
-        ...m,
-        type: m.type as 'dialogue' | 'thought' | 'narrator',
-        emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
-        character: m.character_id ? characterMap[m.character_id] : undefined,
-        sender_username: usernameMap[m.sender_id] || 'anonymous',
-        sender_role: roleMap[m.sender_id] || 'member'
-      }));
+      const messagesWithChars = data.map(m => {
+        // For AI messages, try to get character from temp_ai_characters if not in characters table
+        let character = m.character_id ? characterMap[m.character_id] : undefined;
+        let aiCharName: string | undefined;
+        
+        if (m.is_ai && m.character_id && !character) {
+          const tempChar = tempAICharacterMap[m.character_id];
+          if (tempChar) {
+            aiCharName = tempChar.name;
+          }
+        }
+
+        return {
+          ...m,
+          type: m.type as 'dialogue' | 'thought' | 'narrator',
+          emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
+          character: character,
+          ai_character_name: aiCharName,
+          sender_username: m.is_ai ? undefined : (usernameMap[m.sender_id] || 'anonymous'),
+          sender_role: roleMap[m.sender_id] || 'member'
+        };
+      });
 
       setMessages(messagesWithChars);
     }
@@ -384,31 +413,48 @@ export default function RoomChat() {
           const newMessage = payload.new as any;
           
           let character: Character | undefined;
-          let sender_username = 'anonymous';
+          let ai_character_name: string | undefined;
+          let sender_username: string | undefined = undefined;
           
           if (newMessage.character_id) {
+            // Try regular characters first
             const { data } = await supabase
               .from('characters')
               .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
               .eq('id', newMessage.character_id)
               .single();
-            if (data) character = data;
+            if (data) {
+              character = data;
+            } else if (newMessage.is_ai) {
+              // Try temp_ai_characters for AI messages
+              const { data: tempChar } = await supabase
+                .from('temp_ai_characters')
+                .select('name')
+                .eq('id', newMessage.character_id)
+                .maybeSingle();
+              if (tempChar) {
+                ai_character_name = tempChar.name;
+              }
+            }
           }
 
-          // Fetch sender username
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', newMessage.sender_id)
-            .maybeSingle();
-          
-          if (profileData?.username) {
-            sender_username = profileData.username;
+          // Only fetch sender username for non-AI messages
+          if (!newMessage.is_ai) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', newMessage.sender_id)
+              .maybeSingle();
+            
+            if (profileData?.username) {
+              sender_username = profileData.username;
+            }
           }
 
           setMessages(prev => [...prev, { 
             ...newMessage, 
             character,
+            ai_character_name,
             sender_username,
             emoji_reactions: newMessage.emoji_reactions || {}
           }]);
@@ -821,10 +867,13 @@ export default function RoomChat() {
               }
               
               const msg = item as Message & { isSystem: boolean };
-              const isOwnMessage = msg.sender_id === user?.id;
-              // AI messages should show their character name, not "Someone"
-              const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : (msg.is_ai ? 'AI Character' : 'Someone'));
-              const senderUsername = msg.sender_username || (isOwnMessage ? profile?.username : undefined);
+              const isOwnMessage = msg.sender_id === user?.id && !msg.is_ai;
+              // AI messages: use ai_character_name or character name, never show "AI Character" if we have a name
+              const displayName = msg.is_ai 
+                ? (msg.ai_character_name || msg.character?.name || 'AI Character')
+                : (msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone'));
+              // Don't show username for AI messages
+              const senderUsername = msg.is_ai ? undefined : (msg.sender_username || (isOwnMessage ? profile?.username : undefined));
               // AI messages should always be on the left (not owner/admin)
               const bubbleAlign = msg.is_ai ? 'left' : 'auto';
               return (
