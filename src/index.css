@@ -104,7 +104,12 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card border border-border rounded-xl;
+    @apply bg-card/80 backdrop-blur-xl border border-border rounded-2xl;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl;
   }
 
   .neon-text {
@@ -129,6 +134,25 @@
     border-radius: 50%;
   }
 
+  /* Pill tab styles */
+  .tab-pill {
+    @apply px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200;
+  }
+
+  .tab-pill-active {
+    @apply bg-primary text-primary-foreground shadow-lg;
+    box-shadow: 0 4px 20px hsl(270 100% 60% / 0.4);
+  }
+
+  .tab-pill-inactive {
+    @apply bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary;
+  }
+
+  /* Avatar ring for selection */
+  .avatar-ring-active {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -136,5 +160,25 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Animated border gradient */
+  .border-gradient {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: 1rem;
+  }
+  .border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 1.125rem;
+    background: linear-gradient(135deg, hsl(270 100% 60%), hsl(320 100% 65%), hsl(270 100% 60%));
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .border-gradient:hover::before {
+    opacity: 1;
   }
 }

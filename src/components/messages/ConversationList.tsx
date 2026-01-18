@@ -160,18 +160,18 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {conversations.map((convo, index) => (
         <motion.button
           key={convo.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.03 }}
           onClick={() => onSelectConversation(convo.id, convo.friend_id)}
-          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-colors text-left"
+          className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card/50 hover:bg-card border border-transparent hover:border-border transition-all text-left group"
         >
           <div className="relative">
-            <div className="w-14 h-14 rounded-full overflow-hidden">
+            <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
               {convo.friend_avatar_url ? (
                 <img 
                   src={convo.friend_avatar_url} 
@@ -187,22 +187,28 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
               )}
             </div>
             {convo.unread_count > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground">
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg"
+              >
                 {convo.unread_count}
-              </span>
+              </motion.span>
             )}
           </div>
           
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-foreground truncate">
                 {convo.friend_character_name || convo.friend_username || 'Friend'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground shrink-0">
                 {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground truncate">
+            <p className={`text-sm truncate ${
+              convo.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
+            }`}>
               {convo.last_message}
             </p>
           </div>
