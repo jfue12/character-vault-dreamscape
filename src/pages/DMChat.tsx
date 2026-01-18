@@ -406,6 +406,8 @@ export default function DMChat() {
     } else {
       toast({ title: 'Story begins! Roleplay accepted.' });
       setFriendshipStatus('accepted');
+      // Refetch messages now that the friendship is accepted
+      await fetchMessages();
     }
   };
 
@@ -431,6 +433,21 @@ export default function DMChat() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Safety check - if no friend data loaded, show error state
+  if (!friend) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <p className="text-muted-foreground mb-4">Unable to load conversation</p>
+        <button 
+          onClick={() => navigate('/messages')}
+          className="text-primary hover:underline"
+        >
+          Return to Messages
+        </button>
       </div>
     );
   }
