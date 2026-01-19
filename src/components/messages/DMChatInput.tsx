@@ -63,13 +63,8 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
     e.preventDefault();
     if (!content.trim() || disabled) return;
     
-    let finalType = messageType;
-    let finalContent = content.trim();
-    
-    if (finalContent.startsWith('(') && finalContent.endsWith(')')) {
-      finalType = 'thought';
-      finalContent = finalContent.slice(1, -1);
-    }
+    const finalType = messageType;
+    const finalContent = content.trim();
     
     onSend(finalContent, finalType);
     setContent('');
@@ -116,32 +111,13 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
     setShowEmojis(false);
   };
 
-  const typeOptions = [
-    { type: 'dialogue' as const, label: 'Talk', icon: '💬' },
-    { type: 'thought' as const, label: 'Think', icon: '💭' },
-    { type: 'narrator' as const, label: 'Narrate', icon: '📖' },
-  ];
+  // Toggle between dialogue and narrator only
+  const toggleMessageType = () => {
+    setMessageType(prev => prev === 'dialogue' ? 'narrator' : 'dialogue');
+  };
 
   return (
     <div className="p-3 pb-6">
-      {/* Message Type Selector */}
-      <div className="flex gap-1.5 mb-2">
-        {typeOptions.map(({ type, label, icon }) => (
-          <button
-            key={type}
-            onClick={() => setMessageType(type)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-              messageType === type
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
-            }`}
-          >
-            <span>{icon}</span>
-            {label}
-          </button>
-        ))}
-      </div>
-
       {/* Emoji Quick Select */}
       <AnimatePresence>
         {showEmojis && (
@@ -188,6 +164,20 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
           className="p-2 text-muted-foreground hover:text-primary transition-colors"
         >
           <Smile className="w-5 h-5" />
+        </button>
+
+        {/* Message Type Toggle - Combined Talk/Narrator */}
+        <button
+          type="button"
+          onClick={toggleMessageType}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            messageType === 'narrator'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg'
+              : 'bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg'
+          }`}
+        >
+          <span>{messageType === 'narrator' ? '📖' : '💬'}</span>
+          <span>{messageType === 'narrator' ? 'Narrate' : 'Talk'}</span>
         </button>
 
         <CharacterStylePanel
