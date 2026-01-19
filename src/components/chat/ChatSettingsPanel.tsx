@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { X, Plus, LogOut, Trash2, Crown, Image, Shield, ScrollText, AlertTriangle, Eye, Lock, Users, Clock, Scroll } from 'lucide-react';
+import { X, Plus, LogOut, Trash2, Crown, Image, Shield, ScrollText, AlertTriangle, Eye, Lock, Users, Clock, Scroll, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,8 +71,8 @@ export const ChatSettingsPanel = ({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'rooms' | 'members' | 'settings' | 'logs'>('rooms');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
-  
-  // New Room State
+
+  // ===== EXISTING ROOM CREATION STATE =====
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [newRoomLore, setNewRoomLore] = useState('');
@@ -80,7 +80,11 @@ export const ChatSettingsPanel = ({
   const [newRoomAvatarUrl, setNewRoomAvatarUrl] = useState('');
   const [newRoomStaffOnly, setNewRoomStaffOnly] = useState(false);
   const [creating, setCreating] = useState(false);
-  
+
+  // ===== NEW: EDIT LORE STATE =====
+  const [editingLoreRoomId, setEditingLoreRoomId] = useState<string | null>(null);
+  const [loreDraft, setLoreDraft] = useState('');
+
   const [isPublic, setIsPublic] = useState(true);
   const [isNsfw, setIsNsfw] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -105,7 +109,7 @@ export const ChatSettingsPanel = ({
       .select('is_public, is_nsfw')
       .eq('id', worldId)
       .single();
-    
+
     if (data) {
       setIsPublic(data.is_public);
       setIsNsfw(data.is_nsfw);
@@ -125,28 +129,11 @@ export const ChatSettingsPanel = ({
       .eq('world_id', worldId)
       .order('created_at', { ascending: false })
       .limit(50);
-    
+
     if (data) {
       setAuditLogs(data as AuditLog[]);
     }
     setLoadingLogs(false);
-  };
-
-  const handleUpdateWorldSettings = async (field: 'is_public' | 'is_nsfw', value: boolean) => {
-    setLoadingSettings(true);
-    const updateData: any = { [field]: value };
-    if (field === 'is_nsfw' && value) updateData.is_nsfw = true;
-    
-    const { error } = await supabase.from('worlds').update(updateData).eq('id', worldId);
-    
-    if (error) {
-      toast({ title: 'Failed to update settings', variant: 'destructive' });
-    } else {
-      if (field === 'is_public') setIsPublic(value);
-      if (field === 'is_nsfw') setIsNsfw(value);
-      toast({ title: 'Settings updated' });
-    }
-    setLoadingSettings(false);
   };
 
   const handleCreateRoom = async () => {
@@ -197,47 +184,22 @@ export const ChatSettingsPanel = ({
     }
   };
 
-  const handlePromoteMember = async (userId: string) => {
-    const { error } = await supabase.from('world_members').update({ role: 'admin' }).eq('world_id', worldId).eq('user_id', userId);
-    if (!error) toast({ title: 'Member promoted to admin' });
-  };
+  // ===== NEW FUNCTION: SAVE ROOM LORE =====
+  const handleSaveRoomLore = async () => {
+    if (!editingLoreRoomId) return;
 
-  const handleDemoteMember = async (userId: string) => {
-    const { error } = await supabase.from('world_members').update({ role: 'member' }).eq('world_id', worldId).eq('user_id', userId);
-    if (!error) toast({ title: 'Admin demoted to member' });
-  };
+    const { error } = await supabase
+      .from('world_rooms')
+      .update({ room_lore: loreDraft.trim() || null })
+      .eq('id', editingLoreRoomId);
 
-  const handleKickMember = async (userId: string, username: string) => {
-    const { error } = await supabase.from('world_members').delete().eq('world_id', worldId).eq('user_id', userId);
-    if (!error) toast({ title: `${username} has been kicked` });
-  };
-
-  const handleBanMember = async (userId: string, username: string) => {
-    const { error } = await supabase.from('world_members').update({ is_banned: true }).eq('world_id', worldId).eq('user_id', userId);
-    if (!error) toast({ title: `${username} has been banned` });
-  };
-
-  const handleTimeoutMember = async (userId: string, username: string, duration: string) => {
-    const durationMap: Record<string, number> = {
-      '30s': 30 * 1000, '1m': 60 * 1000, '5m': 5 * 60 * 1000, '15m': 15 * 60 * 1000,
-      '30m': 30 * 60 * 1000, '1h': 60 * 60 * 1000, '6h': 6 * 60 * 60 * 1000,
-      '12h': 12 * 60 * 60 * 1000, '24h': 24 * 60 * 60 * 1000,
-    };
-    const expiresAt = new Date(Date.now() + (durationMap[duration] || 60000)).toISOString();
-    const currentUser = (await supabase.auth.getUser()).data.user;
-    const { error } = await supabase.from('timeouts').insert({
-      user_id: userId, world_id: worldId, expires_at: expiresAt, issued_by: currentUser?.id, reason: `Timed out for ${duration}`,
-    });
-    if (!error) toast({ title: `${username} timed out for ${duration}` });
-  };
-
-  const formatAction = (action: string): string => {
-    const actionMap: Record<string, string> = {
-      'promote_admin': 'Promoted to Admin', 'demote_admin': 'Demoted to Member',
-      'kick': 'Kicked', 'ban': 'Banned', 'world_made_public': 'Made World Public',
-      'nsfw_enabled': 'Enabled NSFW', 'room_created': 'Created Room', 'room_deleted': 'Deleted Room',
-    };
-    return actionMap[action] || action.replace(/_/g, ' ');
+    if (error) {
+      toast({ title: 'Failed to save lore', variant: 'destructive' });
+    } else {
+      toast({ title: 'AI Lore updated' });
+      setEditingLoreRoomId(null);
+      onRoomCreated(); // refresh list
+    }
   };
 
   const isStaff = isOwner || isAdmin;
@@ -276,59 +238,71 @@ export const ChatSettingsPanel = ({
             <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'rooms' && (
                 <div className="space-y-3">
-                  {isOwner && (
-                    <>
-                      {!showCreateRoom ? (
-                        <Button variant="outline" className="w-full" onClick={() => setShowCreateRoom(true)}>
-                          <Plus className="w-4 h-4 mr-2" /> Create Room
-                        </Button>
-                      ) : (
-                        <div className="space-y-3 p-3 bg-muted rounded-lg">
-                          <Input placeholder="Room name" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} />
-                          <Textarea placeholder="Short description" value={newRoomDescription} onChange={(e) => setNewRoomDescription(e.target.value)} className="min-h-[60px]" />
-                          
-                          {/* NEW FIELDS */}
-                          <div className="space-y-2">
-                            <Label className="text-[10px] uppercase text-muted-foreground">AI Room Lore</Label>
-                            <Textarea placeholder="Context for the AI Narrator..." value={newRoomLore} onChange={(e) => setNewRoomLore(e.target.value)} className="min-h-[80px] text-xs" />
-                          </div>
-                          <Input placeholder="Avatar URL" value={newRoomAvatarUrl} onChange={(e) => setNewRoomAvatarUrl(e.target.value)} className="text-xs" />
-                          <Input placeholder="Background Image URL" value={newRoomBackgroundUrl} onChange={(e) => setNewRoomBackgroundUrl(e.target.value)} className="text-xs" />
-                          
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="staff-only" className="text-sm">Staff Only</Label>
-                            <Switch id="staff-only" checked={newRoomStaffOnly} onCheckedChange={setNewRoomStaffOnly} />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" className="flex-1" onClick={() => setShowCreateRoom(false)}>Cancel</Button>
-                            <Button className="flex-1" onClick={handleCreateRoom} disabled={creating}>Create</Button>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                  {isOwner && !showCreateRoom && (
+                    <Button variant="outline" className="w-full" onClick={() => setShowCreateRoom(true)}>
+                      <Plus className="w-4 h-4 mr-2" /> Create Room
+                    </Button>
                   )}
 
                   {rooms.map((room) => (
-                    <div key={room.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-                        {(room.avatar_url || room.background_url) ? (
-                          <img src={room.avatar_url || room.background_url || ''} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Image className="w-4 h-4 text-muted-foreground" /></div>
+                    <div key={room.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted">
+                          {(room.avatar_url || room.background_url) ? (
+                            <img src={room.avatar_url || room.background_url || ''} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Image className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{room.name}</p>
+                          {room.is_staff_only && <span className="text-[10px] text-amber-500">Staff only</span>}
+                        </div>
+
+                        {isOwner && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingLoreRoomId(room.id);
+                                setLoreDraft(room.room_lore || '');
+                              }}
+                              className="p-1.5 hover:bg-primary/20 rounded text-primary"
+                              title="Edit AI Lore"
+                            >
+                              <ScrollText className="w-4 h-4" />
+                            </button>
+
+                            {rooms.length > 1 && (
+                              <button onClick={() => handleDeleteRoom(room.id)} className="p-1.5 hover:bg-destructive/20 rounded text-destructive">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{room.name}</p>
-                        {room.is_staff_only && <span className="text-[10px] text-amber-500">Staff only</span>}
-                      </div>
-                      {isOwner && rooms.length > 1 && (
-                        <button onClick={() => handleDeleteRoom(room.id)} className="p-1.5 hover:bg-destructive/20 rounded text-destructive"><Trash2 className="w-4 h-4" /></button>
+
+                      {editingLoreRoomId === room.id && (
+                        <div className="mt-2 p-2 bg-card border rounded-lg space-y-2">
+                          <Label className="text-xs uppercase text-muted-foreground">AI Room Lore</Label>
+                          <Textarea
+                            value={loreDraft}
+                            onChange={(e) => setLoreDraft(e.target.value)}
+                            placeholder="Rules, canon, tone, facts, and boundaries the AI must follow..."
+                            className="min-h-[100px] text-xs"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setEditingLoreRoomId(null)}>Cancel</Button>
+                            <Button size="sm" onClick={handleSaveRoomLore}>Save Lore</Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
               )}
-              {/* Other tabs remain as originally coded */}
             </div>
           </motion.div>
         </>
@@ -336,3 +310,4 @@ export const ChatSettingsPanel = ({
     </AnimatePresence>
   );
 };
+
