@@ -305,22 +305,28 @@ export const NotificationPanel = ({ isOpen, onClose }: NotificationPanelProps) =
             className="fixed top-0 right-0 h-full w-full max-w-sm bg-background border-l border-border z-50 overflow-hidden flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <button
-                onClick={() => {
-                  onClose();
-                  navigate('/notifications');
-                }}
-                className="flex items-center gap-2 hover:text-primary transition-colors"
-              >
-                <Bell className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Notifications</h2>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-primary" />
+                  <h2 className="font-semibold text-foreground">Notifications</h2>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    navigate('/notifications');
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors text-xs"
+                  title="View all notifications"
+                >
+                  <span>View all</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
