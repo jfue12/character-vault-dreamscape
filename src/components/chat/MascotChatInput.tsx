@@ -273,11 +273,11 @@ export const MascotChatInput = ({
       </AnimatePresence>
 
       {/* Main Input Area - Mobile Optimized */}
-      <div className="p-2.5 pt-2">
+      <div className="p-2 pt-1.5">
         {/* Input Row */}
-        <div className="flex items-end gap-1.5">
-          {/* Action Buttons */}
-          <div className="flex gap-0.5 items-center">
+        <div className="flex items-end gap-1">
+          {/* Action Buttons - Compact */}
+          <div className="flex gap-0 items-center flex-shrink-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -288,14 +288,14 @@ export const MascotChatInput = ({
             <button
               type="button"
               onClick={() => setShowCharacterPicker(!showCharacterPicker)}
-              className="p-2 rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback"
+              className="p-1.5 rounded-lg active:bg-[#1a1a1a] transition-colors touch-feedback"
             >
-              <div className="w-7 h-7 rounded-full overflow-hidden">
+              <div className="w-6 h-6 rounded-full overflow-hidden">
                 {displayAvatar ? (
                   <img src={displayAvatar} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-[#7C3AED]/30 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-white" />
+                    <User className="w-3 h-3 text-white" />
                   </div>
                 )}
               </div>
@@ -304,28 +304,21 @@ export const MascotChatInput = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || disabled}
-              className="p-2 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors disabled:opacity-50 touch-feedback"
+              className="p-1.5 text-gray-500 active:text-[#7C3AED] rounded-lg active:bg-[#1a1a1a] transition-colors disabled:opacity-50 touch-feedback"
             >
-              <Image className="w-5 h-5" />
+              <Image className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => setShowEmojis(!showEmojis)}
-              className="p-2 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback hidden sm:flex"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            {/* Message Type Toggle - Combined Talk/Narrator */}
+            {/* Message Type Toggle - Compact */}
             <button
               type="button"
               onClick={toggleMessageType}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 touch-feedback no-select ${
+              className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1 touch-feedback no-select ${
                 messageType === 'narrator'
-                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg'
-                  : 'bg-gradient-to-r from-[#7C3AED] to-purple-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white'
+                  : 'bg-gradient-to-r from-[#7C3AED] to-purple-600 text-white'
               }`}
             >
-              <span>{messageType === 'narrator' ? '📖' : '💬'}</span>
+              <span className="text-xs">{messageType === 'narrator' ? '📖' : '💬'}</span>
               <span>{messageType === 'narrator' ? 'Narrate' : 'Talk'}</span>
             </button>
             <CharacterStylePanel
@@ -367,8 +360,8 @@ export const MascotChatInput = ({
             />
           </div>
 
-          {/* Text Input */}
-          <div className="flex-1 relative">
+          {/* Text Input - Takes maximum space */}
+          <div className="flex-1 min-w-0">
             <textarea
               ref={textareaRef}
               value={content}
@@ -388,19 +381,19 @@ export const MascotChatInput = ({
               }
               disabled={disabled || isUploading}
               rows={1}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-3 text-base text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-[#7C3AED] min-h-[48px] max-h-32"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-base text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-[#7C3AED] min-h-[44px] max-h-32"
               style={{ height: 'auto', fontSize: '16px' }}
             />
           </div>
 
-          {/* Send Button */}
+          {/* Send Button - Compact */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => handleSubmit()}
             disabled={!content.trim() || disabled || isUploading}
-            className="w-12 h-12 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30 flex-shrink-0 touch-feedback"
+            className="w-10 h-10 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30 flex-shrink-0 touch-feedback"
           >
-            <Send className="w-5 h-5 text-white" />
+            <Send className="w-4 h-4 text-white" />
           </motion.button>
         </div>
       </div>
