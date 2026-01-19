@@ -129,10 +129,10 @@ export default function Profile() {
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
-      <div className="max-w-lg mx-auto pb-8">
+      <div className="max-w-lg mx-auto pb-12">
         {/* Profile Incomplete Indicator */}
         {isProfileIncomplete && (
-          <div className="px-4 mb-4">
+          <div className="px-2 mb-4">
             <ProfileIncompleteIndicator 
               onClick={() => setIsUsernameModalOpen(true)}
               message="Set up your username to connect with others"
@@ -145,11 +145,11 @@ export default function Profile() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-2 mb-4 mx-4"
+            className="bg-card border border-border rounded-xl p-2 mb-4 mx-2"
           >
             <button
               onClick={handleSignOut}
-              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-muted transition-colors text-destructive"
+              className="flex items-center justify-between w-full p-3.5 rounded-lg active:bg-muted transition-colors text-destructive touch-feedback"
             >
               <div className="flex items-center gap-3">
                 <LogOut className="w-5 h-5" />
