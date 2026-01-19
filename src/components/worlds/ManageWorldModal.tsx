@@ -1,127 +1,89 @@
-// ------------------ IMPORTANT: ADD THESE IMPORTS AT TOP ------------------
-import { useState, useEffect, useCallback } from 'react';
-// ------------------------------------------------------------------------
+{
+  /* Members Tab */
+}
+<TabsContent value="members" className="space-y-4 mt-4">
+  {members.map((member) => {
+    const isOwnerMember = member.role === "owner";
+    const isCurrentUser = member.user_id === user?.id;
 
-/* (keep all your existing imports the same — no other changes needed here) */
+    return (
+      <div key={member.id} className="p-4 rounded-lg bg-secondary">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">{member.profiles?.username || "Unknown"}</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs ${
+                member.role === "owner"
+                  ? "bg-primary text-primary-foreground"
+                  : member.role === "admin"
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {member.role}
+            </span>
+            {member.is_banned && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-destructive text-destructive-foreground">
+                Banned
+              </span>
+            )}
+            {member.timeout_until && new Date(member.timeout_until) > new Date() && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Timed out
+              </span>
+            )}
+          </div>
+        </div>
 
-export const ManageWorldModal = ({
-  open,
-  onOpenChange,
-  world,
-  rooms,
-  members: membersProp,   // <-- still accepted but no longer trusted
-  onUpdate,
-  onWorldDeleted,
-}: ManageWorldModalProps) => {
+        {!isOwnerMember && !isCurrentUser && (
+          <div className="flex flex-wrap gap-2">
+            {member.role !== "admin" ? (
+              <Button size="sm" variant="secondary" onClick={() => handlePromote(member.id, member.user_id, "admin")}>
+                <Crown className="w-3 h-3 mr-1" /> Promote
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={() => handlePromote(member.id, member.user_id, "member")}>
+                <Shield className="w-3 h-3 mr-1" /> Demote
+              </Button>
+            )}
 
-  const { user } = useAuth();
-  const { toast } = useToast();
+            <Select
+              onValueChange={(value) => {
+                const duration = TIMEOUT_DURATIONS.find((d) => d.value.toString() === value);
+                if (duration) {
+                  handleTimeout(member.id, member.user_id, duration.value, duration.label);
+                }
+              }}
+            >
+              <SelectTrigger className="w-32 h-8 text-xs">
+                <Clock className="w-3 h-3 mr-1" />
+                <SelectValue placeholder="Timeout" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEOUT_DURATIONS.map((d) => (
+                  <SelectItem key={d.value} value={d.value.toString()}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-  // -------- NEW STATE: we manage members locally ------------
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  // ----------------------------------------------------------
+            <Button size="sm" variant="secondary" onClick={() => handleKick(member.id, member.user_id)}>
+              <X className="w-3 h-3 mr-1" /> Kick
+            </Button>
 
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', description: '', is_staff_only: false });
-  const [roomImage, setRoomImage] = useState<File | null>(null);
-  const [roomImagePreview, setRoomImagePreview] = useState<string | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // ---------- NEW: fetch members when modal opens ----------
-  const fetchMembers = useCallback(async () => {
-    setLoadingMembers(true);
-
-    const { data, error } = await supabase
-      .from('world_members')
-      .select(`
-        id,
-        user_id,
-        role,
-        is_banned,
-        timeout_until,
-        profiles ( username )
-      `)
-      .eq('world_id', world.id);
-
-    if (error) {
-      console.error('Failed to load members:', error);
-      toast({
-        title: 'Failed to load members',
-        variant: 'destructive'
-      });
-    } else {
-      setMembers(data || []);
-    }
-
-    setLoadingMembers(false);
-  }, [world.id, toast]);
-  // --------------------------------------------------------
-
-  useEffect(() => {
-    if (open) {
-      fetchAuditLogs();
-      fetchMembers();   // <-- NEW
-    }
-  }, [open, world.id, fetchMembers]);
-
-  const fetchAuditLogs = async () => {
-    setLoadingLogs(true);
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select(`
-        id,
-        action,
-        created_at,
-        details,
-        actor:profiles!audit_logs_actor_id_fkey(username),
-        target_user:profiles!audit_logs_target_user_id_fkey(username)
-      `)
-      .eq('world_id', world.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (!error && data) {
-      const processedLogs = data.map(log => ({
-        ...log,
-        actor: Array.isArray(log.actor) ? log.actor[0] : log.actor,
-        target_user: Array.isArray(log.target_user) ? log.target_user[0] : log.target_user,
-        details: log.details as Record<string, any> | null
-      }));
-      setAuditLogs(processedLogs);
-    }
-    setLoadingLogs(false);
-  };
-
-  // ----------------- KEY CHANGE BELOW -----------------
-  // After ANY action that changes members, we refresh them
-  const refreshAll = async () => {
-    await fetchMembers();
-    await fetchAuditLogs();
-    onUpdate();
-  };
-  // ---------------------------------------------------
-
-  /* ----------------- THEN REPLACE THESE CALLS -----------------
-     Everywhere you had:  onUpdate();
-     change to:           refreshAll();
-  ------------------------------------------------------------- */
-
-  // Example (you do NOT need to edit this yourself — already done below)
-
-  const handlePromote = async (memberId: string, userId: string, newRole: string) => {
-    const { error } = await supabase
-      .from('world_members')
-      .update({ role: newRole })
-      .eq('id', memberId);
-
-    if (error) {
-      toast({ title: 'Failed to update role', variant: 'destructive' });
-    } else {
-      toast({ title: `Role updated to ${newRole}` });
-      await logAudit(`promoted_to_${newRole}`, userId, null, {});
-      await logModeration(userId, `Promoted to ${newRole}`);
-      await refreshAll();
+            {!member.is_banned ? (
+              <Button size="sm" variant="destructive" onClick={() => handleBan(member.id, member.user_id)}>
+                <Ban className="w-3 h-3 mr-1" /> Ban
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={() => handleUnban(member.id, member.user_id)}>
+                Unban
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</TabsContent>;
