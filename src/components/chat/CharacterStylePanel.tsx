@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Paintbrush, Check, X } from 'lucide-react';
+import { Paintbrush, Check, X, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,26 +16,43 @@ interface CharacterStylePanelProps {
 
 const BUBBLE_COLORS = [
   { name: 'Purple', value: '#7C3AED' },
+  { name: 'Violet', value: '#8B5CF6' },
+  { name: 'Indigo', value: '#6366F1' },
   { name: 'Blue', value: '#3B82F6' },
-  { name: 'Green', value: '#10B981' },
-  { name: 'Red', value: '#EF4444' },
-  { name: 'Orange', value: '#F97316' },
-  { name: 'Pink', value: '#EC4899' },
+  { name: 'Sky', value: '#0EA5E9' },
   { name: 'Cyan', value: '#06B6D4' },
+  { name: 'Teal', value: '#14B8A6' },
+  { name: 'Green', value: '#10B981' },
+  { name: 'Lime', value: '#84CC16' },
   { name: 'Yellow', value: '#EAB308' },
+  { name: 'Amber', value: '#F59E0B' },
+  { name: 'Orange', value: '#F97316' },
+  { name: 'Red', value: '#EF4444' },
+  { name: 'Rose', value: '#F43F5E' },
+  { name: 'Pink', value: '#EC4899' },
+  { name: 'Fuchsia', value: '#D946EF' },
   { name: 'Dark', value: '#1a1a1a' },
-  { name: 'Gray', value: '#4B5563' },
+  { name: 'Slate', value: '#475569' },
+  { name: 'Zinc', value: '#71717A' },
+  { name: 'Stone', value: '#78716C' },
 ];
 
 const TEXT_COLORS = [
   { name: 'White', value: '#FFFFFF' },
-  { name: 'Light Gray', value: '#D1D5DB' },
+  { name: 'Light Gray', value: '#E5E7EB' },
+  { name: 'Gray', value: '#9CA3AF' },
   { name: 'Purple', value: '#C4B5FD' },
   { name: 'Blue', value: '#93C5FD' },
+  { name: 'Cyan', value: '#67E8F9' },
   { name: 'Green', value: '#6EE7B7' },
+  { name: 'Lime', value: '#BEF264' },
   { name: 'Yellow', value: '#FDE047' },
-  { name: 'Pink', value: '#F9A8D4' },
+  { name: 'Amber', value: '#FCD34D' },
   { name: 'Orange', value: '#FDBA74' },
+  { name: 'Pink', value: '#F9A8D4' },
+  { name: 'Rose', value: '#FDA4AF' },
+  { name: 'Red', value: '#FCA5A5' },
+  { name: 'Black', value: '#000000' },
 ];
 
 const BUBBLE_SIDES = [
@@ -58,6 +75,10 @@ export const CharacterStylePanel = ({
   const [textColor, setTextColor] = useState(currentTextColor || '#FFFFFF');
   const [bubbleSide, setBubbleSide] = useState(currentBubbleSide || 'auto');
   const [isSaving, setIsSaving] = useState(false);
+  const [showBubbleColorPicker, setShowBubbleColorPicker] = useState(false);
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const bubbleColorInputRef = useRef<HTMLInputElement>(null);
+  const textColorInputRef = useRef<HTMLInputElement>(null);
 
   // Sync local state with props when panel opens or props change
   useEffect(() => {
@@ -182,41 +203,91 @@ export const CharacterStylePanel = ({
                   {/* Bubble Color */}
                   <div>
                     <label className="text-xs text-gray-400 mb-2 block">Bubble Color</label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {BUBBLE_COLORS.map((color) => (
                         <button
                           key={color.value}
                           onClick={() => setBubbleColor(color.value)}
-                          className={`w-7 h-7 rounded-lg transition-all ${
+                          className={`w-6 h-6 rounded-md transition-all ${
                             bubbleColor === color.value 
-                              ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a]' 
+                              ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0a0a0a] scale-110' 
                               : 'hover:scale-110'
                           }`}
                           style={{ backgroundColor: color.value }}
                           title={color.name}
                         />
                       ))}
+                      {/* Custom Color Picker */}
+                      <input
+                        ref={bubbleColorInputRef}
+                        type="color"
+                        value={bubbleColor}
+                        onChange={(e) => setBubbleColor(e.target.value)}
+                        className="sr-only"
+                      />
+                      <button
+                        onClick={() => bubbleColorInputRef.current?.click()}
+                        className="w-6 h-6 rounded-md border-2 border-dashed border-gray-500 flex items-center justify-center hover:border-[#7C3AED] transition-colors"
+                        title="Custom Color"
+                      >
+                        <Plus className="w-3 h-3 text-gray-500" />
+                      </button>
                     </div>
+                    {/* Show current custom color if not in presets */}
+                    {!BUBBLE_COLORS.some(c => c.value === bubbleColor) && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <div
+                          className="w-6 h-6 rounded-md ring-2 ring-white ring-offset-1 ring-offset-[#0a0a0a]"
+                          style={{ backgroundColor: bubbleColor }}
+                        />
+                        <span className="text-xs text-gray-400">Custom: {bubbleColor}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Text Color */}
                   <div>
                     <label className="text-xs text-gray-400 mb-2 block">Text Color</label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {TEXT_COLORS.map((color) => (
                         <button
                           key={color.value}
                           onClick={() => setTextColor(color.value)}
-                          className={`w-7 h-7 rounded-lg transition-all border border-[#2a2a2a] ${
+                          className={`w-6 h-6 rounded-md transition-all border border-[#2a2a2a] ${
                             textColor === color.value 
-                              ? 'ring-2 ring-[#7C3AED] ring-offset-2 ring-offset-[#0a0a0a]' 
+                              ? 'ring-2 ring-[#7C3AED] ring-offset-1 ring-offset-[#0a0a0a] scale-110' 
                               : 'hover:scale-110'
                           }`}
                           style={{ backgroundColor: color.value }}
                           title={color.name}
                         />
                       ))}
+                      {/* Custom Color Picker */}
+                      <input
+                        ref={textColorInputRef}
+                        type="color"
+                        value={textColor}
+                        onChange={(e) => setTextColor(e.target.value)}
+                        className="sr-only"
+                      />
+                      <button
+                        onClick={() => textColorInputRef.current?.click()}
+                        className="w-6 h-6 rounded-md border-2 border-dashed border-gray-500 flex items-center justify-center hover:border-[#7C3AED] transition-colors"
+                        title="Custom Color"
+                      >
+                        <Plus className="w-3 h-3 text-gray-500" />
+                      </button>
                     </div>
+                    {/* Show current custom color if not in presets */}
+                    {!TEXT_COLORS.some(c => c.value === textColor) && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <div
+                          className="w-6 h-6 rounded-md ring-2 ring-[#7C3AED] ring-offset-1 ring-offset-[#0a0a0a] border border-[#2a2a2a]"
+                          style={{ backgroundColor: textColor }}
+                        />
+                        <span className="text-xs text-gray-400">Custom: {textColor}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Preview */}

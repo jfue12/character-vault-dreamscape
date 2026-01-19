@@ -107,20 +107,8 @@ export const MascotChatInput = ({
     e?.preventDefault();
     if (!content.trim() || disabled) return;
     
-    let finalType = messageType;
-    let finalContent = content.trim();
-    
-    // Auto-detect thought bubbles from parentheses
-    if (finalContent.startsWith('(') && finalContent.endsWith(')')) {
-      finalType = 'thought';
-      finalContent = finalContent.slice(1, -1);
-    }
-    
-    // Auto-detect narration from asterisks
-    if (finalContent.startsWith('*') && finalContent.endsWith('*')) {
-      finalType = 'narrator';
-      finalContent = finalContent.slice(1, -1);
-    }
+    const finalType = messageType;
+    const finalContent = content.trim();
     
     onSend(finalContent, finalType);
     setContent('');
@@ -168,11 +156,10 @@ export const MascotChatInput = ({
     setShowEmojis(false);
   };
 
-  const typeOptions = [
-    { type: 'dialogue' as const, label: 'Talk', icon: '💬', color: 'from-[#7C3AED] to-purple-600' },
-    { type: 'thought' as const, label: 'Think', icon: '💭', color: 'from-gray-600 to-gray-700' },
-    { type: 'narrator' as const, label: 'Narrate', icon: '📖', color: 'from-amber-600 to-orange-600' },
-  ];
+  // Toggle between dialogue and narrator only
+  const toggleMessageType = () => {
+    setMessageType(prev => prev === 'dialogue' ? 'narrator' : 'dialogue');
+  };
 
   const displayName = selectedCharacter?.name || baseProfileName;
   const displayAvatar = selectedCharacter?.avatar_url;
@@ -260,23 +247,6 @@ export const MascotChatInput = ({
         )}
       </AnimatePresence>
 
-      {/* Message Type Toggles - Mobile Optimized */}
-      <div className="flex gap-1.5 p-2.5 pb-2 justify-center">
-        {typeOptions.map(({ type, label, icon, color }) => (
-          <button
-            key={type}
-            onClick={() => setMessageType(type)}
-            className={`px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 touch-feedback no-select ${
-              messageType === type
-                ? `bg-gradient-to-r ${color} text-white shadow-lg`
-                : 'bg-[#1a1a1a] text-gray-400 active:text-white active:bg-[#2a2a2a]'
-            }`}
-          >
-            <span>{icon}</span>
-            <span className="hidden xs:inline sm:inline">{label}</span>
-          </button>
-        ))}
-      </div>
 
       {/* Emoji Quick Pick */}
       <AnimatePresence>
@@ -303,33 +273,11 @@ export const MascotChatInput = ({
       </AnimatePresence>
 
       {/* Main Input Area - Mobile Optimized */}
-      <div className="p-2.5 pt-1.5">
-        {/* Text Preview with Avatar */}
-        {content.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 mb-2.5 p-2.5 bg-[#1a1a1a] rounded-xl"
-          >
-            <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-              {displayAvatar ? (
-                <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-[#7C3AED]/30 flex items-center justify-center">
-                  <User className="w-3.5 h-3.5 text-white" />
-                </div>
-              )}
-            </div>
-            <p className="text-sm text-white flex-1 whitespace-pre-wrap break-words">
-              {content}
-            </p>
-          </motion.div>
-        )}
-
+      <div className="p-2.5 pt-2">
         {/* Input Row */}
         <div className="flex items-end gap-1.5">
           {/* Action Buttons */}
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 items-center">
             <input
               ref={fileInputRef}
               type="file"
@@ -340,7 +288,7 @@ export const MascotChatInput = ({
             <button
               type="button"
               onClick={() => setShowCharacterPicker(!showCharacterPicker)}
-              className="p-2.5 rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback"
+              className="p-2 rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback"
             >
               <div className="w-7 h-7 rounded-full overflow-hidden">
                 {displayAvatar ? (
@@ -356,16 +304,29 @@ export const MascotChatInput = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || disabled}
-              className="p-2.5 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors disabled:opacity-50 touch-feedback"
+              className="p-2 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors disabled:opacity-50 touch-feedback"
             >
               <Image className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={() => setShowEmojis(!showEmojis)}
-              className="p-2.5 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback hidden sm:flex"
+              className="p-2 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback hidden sm:flex"
             >
               <Smile className="w-5 h-5" />
+            </button>
+            {/* Message Type Toggle - Combined Talk/Narrator */}
+            <button
+              type="button"
+              onClick={toggleMessageType}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 touch-feedback no-select ${
+                messageType === 'narrator'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg'
+                  : 'bg-gradient-to-r from-[#7C3AED] to-purple-600 text-white shadow-lg'
+              }`}
+            >
+              <span>{messageType === 'narrator' ? '📖' : '💬'}</span>
+              <span>{messageType === 'narrator' ? 'Narrate' : 'Talk'}</span>
             </button>
             <CharacterStylePanel
               characterId={selectedCharacterId}
