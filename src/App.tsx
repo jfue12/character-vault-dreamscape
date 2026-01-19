@@ -21,6 +21,7 @@ import PostDetail from "./pages/PostDetail";
 import Invite from "./pages/Invite";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+import RoomChat from "./pages/RoomChat"; // This expects a 'default' export
 
 const queryClient = new QueryClient();
 
