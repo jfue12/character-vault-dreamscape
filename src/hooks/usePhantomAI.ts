@@ -20,68 +20,90 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
     | { ok: true; data: any }
     | { ok: false; error: string };
 
-  const triggerPhantomAI = useCallback(async (
-    message: string,
-    characterId: string,
-    messageHistory: MessageContext[]
-  ): Promise<PhantomAIResult | undefined> => {
-    const now = Date.now();
-    if (now - lastTriggerRef.current < cooldownMs) {
-      return; // Still in cooldown
-    }
-    lastTriggerRef.current = now;
+  const triggerPhantomAI = useCallback(
+    async (
+      message: string,
+      characterId: string,
+      messageHistory: MessageContext[]
+    ): Promise<PhantomAIResult | undefined> => {
+      const now = Date.now();
+      if (now - lastTriggerRef.current < cooldownMs) {
+        return; // Still in cooldown
+      }
+      lastTriggerRef.current = now;
 
-    try {
-      console.log('Triggering Phantom AI for world:', worldId, 'room:', roomId);
-      
-      // Start thinking animation
-      setIsAIThinking(true);
-      setThinkingPhase('analyzing');
+      try {
+        console.log('Triggering Phantom AI for world:', worldId, 'room:', roomId);
 
-      // Simulate reading phase (dynamic based on message length)
-      const readDelay = Math.min(800 + message.length * 10, 2000);
-      await new Promise(r => setTimeout(r, readDelay));
-      
-      setThinkingPhase('generating');
+        setIsAIThinking(true);
+        setThinkingPhase('analyzing');
 
-      const { data, error } = await supabase.functions.invoke('phantom-ai', {
-        body: {
-          worldId,
-          roomId,
-          triggerMessage: message,
-          triggerCharacterId: characterId,
-          messageHistory,
-        },
-      });
+        // --- NEW: Fetch room lore before calling AI ---
+        const { data: roomData, error: loreError } = await supabase
+          .from('world_rooms')
+          .select('room_lore')
+          .eq('id', roomId)
+          .single();
 
-      if (error) {
-        const msg = error.message || String(error);
-        console.error('Phantom AI error:', msg);
+        const roomLore = roomData?.room_lore || null;
+
+        if (loreError) {
+          console.warn('Could not load room lore:', loreError);
+        }
+
+        // Simulate reading phase (dynamic based on message length)
+        const readDelay = Math.min(800 + message.length * 10, 2000);
+        await new Promise((r) => setTimeout(r, readDelay));
+
+        setThinkingPhase('generating');
+
+        const { data, error } = await supabase.functions.invoke('phantom-ai', {
+          body: {
+            worldId,
+            roomId,
+            roomLore,                 // ✅ <--- KEY ADDITION
+            triggerMessage: message,
+            triggerCharacterId: characterId,
+            messageHistory,
+          },
+        });
+
+        if (error) {
+          const msg = error.message || String(error);
+          console.error('Phantom AI error:', msg);
+          setIsAIThinking(false);
+          setThinkingPhase(null);
+          return { ok: false, error: msg };
+        }
+
+        // If AI is responding, show responding phase
+        if (data?.shouldRespond) {
+          setThinkingPhase('responding');
+          const responseDelay = Math.min(
+            500 + (data.responses?.[0]?.content?.length || 0) * 5,
+            1500
+          );
+          await new Promise((r) => setTimeout(r, responseDelay));
+        }
+
+        console.log('Phantom AI response:', data);
+        setIsAIThinking(false);
+        setThinkingPhase(null);
+        return { ok: true, data };
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Failed to trigger Phantom AI';
+        console.error('Failed to trigger Phantom AI:', err);
         setIsAIThinking(false);
         setThinkingPhase(null);
         return { ok: false, error: msg };
       }
-
-      // If AI is responding, show responding phase
-      if (data?.shouldRespond) {
-        setThinkingPhase('responding');
-        // Dynamic delay based on response length
-        const responseDelay = Math.min(500 + (data.responses?.[0]?.content?.length || 0) * 5, 1500);
-        await new Promise(r => setTimeout(r, responseDelay));
-      }
-
-      console.log('Phantom AI response:', data);
-      setIsAIThinking(false);
-      setThinkingPhase(null);
-      return { ok: true, data };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to trigger Phantom AI';
-      console.error('Failed to trigger Phantom AI:', err);
-      setIsAIThinking(false);
-      setThinkingPhase(null);
-      return { ok: false, error: msg };
-    }
-  }, [worldId, roomId]);
+    },
+    [worldId, roomId]
+  );
 
   return { triggerPhantomAI, isAIThinking, thinkingPhase };
 };
+
