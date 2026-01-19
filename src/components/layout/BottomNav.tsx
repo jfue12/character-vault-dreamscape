@@ -19,8 +19,8 @@ export const BottomNav = () => {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-t border-border/50 safe-area-inset-bottom">
-      <div className="flex items-center justify-around py-2 px-4 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50">
+      <div className="flex items-center justify-around py-2 px-2 max-w-lg mx-auto pb-[max(8px,env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -29,7 +29,7 @@ export const BottomNav = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              className="relative flex flex-col items-center gap-1 py-2 px-5 min-w-[64px] group"
+              className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px] group touch-feedback no-select"
             >
               {isActive && (
                 <motion.div
@@ -56,7 +56,7 @@ export const BottomNav = () => {
         {/* Profile Avatar */}
         <NavLink
           to="/profile"
-          className="relative flex flex-col items-center gap-1 py-2 px-5 group"
+          className="relative flex flex-col items-center gap-0.5 py-2 px-4 group touch-feedback no-select"
         >
           {location.pathname === '/profile' && (
             <motion.div

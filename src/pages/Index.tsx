@@ -223,51 +223,51 @@ export default function Index() {
       fabTo="/create-world"
     >
       <div className="max-w-lg mx-auto">
-        {/* Tab Switcher - My Worlds / Discover Worlds / Messages / People */}
-        <div className="flex gap-1 mb-5 p-1 bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a]">
+        {/* Tab Switcher - Mobile Optimized */}
+        <div className="flex gap-0.5 mb-5 p-1 bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a] overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('my-worlds')}
-            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 min-w-0 py-3.5 px-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 touch-feedback no-select ${
               activeTab === 'my-worlds' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
-                : 'text-muted-foreground hover:text-white'
+                : 'text-muted-foreground active:text-white'
             }`}
           >
-            <Globe className="w-4 h-4" />
-            <span className="hidden sm:inline">My</span> Worlds
+            <Globe className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Worlds</span>
           </button>
           <button
             onClick={() => setActiveTab('discover')}
-            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 min-w-0 py-3.5 px-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 touch-feedback no-select ${
               activeTab === 'discover' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
-                : 'text-muted-foreground hover:text-white'
+                : 'text-muted-foreground active:text-white'
             }`}
           >
-            <Compass className="w-4 h-4" />
-            Discover
+            <Compass className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Discover</span>
           </button>
           <button
             onClick={() => setActiveTab('people')}
-            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 min-w-0 py-3.5 px-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 touch-feedback no-select ${
               activeTab === 'people' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
-                : 'text-muted-foreground hover:text-white'
+                : 'text-muted-foreground active:text-white'
             }`}
           >
-            <Users className="w-4 h-4" />
-            People
+            <Users className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">People</span>
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`flex-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 min-w-0 py-3.5 px-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 touch-feedback no-select ${
               activeTab === 'messages' 
                 ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30' 
-                : 'text-muted-foreground hover:text-white'
+                : 'text-muted-foreground active:text-white'
             }`}
           >
-            <MessageCircle className="w-4 h-4" />
-            DMs
+            <MessageCircle className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">DMs</span>
           </button>
         </div>
 

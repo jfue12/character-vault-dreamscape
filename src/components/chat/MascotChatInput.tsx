@@ -188,23 +188,23 @@ export const MascotChatInput = ({
             exit={{ opacity: 0, y: 20 }}
             className="border-b border-[#1a1a1a] p-3"
           >
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 touch-action-pan-y">
               {/* Base Profile */}
               <button
                 onClick={() => {
                   onSelectCharacter(null);
                   setShowCharacterPicker(false);
                 }}
-                className="flex flex-col items-center gap-1 min-w-[60px]"
+                className="flex flex-col items-center gap-1 min-w-[64px] touch-feedback"
               >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                   selectedCharacterId === null
                     ? 'ring-2 ring-[#7C3AED] bg-[#7C3AED]/30'
-                    : 'bg-[#1a1a1a] hover:bg-[#2a2a2a]'
+                    : 'bg-[#1a1a1a] active:bg-[#2a2a2a]'
                 }`}>
-                  <User className="w-5 h-5 text-white" />
+                  <User className="w-6 h-6 text-white" />
                 </div>
-                <span className={`text-[10px] truncate max-w-[60px] ${
+                <span className={`text-[10px] truncate max-w-[64px] ${
                   selectedCharacterId === null ? 'text-[#7C3AED] font-medium' : 'text-gray-500'
                 }`}>
                   {baseProfileName}
@@ -219,22 +219,22 @@ export const MascotChatInput = ({
                     onSelectCharacter(char.id);
                     setShowCharacterPicker(false);
                   }}
-                  className="flex flex-col items-center gap-1 min-w-[60px]"
+                  className="flex flex-col items-center gap-1 min-w-[64px] touch-feedback"
                 >
-                  <div className={`w-12 h-12 rounded-full overflow-hidden transition-all ${
+                  <div className={`w-14 h-14 rounded-full overflow-hidden transition-all ${
                     selectedCharacterId === char.id
                       ? 'ring-2 ring-[#7C3AED]'
-                      : 'opacity-70 hover:opacity-100'
+                      : 'opacity-70 active:opacity-100'
                   }`}>
                     {char.avatar_url ? (
                       <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-[#7C3AED] to-purple-800 flex items-center justify-center">
-                        <span className="text-white font-bold">{char.name[0]}</span>
+                        <span className="text-white font-bold text-lg">{char.name[0]}</span>
                       </div>
                     )}
                   </div>
-                  <span className={`text-[10px] truncate max-w-[60px] ${
+                  <span className={`text-[10px] truncate max-w-[64px] ${
                     selectedCharacterId === char.id ? 'text-[#7C3AED] font-medium' : 'text-gray-500'
                   }`}>
                     {char.name}
@@ -248,10 +248,10 @@ export const MascotChatInput = ({
                   setShowCharacterPicker(false);
                   onCreateCharacter();
                 }}
-                className="flex flex-col items-center gap-1 min-w-[60px]"
+                className="flex flex-col items-center gap-1 min-w-[64px] touch-feedback"
               >
-                <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center hover:border-[#7C3AED] transition-colors">
-                  <Plus className="w-5 h-5 text-gray-500" />
+                <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center active:border-[#7C3AED] transition-colors">
+                  <Plus className="w-6 h-6 text-gray-500" />
                 </div>
                 <span className="text-[10px] text-gray-500">Add</span>
               </button>
@@ -260,20 +260,20 @@ export const MascotChatInput = ({
         )}
       </AnimatePresence>
 
-      {/* Message Type Toggles - Mascot Style */}
-      <div className="flex gap-2 p-3 pb-2 justify-center">
+      {/* Message Type Toggles - Mobile Optimized */}
+      <div className="flex gap-1.5 p-2.5 pb-2 justify-center">
         {typeOptions.map(({ type, label, icon, color }) => (
           <button
             key={type}
             onClick={() => setMessageType(type)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 touch-feedback no-select ${
               messageType === type
                 ? `bg-gradient-to-r ${color} text-white shadow-lg`
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                : 'bg-[#1a1a1a] text-gray-400 active:text-white active:bg-[#2a2a2a]'
             }`}
           >
             <span>{icon}</span>
-            <span>{label}</span>
+            <span className="hidden xs:inline sm:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -302,21 +302,21 @@ export const MascotChatInput = ({
         )}
       </AnimatePresence>
 
-      {/* Main Input Area - Mascot Style */}
-      <div className="p-3 pt-2">
+      {/* Main Input Area - Mobile Optimized */}
+      <div className="p-2.5 pt-1.5">
         {/* Text Preview with Avatar */}
         {content.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 mb-3 p-3 bg-[#1a1a1a] rounded-xl"
+            className="flex items-start gap-2 mb-2.5 p-2.5 bg-[#1a1a1a] rounded-xl"
           >
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+            <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
               {displayAvatar ? (
                 <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-[#7C3AED]/30 flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
+                  <User className="w-3.5 h-3.5 text-white" />
                 </div>
               )}
             </div>
@@ -327,9 +327,9 @@ export const MascotChatInput = ({
         )}
 
         {/* Input Row */}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-1.5">
           {/* Action Buttons */}
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -340,14 +340,14 @@ export const MascotChatInput = ({
             <button
               type="button"
               onClick={() => setShowCharacterPicker(!showCharacterPicker)}
-              className="p-2.5 rounded-xl hover:bg-[#1a1a1a] transition-colors"
+              className="p-2.5 rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback"
             >
-              <div className="w-6 h-6 rounded-full overflow-hidden">
+              <div className="w-7 h-7 rounded-full overflow-hidden">
                 {displayAvatar ? (
                   <img src={displayAvatar} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-[#7C3AED]/30 flex items-center justify-center">
-                    <User className="w-3 h-3 text-white" />
+                    <User className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
               </div>
@@ -356,14 +356,14 @@ export const MascotChatInput = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || disabled}
-              className="p-2.5 text-gray-500 hover:text-[#7C3AED] rounded-xl hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+              className="p-2.5 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors disabled:opacity-50 touch-feedback"
             >
               <Image className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={() => setShowEmojis(!showEmojis)}
-              className="p-2.5 text-gray-500 hover:text-[#7C3AED] rounded-xl hover:bg-[#1a1a1a] transition-colors"
+              className="p-2.5 text-gray-500 active:text-[#7C3AED] rounded-xl active:bg-[#1a1a1a] transition-colors touch-feedback hidden sm:flex"
             >
               <Smile className="w-5 h-5" />
             </button>
@@ -427,8 +427,8 @@ export const MascotChatInput = ({
               }
               disabled={disabled || isUploading}
               rows={1}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-[#7C3AED] min-h-[44px] max-h-32"
-              style={{ height: 'auto' }}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-3 text-base text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-[#7C3AED] min-h-[48px] max-h-32"
+              style={{ height: 'auto', fontSize: '16px' }}
             />
           </div>
 
@@ -437,7 +437,7 @@ export const MascotChatInput = ({
             whileTap={{ scale: 0.9 }}
             onClick={() => handleSubmit()}
             disabled={!content.trim() || disabled || isUploading}
-            className="w-11 h-11 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30 flex-shrink-0"
+            className="w-12 h-12 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30 flex-shrink-0 touch-feedback"
           >
             <Send className="w-5 h-5 text-white" />
           </motion.button>

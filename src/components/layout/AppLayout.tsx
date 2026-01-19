@@ -34,7 +34,7 @@ export const AppLayout = ({
   const [showCreateOC, setShowCreateOC] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background min-h-[100dvh]">
       <TopHeader 
         title={title}
         variant={headerVariant}
@@ -45,7 +45,7 @@ export const AppLayout = ({
         showActiveOC={showActiveOC}
       />
       
-      <main className="relative pt-16 pb-20 px-4">
+      <main className="relative pt-[calc(64px+env(safe-area-inset-top,0px))] pb-24 px-4 momentum-scroll">
         {children}
       </main>
 

@@ -774,7 +774,7 @@ export default function RoomChat() {
   }
 
   return (
-    <div className="min-h-screen bg-[#000] flex flex-col">
+    <div className="min-h-screen min-h-[100dvh] bg-[#000] flex flex-col">
       {/* Background */}
       {currentRoom?.background_url && (
         <div 
@@ -783,45 +783,45 @@ export default function RoomChat() {
         />
       )}
 
-      {/* Header - Mascot Style */}
-      <header className="sticky top-0 z-50 bg-[#000]/90 backdrop-blur-xl border-b border-[#1a1a1a]">
-        <div className="flex items-center justify-between px-4 h-14">
+      {/* Header - Mobile Optimized */}
+      <header className="sticky top-0 z-50 bg-[#000]/95 backdrop-blur-xl border-b border-[#1a1a1a] pt-[env(safe-area-inset-top,0px)]">
+        <div className="flex items-center justify-between px-3 h-14">
           <button 
             onClick={() => navigate('/')} 
-            className="p-2 -ml-2 text-white hover:text-[#7C3AED] transition-colors"
+            className="p-2.5 -ml-1 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           
-          <div className="flex flex-col items-center flex-1 min-w-0">
-            <h1 className="font-semibold text-white truncate max-w-[200px]">{world?.name}</h1>
+          <div className="flex flex-col items-center flex-1 min-w-0 px-2">
+            <h1 className="font-semibold text-white truncate max-w-[180px] sm:max-w-[240px] text-sm sm:text-base">{world?.name}</h1>
             {/* Typing Indicator in Header */}
             {typingUsers.length > 0 ? (
-              <span className="text-xs text-[#7C3AED] animate-pulse">
+              <span className="text-[11px] text-[#7C3AED] animate-pulse truncate max-w-[160px]">
                 {typingUsers.length === 1 
                   ? `${typingUsers[0].name} is typing...`
                   : `${typingUsers.length} people typing...`
                 }
               </span>
             ) : (
-              <span className="text-xs text-gray-500">{currentRoom?.name}</span>
+              <span className="text-[11px] text-gray-500 truncate max-w-[160px]">{currentRoom?.name}</span>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button 
               onClick={() => setShowMemberList(true)}
-              className="p-2 relative text-white hover:text-[#7C3AED] transition-colors"
+              className="p-2.5 relative text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
             >
               <Users className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[#7C3AED] text-white text-[10px] font-medium rounded-full flex items-center justify-center px-1">
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#7C3AED] text-white text-[10px] font-medium rounded-full flex items-center justify-center px-1">
                 {members.length}
               </span>
             </button>
             {(isOwner || isAdmin) && (
               <button 
                 onClick={() => setShowSettings(true)}
-                className="p-2 text-white hover:text-[#7C3AED] transition-colors"
+                className="p-2.5 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -830,8 +830,8 @@ export default function RoomChat() {
         </div>
       </header>
 
-      {/* Room Scroller - Always Visible Mascot Style */}
-      <div className="z-40 bg-[#000]/80 backdrop-blur-sm border-b border-[#1a1a1a] py-2">
+      {/* Room Scroller - Mobile Optimized */}
+      <div className="z-40 bg-[#000]/90 backdrop-blur-sm border-b border-[#1a1a1a] py-2 touch-action-pan-y">
         <RoomScroller
           rooms={rooms}
           selectedId={currentRoom?.id || null}
@@ -840,9 +840,9 @@ export default function RoomChat() {
         />
       </div>
 
-      {/* Messages Area */}
-      <main className="flex-1 pb-52 px-4 overflow-y-auto relative z-10 pt-4">
-        <div className="max-w-lg mx-auto space-y-3">
+      {/* Messages Area - Mobile Optimized */}
+      <main className="flex-1 pb-[calc(180px+env(safe-area-inset-bottom,0px))] px-3 sm:px-4 overflow-y-auto relative z-10 pt-3 momentum-scroll touch-action-pan-y">
+        <div className="max-w-lg mx-auto space-y-2.5">
           {allMessages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -904,8 +904,8 @@ export default function RoomChat() {
         </div>
       </main>
 
-      {/* Bottom Input Area - Mascot Style */}
-      <div className="fixed bottom-0 left-0 right-0 z-50">
+      {/* Bottom Input Area - Mobile Optimized with Safe Area */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom,0px)]">
         <MascotChatInput
           onSend={handleSendMessage}
           onTypingChange={handleTypingChange}
