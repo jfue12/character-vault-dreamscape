@@ -1,55 +1,22 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Users, Settings, UserPlus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { RoomScroller } from "@/components/chat/RoomScroller";
-import { ChatBubble } from "@/components/chat/ChatBubble";
-import { MascotChatInput } from "@/components/chat/MascotChatInput";
-import { SystemMessage } from "@/components/chat/SystemMessage";
-import { TypingIndicator } from "@/components/chat/TypingIndicator";
-import { ChatMemberList } from "@/components/chat/ChatMemberList";
-import { InviteFriendsModal } from "@/components/chat/InviteFriendsModal";
-import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
-import { CreateCharacterModal } from "@/components/characters/CreateCharacterModal";
-import { AICharacterDetailModal } from "@/components/chat/AICharacterDetailModal";
-import { usePhantomAI } from "@/hooks/usePhantomAI";
-import { useSpamDetection } from "@/hooks/useSpamDetection";
-import { motion, AnimatePresence } from "framer-motion";
-import React, { useEffect, useState } from "react";
-// ... other imports
-
-interface Room {
-  id: string;
-  name: string;
-  description: string | null;
-  background_url: string | null;
-  avatar_url?: string | null;
-}
-
-const RoomChat = () => {
-  // Your component logic...
-
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Your component JSX */}
-      <div
-        className="flex-1 flex flex-col transition-all duration-500"
-        style={{
-          backgroundImage: currentRoom?.background_url ? `url(${currentRoom.background_url})` : "none",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        {/* Messages area */}
-      </div>
-    </div>
-  );
-};
-
-// CRITICAL FIX: Add this line at the very bottom
-export default RoomChat;
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, Users, Settings, UserPlus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { RoomScroller } from '@/components/chat/RoomScroller';
+import { ChatBubble } from '@/components/chat/ChatBubble';
+import { MascotChatInput } from '@/components/chat/MascotChatInput';
+import { SystemMessage } from '@/components/chat/SystemMessage';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { ChatMemberList } from '@/components/chat/ChatMemberList';
+import { InviteFriendsModal } from '@/components/chat/InviteFriendsModal';
+import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
+import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
+import { AICharacterDetailModal } from '@/components/chat/AICharacterDetailModal';
+import { usePhantomAI } from '@/hooks/usePhantomAI';
+import { useSpamDetection } from '@/hooks/useSpamDetection';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Room {
   id: string;
@@ -78,7 +45,7 @@ interface Character {
 interface Message {
   id: string;
   content: string;
-  type: "dialogue" | "thought" | "narrator";
+  type: 'dialogue' | 'thought' | 'narrator';
   sender_id: string;
   character_id: string | null;
   created_at: string;
@@ -88,7 +55,7 @@ interface Message {
   character?: Character;
   ai_character_name?: string; // For temp AI characters
   sender_username?: string;
-  sender_role?: "owner" | "admin" | "member";
+  sender_role?: 'owner' | 'admin' | 'member';
 }
 
 interface SystemMsg {
@@ -110,7 +77,7 @@ interface ChatMember {
   username: string;
   characterName: string;
   characterAvatar: string | null;
-  role: "owner" | "admin" | "member";
+  role: 'owner' | 'admin' | 'member';
   isOnline?: boolean;
 }
 
@@ -144,7 +111,7 @@ export default function RoomChat() {
   const [hasAI, setHasAI] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-  const [userRole, setUserRole] = useState<"owner" | "admin" | "member">("member");
+  const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('member');
   const [showInviteFriends, setShowInviteFriends] = useState(false);
   const [showAICharacterDetail, setShowAICharacterDetail] = useState(false);
   const [selectedAICharacter, setSelectedAICharacter] = useState<{
@@ -157,17 +124,17 @@ export default function RoomChat() {
   } | null>(null);
 
   // Get current character
-  const currentCharacter = characters.find((c) => c.id === selectedCharacterId);
+  const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
   // Phantom AI hook
-  const { triggerPhantomAI } = usePhantomAI(worldId || "", roomId || "");
-
+  const { triggerPhantomAI } = usePhantomAI(worldId || '', roomId || '');
+  
   // Spam detection hook
-  const { validateMessage } = useSpamDetection(worldId || "", user?.id || "");
+  const { validateMessage } = useSpamDetection(worldId || '', user?.id || '');
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/auth");
+      navigate('/auth');
     }
   }, [user, authLoading, navigate]);
 
@@ -187,12 +154,12 @@ export default function RoomChat() {
 
   useEffect(() => {
     if (roomId && rooms.length > 0) {
-      const room = rooms.find((r) => r.id === roomId);
+      const room = rooms.find(r => r.id === roomId);
       if (room) {
         setCurrentRoom(room);
         fetchMessages(roomId);
         fetchSystemMessages(roomId);
-
+        
         const cleanup = subscribeToRoom(roomId);
         return cleanup;
       }
@@ -207,21 +174,21 @@ export default function RoomChat() {
   // Presence is tracked silently for typing indicators only
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const fetchWorldData = async () => {
     if (!worldId) return;
 
     const { data: worldData, error: worldError } = await supabase
-      .from("worlds")
-      .select("id, name, owner_id")
-      .eq("id", worldId)
+      .from('worlds')
+      .select('id, name, owner_id')
+      .eq('id', worldId)
       .single();
 
     if (worldError) {
-      toast({ title: "Error", description: "World not found", variant: "destructive" });
-      navigate("/worlds");
+      toast({ title: 'Error', description: 'World not found', variant: 'destructive' });
+      navigate('/worlds');
       return;
     }
 
@@ -230,22 +197,22 @@ export default function RoomChat() {
     // Check user's role in this world
     if (user) {
       const { data: memberData } = await supabase
-        .from("world_members")
-        .select("role")
-        .eq("world_id", worldId)
-        .eq("user_id", user.id)
+        .from('world_members')
+        .select('role')
+        .eq('world_id', worldId)
+        .eq('user_id', user.id)
         .single();
-
+      
       if (memberData) {
-        setUserRole(memberData.role as "owner" | "admin" | "member");
+        setUserRole(memberData.role as 'owner' | 'admin' | 'member');
       }
     }
 
     const { data: roomsData, error: roomsError } = await supabase
-      .from("world_rooms")
-      .select("*")
-      .eq("world_id", worldId)
-      .order("sort_order", { ascending: true });
+      .from('world_rooms')
+      .select('*')
+      .eq('world_id', worldId)
+      .order('sort_order', { ascending: true });
 
     if (!roomsError && roomsData) {
       setRooms(roomsData);
@@ -264,26 +231,24 @@ export default function RoomChat() {
     if (!worldId) return;
 
     const { data } = await supabase
-      .from("world_members")
-      .select(
-        `
+      .from('world_members')
+      .select(`
         user_id,
         role,
         profiles(username),
         active_character:characters!world_members_active_character_id_fkey(name, avatar_url)
-      `,
-      )
-      .eq("world_id", worldId)
-      .eq("is_banned", false);
+      `)
+      .eq('world_id', worldId)
+      .eq('is_banned', false);
 
     if (data) {
       const processedMembers: ChatMember[] = data.map((m: any) => ({
         userId: m.user_id,
-        username: m.profiles?.username || "Unknown",
-        characterName: m.active_character?.name || m.profiles?.username || "Unknown",
+        username: m.profiles?.username || 'Unknown',
+        characterName: m.active_character?.name || m.profiles?.username || 'Unknown',
         characterAvatar: m.active_character?.avatar_url || null,
-        role: m.role as "owner" | "admin" | "member",
-        isOnline: onlineUsers.has(m.user_id),
+        role: m.role as 'owner' | 'admin' | 'member',
+        isOnline: onlineUsers.has(m.user_id)
       }));
       setMembers(processedMembers);
     }
@@ -294,22 +259,22 @@ export default function RoomChat() {
 
     // First get user's saved active character
     const { data: profile } = await supabase
-      .from("profiles")
-      .select("active_character_id")
-      .eq("id", user.id)
+      .from('profiles')
+      .select('active_character_id')
+      .eq('id', user.id)
       .maybeSingle();
 
     const { data, error } = await supabase
-      .from("characters")
-      .select("id, name, avatar_url, bubble_color, text_color, bubble_alignment")
-      .eq("owner_id", user.id)
-      .eq("is_hidden", false);
+      .from('characters')
+      .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+      .eq('owner_id', user.id)
+      .eq('is_hidden', false);
 
     if (!error && data) {
       setCharacters(data);
       // Use saved active character if it exists and is in the list, otherwise default to first
       const savedCharId = profile?.active_character_id;
-      if (savedCharId && data.some((c) => c.id === savedCharId)) {
+      if (savedCharId && data.some(c => c.id === savedCharId)) {
         setSelectedCharacterId(savedCharId);
       } else if (data.length > 0 && !selectedCharacterId) {
         setSelectedCharacterId(data[0].id);
@@ -321,78 +286,82 @@ export default function RoomChat() {
   const handleCharacterSelect = async (characterId: string | null) => {
     setSelectedCharacterId(characterId);
     if (user && characterId) {
-      await supabase.from("profiles").update({ active_character_id: characterId }).eq("id", user.id);
+      await supabase
+        .from('profiles')
+        .update({ active_character_id: characterId })
+        .eq('id', user.id);
     }
   };
 
   const fetchMessages = async (roomId: string) => {
     const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("room_id", roomId)
-      .order("created_at", { ascending: true })
+      .from('messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true })
       .limit(100);
 
     if (!error && data) {
-      const characterIds = [...new Set(data.filter((m) => m.character_id).map((m) => m.character_id as string))];
-      const senderIds = [...new Set(data.map((m) => m.sender_id))];
-      const aiMessageCharIds = [
-        ...new Set(data.filter((m) => m.is_ai && m.character_id).map((m) => m.character_id as string)),
-      ];
-
+      const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id as string))];
+      const senderIds = [...new Set(data.map(m => m.sender_id))];
+      const aiMessageCharIds = [...new Set(data.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
+      
       let characterMap: Record<string, Character> = {};
       let tempAICharacterMap: Record<string, { name: string; bio?: string | null }> = {};
       let usernameMap: Record<string, string> = {};
-      let roleMap: Record<string, "owner" | "admin" | "member"> = {};
-
+      let roleMap: Record<string, 'owner' | 'admin' | 'member'> = {};
+      
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
-          .from("characters")
-          .select("id, name, avatar_url, bubble_color, text_color, bubble_alignment")
-          .in("id", characterIds);
-
+          .from('characters')
+          .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+          .in('id', characterIds);
+        
         if (charData) {
-          characterMap = Object.fromEntries(charData.map((c) => [c.id, c]));
+          characterMap = Object.fromEntries(charData.map(c => [c.id, c]));
         }
       }
 
       // Fetch temp AI characters for AI messages that don't have character data
       if (aiMessageCharIds.length > 0) {
         const { data: tempCharData } = await supabase
-          .from("temp_ai_characters")
-          .select("id, name, bio")
-          .in("id", aiMessageCharIds);
-
+          .from('temp_ai_characters')
+          .select('id, name, bio')
+          .in('id', aiMessageCharIds);
+        
         if (tempCharData) {
-          tempAICharacterMap = Object.fromEntries(tempCharData.map((c) => [c.id, { name: c.name, bio: c.bio }]));
+          tempAICharacterMap = Object.fromEntries(tempCharData.map(c => [c.id, { name: c.name, bio: c.bio }]));
         }
       }
 
       // Fetch usernames and roles for all senders
       if (senderIds.length > 0) {
-        const { data: profileData } = await supabase.from("profiles").select("id, username").in("id", senderIds);
-
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', senderIds);
+        
         if (profileData) {
-          usernameMap = Object.fromEntries(profileData.map((p) => [p.id, p.username || "anonymous"]));
+          usernameMap = Object.fromEntries(profileData.map(p => [p.id, p.username || 'anonymous']));
         }
 
         // Fetch roles from world_members
         const { data: memberData } = await supabase
-          .from("world_members")
-          .select("user_id, role")
-          .eq("world_id", worldId)
-          .in("user_id", senderIds);
-
+          .from('world_members')
+          .select('user_id, role')
+          .eq('world_id', worldId)
+          .in('user_id', senderIds);
+        
         if (memberData) {
-          roleMap = Object.fromEntries(memberData.map((m) => [m.user_id, m.role as "owner" | "admin" | "member"]));
+          roleMap = Object.fromEntries(memberData.map(m => [m.user_id, m.role as 'owner' | 'admin' | 'member']));
         }
       }
 
-      const messagesWithChars = data.map((m) => {
+      const messagesWithChars = data.map(m => {
         // For AI messages, try to get character from temp_ai_characters if not in characters table
         let character = m.character_id ? characterMap[m.character_id] : undefined;
         let aiCharName: string | undefined;
-
+        
         if (m.is_ai && m.character_id && !character) {
           const tempChar = tempAICharacterMap[m.character_id];
           if (tempChar) {
@@ -402,12 +371,12 @@ export default function RoomChat() {
 
         return {
           ...m,
-          type: m.type as "dialogue" | "thought" | "narrator",
+          type: m.type as 'dialogue' | 'thought' | 'narrator',
           emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
           character: character,
           ai_character_name: aiCharName,
-          sender_username: m.is_ai ? undefined : usernameMap[m.sender_id] || "anonymous",
-          sender_role: roleMap[m.sender_id] || "member",
+          sender_username: m.is_ai ? undefined : (usernameMap[m.sender_id] || 'anonymous'),
+          sender_role: roleMap[m.sender_id] || 'member'
         };
       });
 
@@ -417,10 +386,10 @@ export default function RoomChat() {
 
   const fetchSystemMessages = async (roomId: string) => {
     const { data } = await supabase
-      .from("system_messages")
-      .select("*")
-      .eq("room_id", roomId)
-      .order("created_at", { ascending: true })
+      .from('system_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true })
       .limit(50);
 
     if (data) {
@@ -433,35 +402,35 @@ export default function RoomChat() {
     const messagesChannel = supabase
       .channel(`room-messages-${roomId}`)
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `room_id=eq.${roomId}`,
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`
         },
         async (payload) => {
           const newMessage = payload.new as any;
-
+          
           let character: Character | undefined;
           let ai_character_name: string | undefined;
           let sender_username: string | undefined = undefined;
-
+          
           if (newMessage.character_id) {
             // Try regular characters first
             const { data } = await supabase
-              .from("characters")
-              .select("id, name, avatar_url, bubble_color, text_color, bubble_alignment")
-              .eq("id", newMessage.character_id)
+              .from('characters')
+              .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+              .eq('id', newMessage.character_id)
               .single();
             if (data) {
               character = data;
             } else if (newMessage.is_ai) {
               // Try temp_ai_characters for AI messages
               const { data: tempChar } = await supabase
-                .from("temp_ai_characters")
-                .select("name")
-                .eq("id", newMessage.character_id)
+                .from('temp_ai_characters')
+                .select('name')
+                .eq('id', newMessage.character_id)
                 .maybeSingle();
               if (tempChar) {
                 ai_character_name = tempChar.name;
@@ -472,42 +441,41 @@ export default function RoomChat() {
           // Only fetch sender username for non-AI messages
           if (!newMessage.is_ai) {
             const { data: profileData } = await supabase
-              .from("profiles")
-              .select("username")
-              .eq("id", newMessage.sender_id)
+              .from('profiles')
+              .select('username')
+              .eq('id', newMessage.sender_id)
               .maybeSingle();
-
+            
             if (profileData?.username) {
               sender_username = profileData.username;
             }
           }
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              ...newMessage,
-              character,
-              ai_character_name,
-              sender_username,
-              emoji_reactions: newMessage.emoji_reactions || {},
-            },
-          ]);
-        },
+          setMessages(prev => [...prev, { 
+            ...newMessage, 
+            character,
+            ai_character_name,
+            sender_username,
+            emoji_reactions: newMessage.emoji_reactions || {}
+          }]);
+        }
       )
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `room_id=eq.${roomId}`,
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`
         },
         (payload) => {
           const updated = payload.new as any;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? { ...m, emoji_reactions: updated.emoji_reactions || {} } : m)),
-          );
-        },
+          setMessages(prev => prev.map(m => 
+            m.id === updated.id 
+              ? { ...m, emoji_reactions: updated.emoji_reactions || {} }
+              : m
+          ));
+        }
       )
       .subscribe();
 
@@ -515,26 +483,25 @@ export default function RoomChat() {
     const systemChannel = supabase
       .channel(`room-system-${roomId}`)
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "system_messages",
-          filter: `room_id=eq.${roomId}`,
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_messages',
+          filter: `room_id=eq.${roomId}`
         },
         (payload) => {
-          setSystemMessages((prev) => [...prev, payload.new as SystemMsg]);
-        },
+          setSystemMessages(prev => [...prev, payload.new as SystemMsg]);
+        }
       )
       .subscribe();
 
     // Subscribe to presence for typing indicators
-    const presenceChannel = supabase
-      .channel(`room-presence-${roomId}`)
-      .on("presence", { event: "sync" }, () => {
+    const presenceChannel = supabase.channel(`room-presence-${roomId}`)
+      .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const typing: TypingUser[] = [];
-
+        
         Object.values(state).forEach((presences: any) => {
           presences.forEach((presence: any) => {
             // Only show others who are typing, not ourselves
@@ -542,26 +509,22 @@ export default function RoomChat() {
               typing.push({
                 name: presence.characterName,
                 avatar: presence.characterAvatar,
-                odId: presence.odId,
+                odId: presence.odId
               });
             }
           });
         });
-
+        
         setTypingUsers(typing);
       })
       .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          const charOrProfile = currentCharacter || {
-            id: user?.id,
-            name: profile?.username || "User",
-            avatar_url: null,
-          };
+        if (status === 'SUBSCRIBED') {
+          const charOrProfile = currentCharacter || { id: user?.id, name: profile?.username || 'User', avatar_url: null };
           await presenceChannel.track({
             odId: charOrProfile.id,
-            characterName: charOrProfile.name || "User",
+            characterName: charOrProfile.name || 'User',
             characterAvatar: charOrProfile.avatar_url || null,
-            isTyping: false,
+            isTyping: false
           });
         }
       });
@@ -573,71 +536,66 @@ export default function RoomChat() {
     };
   };
 
-  const handleTypingChange = useCallback(
-    async (isTyping: boolean) => {
-      if (!roomId || !user) return;
-
-      const charOrProfile = currentCharacter || { id: user.id, name: profile?.username || "User", avatar_url: null };
-      const channel = supabase.channel(`room-presence-${roomId}`);
-      await channel.track({
-        odId: charOrProfile.id,
-        characterName: charOrProfile.name || "User",
-        characterAvatar: charOrProfile.avatar_url || null,
-        isTyping,
-      });
-    },
-    [roomId, currentCharacter, user, profile],
-  );
+  const handleTypingChange = useCallback(async (isTyping: boolean) => {
+    if (!roomId || !user) return;
+    
+    const charOrProfile = currentCharacter || { id: user.id, name: profile?.username || 'User', avatar_url: null };
+    const channel = supabase.channel(`room-presence-${roomId}`);
+    await channel.track({
+      odId: charOrProfile.id,
+      characterName: charOrProfile.name || 'User',
+      characterAvatar: charOrProfile.avatar_url || null,
+      isTyping
+    });
+  }, [roomId, currentCharacter, user, profile]);
 
   const sendSystemMessage = async (type: string) => {
     if (!currentRoom || !user || !currentCharacter) return;
 
-    await supabase.from("system_messages").insert({
+    await supabase.from('system_messages').insert({
       room_id: currentRoom.id,
       message_type: type,
       user_id: user.id,
-      username: currentCharacter.name,
+      username: currentCharacter.name
     });
   };
 
-  const handleSendMessage = async (
-    content: string,
-    type: "dialogue" | "thought" | "narrator",
-    attachmentUrl?: string,
-  ) => {
+  const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
     if (!user || !currentRoom) return;
 
     // Validate against spam
     const isValid = await validateMessage(content);
     if (!isValid) return;
 
-    const { error } = await supabase.from("messages").insert({
-      room_id: currentRoom.id,
-      sender_id: user.id,
-      character_id: selectedCharacterId || null, // Allow null for base profile
-      content,
-      type,
-      attachment_url: attachmentUrl || null,
-      emoji_reactions: {},
-    });
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        room_id: currentRoom.id,
+        sender_id: user.id,
+        character_id: selectedCharacterId || null, // Allow null for base profile
+        content,
+        type,
+        attachment_url: attachmentUrl || null,
+        emoji_reactions: {}
+      });
 
     if (error) {
-      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
       return;
     }
 
     // Trigger Phantom AI if world has AI characters
-    if (hasAI && type === "dialogue") {
-      const messageHistory = messages.slice(-10).map((m) => ({
+    if (hasAI && type === 'dialogue') {
+      const messageHistory = messages.slice(-10).map(m => ({
         content: m.content,
-        characterName: m.character?.name || "Unknown",
-        characterId: m.character_id || "",
+        characterName: m.character?.name || 'Unknown',
+        characterId: m.character_id || '',
         type: m.type,
       }));
 
       const result = await triggerPhantomAI(content, selectedCharacterId, messageHistory);
       if (result?.ok === false) {
-        toast({ title: "AI", description: result.error, variant: "destructive" });
+        toast({ title: 'AI', description: result.error, variant: 'destructive' });
       }
     }
   };
@@ -645,19 +603,22 @@ export default function RoomChat() {
   const handleReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
 
-    const message = messages.find((m) => m.id === messageId);
+    const message = messages.find(m => m.id === messageId);
     if (!message) return;
 
     const reactions = { ...(message.emoji_reactions || {}) };
     const users = reactions[emoji] || [];
-
+    
     if (users.includes(user.id)) {
-      reactions[emoji] = users.filter((id) => id !== user.id);
+      reactions[emoji] = users.filter(id => id !== user.id);
     } else {
       reactions[emoji] = [...users, user.id];
     }
 
-    await supabase.from("messages").update({ emoji_reactions: reactions }).eq("id", messageId);
+    await supabase
+      .from('messages')
+      .update({ emoji_reactions: reactions })
+      .eq('id', messageId);
   };
 
   const handleAICharacterClick = async (characterId: string | null, characterName: string) => {
@@ -669,7 +630,7 @@ export default function RoomChat() {
         personality_traits: null,
         social_rank: null,
         avatar_url: null,
-        avatar_description: null,
+        avatar_description: null
       });
       setShowAICharacterDetail(true);
       return;
@@ -677,9 +638,9 @@ export default function RoomChat() {
 
     // Try to fetch from temp_ai_characters first
     const { data: tempChar } = await supabase
-      .from("temp_ai_characters")
-      .select("name, bio, personality_traits, social_rank, avatar_description")
-      .eq("id", characterId)
+      .from('temp_ai_characters')
+      .select('name, bio, personality_traits, social_rank, avatar_description')
+      .eq('id', characterId)
       .maybeSingle();
 
     if (tempChar) {
@@ -689,7 +650,7 @@ export default function RoomChat() {
         personality_traits: tempChar.personality_traits as string[] | null,
         social_rank: tempChar.social_rank,
         avatar_url: null,
-        avatar_description: tempChar.avatar_description,
+        avatar_description: tempChar.avatar_description
       });
       setShowAICharacterDetail(true);
       return;
@@ -697,9 +658,9 @@ export default function RoomChat() {
 
     // Try regular characters table
     const { data: char } = await supabase
-      .from("characters")
-      .select("name, bio, avatar_url")
-      .eq("id", characterId)
+      .from('characters')
+      .select('name, bio, avatar_url')
+      .eq('id', characterId)
       .maybeSingle();
 
     if (char) {
@@ -709,7 +670,7 @@ export default function RoomChat() {
         personality_traits: null,
         social_rank: null,
         avatar_url: char.avatar_url,
-        avatar_description: null,
+        avatar_description: null
       });
       setShowAICharacterDetail(true);
       return;
@@ -722,7 +683,7 @@ export default function RoomChat() {
       personality_traits: null,
       social_rank: null,
       avatar_url: null,
-      avatar_description: null,
+      avatar_description: null
     });
     setShowAICharacterDetail(true);
   };
@@ -732,31 +693,42 @@ export default function RoomChat() {
   };
 
   const handleLeaveWorld = async () => {
-    if (!worldId || !user || userRole === "owner") return;
+    if (!worldId || !user || userRole === 'owner') return;
 
     // Fetch username for system message before leaving
-    const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).single();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
 
     // Get first room for system message
-    const { data: worldRooms } = await supabase.from("world_rooms").select("id").eq("world_id", worldId);
+    const { data: worldRooms } = await supabase
+      .from('world_rooms')
+      .select('id')
+      .eq('world_id', worldId);
 
-    const { error } = await supabase.from("world_members").delete().eq("world_id", worldId).eq("user_id", user.id);
+    const { error } = await supabase
+      .from('world_members')
+      .delete()
+      .eq('world_id', worldId)
+      .eq('user_id', user.id);
 
     if (error) {
-      toast({ title: "Failed to leave", variant: "destructive" });
+      toast({ title: 'Failed to leave', variant: 'destructive' });
     } else {
       // Send "left" system message
       if (worldRooms && worldRooms.length > 0) {
-        await supabase.from("system_messages").insert({
+        await supabase.from('system_messages').insert({
           room_id: worldRooms[0].id,
-          message_type: "leave",
+          message_type: 'leave',
           user_id: user.id,
-          username: profile?.username || "Someone",
+          username: profile?.username || 'Someone'
         });
       }
 
-      toast({ title: "Left world" });
-      navigate("/hub");
+      toast({ title: 'Left world' });
+      navigate('/hub');
     }
   };
 
@@ -771,7 +743,7 @@ export default function RoomChat() {
   const handleRoomDeleted = (roomId: string) => {
     // If current room was deleted, navigate to first room
     if (currentRoom?.id === roomId && rooms.length > 1) {
-      const nextRoom = rooms.find((r) => r.id !== roomId);
+      const nextRoom = rooms.find(r => r.id !== roomId);
       if (nextRoom) {
         navigate(`/worlds/${worldId}/rooms/${nextRoom.id}`);
       }
@@ -781,17 +753,17 @@ export default function RoomChat() {
 
   // Merge and sort messages with system messages
   const allMessages = [
-    ...messages.map((m) => ({ ...m, isSystem: false })),
-    ...systemMessages.map((s) => ({
-      ...s,
+    ...messages.map(m => ({ ...m, isSystem: false })),
+    ...systemMessages.map(s => ({ 
+      ...s, 
       isSystem: true,
-      created_at: s.created_at,
-    })),
+      created_at: s.created_at 
+    }))
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  const isOwner = userRole === "owner";
-  const isAdmin = userRole === "admin";
-  const onlineMemberCount = members.filter((m) => m.isOnline).length || members.length;
+  const isOwner = userRole === 'owner';
+  const isAdmin = userRole === 'admin';
+  const onlineMemberCount = members.filter(m => m.isOnline).length || members.length;
 
   if (loading || authLoading) {
     return (
@@ -805,7 +777,7 @@ export default function RoomChat() {
     <div className="min-h-screen min-h-[100dvh] bg-[#000] flex flex-col">
       {/* Background */}
       {currentRoom?.background_url && (
-        <div
+        <div 
           className="fixed inset-0 bg-cover bg-center opacity-30 z-0"
           style={{ backgroundImage: `url(${currentRoom.background_url})` }}
         />
@@ -814,23 +786,22 @@ export default function RoomChat() {
       {/* Header - Mobile Optimized */}
       <header className="sticky top-0 z-50 bg-[#000]/95 backdrop-blur-xl border-b border-[#1a1a1a] pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center justify-between px-3 h-14">
-          <button
-            onClick={() => navigate("/")}
+          <button 
+            onClick={() => navigate('/')} 
             className="p-2.5 -ml-1 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-
+          
           <div className="flex flex-col items-center flex-1 min-w-0 px-2">
-            <h1 className="font-semibold text-white truncate max-w-[180px] sm:max-w-[240px] text-sm sm:text-base">
-              {world?.name}
-            </h1>
+            <h1 className="font-semibold text-white truncate max-w-[180px] sm:max-w-[240px] text-sm sm:text-base">{world?.name}</h1>
             {/* Typing Indicator in Header */}
             {typingUsers.length > 0 ? (
               <span className="text-[11px] text-[#7C3AED] animate-pulse truncate max-w-[160px]">
-                {typingUsers.length === 1
+                {typingUsers.length === 1 
                   ? `${typingUsers[0].name} is typing...`
-                  : `${typingUsers.length} people typing...`}
+                  : `${typingUsers.length} people typing...`
+                }
               </span>
             ) : (
               <span className="text-[11px] text-gray-500 truncate max-w-[160px]">{currentRoom?.name}</span>
@@ -838,7 +809,7 @@ export default function RoomChat() {
           </div>
 
           <div className="flex items-center gap-0.5">
-            <button
+            <button 
               onClick={() => setShowMemberList(true)}
               className="p-2.5 relative text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
             >
@@ -848,7 +819,7 @@ export default function RoomChat() {
               </span>
             </button>
             {(isOwner || isAdmin) && (
-              <button
+              <button 
                 onClick={() => setShowSettings(true)}
                 className="p-2.5 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
               >
@@ -873,36 +844,38 @@ export default function RoomChat() {
       <main className="flex-1 pb-[calc(180px+env(safe-area-inset-bottom,0px))] px-3 sm:px-4 overflow-y-auto relative z-10 pt-3 momentum-scroll touch-action-pan-y">
         <div className="max-w-lg mx-auto space-y-2.5">
           {allMessages.length === 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
               <p className="text-gray-500">No messages yet. Start the roleplay!</p>
             </motion.div>
           ) : (
             allMessages.map((item) => {
-              if ("isSystem" in item && item.isSystem) {
+              if ('isSystem' in item && item.isSystem) {
                 const sysMsg = item as SystemMsg & { isSystem: boolean };
                 return (
                   <SystemMessage
                     key={`sys-${sysMsg.id}`}
                     type={sysMsg.message_type as any}
-                    username={sysMsg.username || "Unknown"}
+                    username={sysMsg.username || 'Unknown'}
                     timestamp={sysMsg.created_at}
                     duration={sysMsg.duration || undefined}
                   />
                 );
               }
-
+              
               const msg = item as Message & { isSystem: boolean };
               const isOwnMessage = msg.sender_id === user?.id && !msg.is_ai;
               // AI messages: use ai_character_name or character name, never show "AI Character" if we have a name
-              const displayName = msg.is_ai
-                ? msg.ai_character_name || msg.character?.name || "AI Character"
-                : msg.character?.name || (isOwnMessage ? profile?.username || "You" : "Someone");
+              const displayName = msg.is_ai 
+                ? (msg.ai_character_name || msg.character?.name || 'AI Character')
+                : (msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone'));
               // Don't show username for AI messages
-              const senderUsername = msg.is_ai
-                ? undefined
-                : msg.sender_username || (isOwnMessage ? profile?.username : undefined);
+              const senderUsername = msg.is_ai ? undefined : (msg.sender_username || (isOwnMessage ? profile?.username : undefined));
               // AI messages should always be on the left (not owner/admin)
-              const bubbleAlign = msg.is_ai ? "left" : "auto";
+              const bubbleAlign = msg.is_ai ? 'left' : 'auto';
               return (
                 <ChatBubble
                   key={msg.id}
@@ -922,9 +895,7 @@ export default function RoomChat() {
                   bubbleAlignment={bubbleAlign}
                   role={msg.is_ai ? undefined : msg.sender_role}
                   isAI={msg.is_ai}
-                  onAICharacterClick={
-                    msg.is_ai ? () => handleAICharacterClick(msg.character_id, displayName) : undefined
-                  }
+                  onAICharacterClick={msg.is_ai ? () => handleAICharacterClick(msg.character_id, displayName) : undefined}
                 />
               );
             })
@@ -939,19 +910,19 @@ export default function RoomChat() {
           onSend={handleSendMessage}
           onTypingChange={handleTypingChange}
           disabled={false}
-          roomId={currentRoom?.id || ""}
+          roomId={currentRoom?.id || ''}
           worldId={worldId}
           characters={characters}
           selectedCharacterId={selectedCharacterId}
           onSelectCharacter={handleCharacterSelect}
           onCreateCharacter={() => setShowCreateCharacter(true)}
-          baseProfileName={profile?.username || "You"}
+          baseProfileName={profile?.username || 'You'}
           isStaff={isOwner || isAdmin}
           onStyleUpdated={async () => {
             await fetchUserCharacters();
             if (roomId) {
               // Small delay to ensure DB update is committed before refetch
-              await new Promise((resolve) => setTimeout(resolve, 100));
+              await new Promise(resolve => setTimeout(resolve, 100));
               await fetchMessages(roomId);
             }
           }}
@@ -984,20 +955,20 @@ export default function RoomChat() {
       <InviteFriendsModal
         isOpen={showInviteFriends}
         onClose={() => setShowInviteFriends(false)}
-        worldId={worldId || ""}
-        worldName={world?.name || ""}
+        worldId={worldId || ''}
+        worldName={world?.name || ''}
       />
 
       {/* Settings Panel */}
       <ChatSettingsPanel
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-        worldId={worldId || ""}
-        worldName={world?.name || ""}
+        worldId={worldId || ''}
+        worldName={world?.name || ''}
         rooms={rooms}
         isOwner={isOwner}
         isAdmin={isAdmin}
-        members={members.map((m) => ({ userId: m.userId, username: m.username, role: m.role }))}
+        members={members.map(m => ({ userId: m.userId, username: m.username, role: m.role }))}
         onLeaveWorld={handleLeaveWorld}
         onRoomCreated={handleRoomCreated}
         onRoomDeleted={handleRoomDeleted}
