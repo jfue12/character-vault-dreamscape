@@ -125,17 +125,10 @@ export const useSpamDetection = (worldId: string, userId: string, config: Partia
     }
   }, [worldId, userId, toast]);
 
+  // Spam protection disabled - always allow messages
   const validateMessage = useCallback(async (content: string): Promise<boolean> => {
-    const { isSpam, reason } = checkForSpam(content);
-    
-    if (isSpam && reason) {
-      const wasTimedOut = await handleSpamDetected(reason);
-      return !wasTimedOut; // Return false if timed out (can't send), true if just warned
-    }
-
-    recordMessage(content);
     return true;
-  }, [checkForSpam, handleSpamDetected, recordMessage]);
+  }, []);
 
   const resetWarnings = useCallback(() => {
     warningsRef.current = 0;
