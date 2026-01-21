@@ -25,6 +25,7 @@ interface Room {
   background_url: string | null;
   is_staff_only: boolean;
   world_id: string;
+  sort_order: number;
 }
 
 interface World {

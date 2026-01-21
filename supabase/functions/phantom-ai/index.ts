@@ -203,12 +203,19 @@ serve(async (req) => {
       characterName: sanitizeInput(m.characterName).slice(0, 100)
     }));
 
-    // Fetch world context
+    // Fetch world context including AI settings
     const { data: world } = await supabase
       .from("worlds")
-      .select("name, lore_content, description, owner_id, rules")
+      .select("name, lore_content, description, owner_id, rules, ai_enabled, ai_lore, ai_use_owner_characters_only")
       .eq("id", worldId)
       .single();
+
+    // Check if AI is disabled for this world
+    if (world?.ai_enabled === false) {
+      return new Response(JSON.stringify({ shouldRespond: false, reason: "AI is disabled for this world" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: room } = await supabase
       .from("world_rooms")
@@ -343,6 +350,11 @@ serve(async (req) => {
 
 WORLD LORE:
 ${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world awaiting exploration.').slice(0, 3000)}
+
+${world?.ai_lore ? `
+CUSTOM AI INSTRUCTIONS (MUST FOLLOW):
+${sanitizeInput(world.ai_lore).slice(0, 2000)}
+` : ''}
 
 WORLD RULES (MUST ENFORCE):
 ${sanitizeInput(world?.rules || 'No specific rules defined.').slice(0, 1000)}

@@ -1445,6 +1445,9 @@ export type Database = {
       }
       worlds: {
         Row: {
+          ai_enabled: boolean | null
+          ai_lore: string | null
+          ai_use_owner_characters_only: boolean | null
           created_at: string
           description: string | null
           id: string
@@ -1460,6 +1463,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_enabled?: boolean | null
+          ai_lore?: string | null
+          ai_use_owner_characters_only?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1475,6 +1481,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_enabled?: boolean | null
+          ai_lore?: string | null
+          ai_use_owner_characters_only?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
