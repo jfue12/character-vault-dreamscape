@@ -52,11 +52,19 @@ interface Message {
   created_at: string;
   is_ai?: boolean;
   attachment_url: string | null;
-  emoji_reactions: Record<string, string[]> | null;
   character?: Character;
-  ai_character_name?: string; // For temp AI characters
+  ai_character_name?: string;
   sender_username?: string;
   sender_role?: 'owner' | 'admin' | 'member';
+  reply_to_id?: string | null;
+  reply_to_character_name?: string | null;
+  reply_to_content?: string | null;
+}
+
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
 }
 
 interface SystemMsg {
@@ -101,6 +109,7 @@ export default function RoomChat() {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
+  const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -359,7 +368,6 @@ export default function RoomChat() {
       }
 
       const messagesWithChars = data.map(m => {
-        // For AI messages, try to get character from temp_ai_characters if not in characters table
         let character = m.character_id ? characterMap[m.character_id] : undefined;
         let aiCharName: string | undefined;
         
@@ -373,7 +381,6 @@ export default function RoomChat() {
         return {
           ...m,
           type: m.type as 'dialogue' | 'thought' | 'narrator',
-          emoji_reactions: m.emoji_reactions as Record<string, string[]> | null,
           character: character,
           ai_character_name: aiCharName,
           sender_username: m.is_ai ? undefined : (usernameMap[m.sender_id] || 'anonymous'),
@@ -456,26 +463,21 @@ export default function RoomChat() {
             ...newMessage, 
             character,
             ai_character_name,
-            sender_username,
-            emoji_reactions: newMessage.emoji_reactions || {}
+            sender_username
           }]);
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: 'DELETE',
           schema: 'public',
           table: 'messages',
           filter: `room_id=eq.${roomId}`
         },
         (payload) => {
-          const updated = payload.new as any;
-          setMessages(prev => prev.map(m => 
-            m.id === updated.id 
-              ? { ...m, emoji_reactions: updated.emoji_reactions || {} }
-              : m
-          ));
+          const deleted = payload.old as any;
+          setMessages(prev => prev.filter(m => m.id !== deleted.id));
         }
       )
       .subscribe();
@@ -601,25 +603,12 @@ export default function RoomChat() {
     }
   };
 
-  const handleReaction = async (messageId: string, emoji: string) => {
-    if (!user) return;
+  const handleReply = (replyInfo: ReplyingTo) => {
+    setReplyingTo(replyInfo);
+  };
 
-    const message = messages.find(m => m.id === messageId);
-    if (!message) return;
-
-    const reactions = { ...(message.emoji_reactions || {}) };
-    const users = reactions[emoji] || [];
-    
-    if (users.includes(user.id)) {
-      reactions[emoji] = users.filter(id => id !== user.id);
-    } else {
-      reactions[emoji] = [...users, user.id];
-    }
-
-    await supabase
-      .from('messages')
-      .update({ emoji_reactions: reactions })
-      .eq('id', messageId);
+  const clearReply = () => {
+    setReplyingTo(null);
   };
 
   const handleAICharacterClick = async (characterId: string | null, characterName: string) => {
@@ -889,8 +878,7 @@ export default function RoomChat() {
                   isOwnMessage={isOwnMessage}
                   timestamp={msg.created_at}
                   attachmentUrl={msg.attachment_url}
-                  emojiReactions={msg.emoji_reactions || {}}
-                  onReact={handleReaction}
+                  onReply={handleReply}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
                   bubbleAlignment={bubbleAlign}
@@ -919,10 +907,11 @@ export default function RoomChat() {
           onCreateCharacter={() => setShowCreateCharacter(true)}
           baseProfileName={profile?.username || 'You'}
           isStaff={isOwner || isAdmin}
+          replyingTo={replyingTo}
+          onClearReply={clearReply}
           onStyleUpdated={async () => {
             await fetchUserCharacters();
             if (roomId) {
-              // Small delay to ensure DB update is committed before refetch
               await new Promise(resolve => setTimeout(resolve, 100));
               await fetchMessages(roomId);
             }

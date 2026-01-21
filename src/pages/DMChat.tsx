@@ -28,6 +28,12 @@ interface Message {
   character?: Character;
 }
 
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
+}
+
 interface Friend {
   id: string;
   username: string | null;
@@ -58,6 +64,7 @@ export default function DMChat() {
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [friendshipStatus, setFriendshipStatus] = useState<'accepted' | 'pending'>('accepted');
   const [starterMessage, setStarterMessage] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null);
 
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
@@ -398,6 +405,14 @@ export default function DMChat() {
     }
   };
 
+  const handleReply = (replyInfo: ReplyingTo) => {
+    setReplyingTo(replyInfo);
+  };
+
+  const clearReply = () => {
+    setReplyingTo(null);
+  };
+
   const handleAcceptProposal = async () => {
     if (!friendshipId) return;
     
@@ -601,6 +616,7 @@ export default function DMChat() {
                   isRead={msg.is_read}
                   showReadReceipt={true}
                   onDelete={handleDeleteMessage}
+                  onReply={handleReply}
                 />
               );
             })
@@ -632,8 +648,9 @@ export default function DMChat() {
               disabled={false}
               friendshipId={friendshipId || ''}
               selectedCharacterId={selectedCharacterId}
+              replyingTo={replyingTo}
+              onClearReply={clearReply}
               onStyleUpdated={async () => {
-                // Small delay to ensure DB update is committed before refetch
                 await new Promise(resolve => setTimeout(resolve, 100));
                 await fetchMessages();
               }}
