@@ -62,9 +62,20 @@ export const ChatBubble = ({
   const hasAction = content.includes('*');
   
   const parseContent = (text: string) => {
-    const parts = text.split(/(\*[^*]+\*)/g);
+    // Handle **bold**, *italic*, and regular text
+    // Match **bold** first, then *italic* (single asterisks that aren't part of **)
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return parts.map((part, i) => {
-      if (part.startsWith('*') && part.endsWith('*')) {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        // Bold text - keep bubble styling, just make bold
+        return (
+          <span key={i} className="font-bold">
+            {part.slice(2, -2)}
+          </span>
+        );
+      }
+      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+        // Italic action text
         return (
           <span key={i} className="italic text-muted-foreground">
             {part.slice(1, -1)}
@@ -186,13 +197,18 @@ export const ChatBubble = ({
       onMouseUp={handleLongPressEnd}
       onMouseLeave={handleLongPressEnd}
     >
-      {/* Reply Preview */}
+      {/* Reply Preview - Shows the message being replied to */}
       {replyingTo && (
-        <div className={`flex items-center gap-2 mb-1 ${isRightAligned ? 'mr-11' : 'ml-11'}`}>
-          <div className="w-0.5 h-4 bg-primary rounded-full" />
-          <span className="text-xs text-muted-foreground">
-            Replying to <span className="text-primary">{replyingTo.characterName}</span>
-          </span>
+        <div className={`flex items-start gap-2 mb-1.5 ${isRightAligned ? 'mr-11' : 'ml-11'}`}>
+          <div className="w-0.5 h-full min-h-[36px] bg-primary rounded-full flex-shrink-0" />
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-xs font-medium text-primary">
+              {replyingTo.characterName}
+            </span>
+            <span className="text-xs text-muted-foreground/80 line-clamp-2">
+              {replyingTo.content}
+            </span>
+          </div>
         </div>
       )}
 
