@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   Plus,
@@ -14,6 +14,10 @@ import {
   Lock,
   Users,
   Clock,
+  Bot,
+  BookOpen,
+  GripVertical,
+  MessageSquareOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +29,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+
 interface Room {
   id: string;
   name: string;
   description: string | null;
   background_url: string | null;
   is_staff_only: boolean;
+  sort_order: number;
 }
 
 interface Member {
@@ -80,11 +87,14 @@ export const ChatSettingsPanel = ({
   onRoomDeleted,
 }: ChatSettingsPanelProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"rooms" | "members" | "settings" | "logs">("rooms");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomStaffOnly, setNewRoomStaffOnly] = useState(false);
+  const [newRoomImage, setNewRoomImage] = useState<File | null>(null);
+  const [newRoomImagePreview, setNewRoomImagePreview] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   // World settings state
@@ -92,9 +102,31 @@ export const ChatSettingsPanel = ({
   const [isNsfw, setIsNsfw] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
 
+  // AI settings state
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [aiLore, setAiLore] = useState("");
+  const [aiUseOwnerCharsOnly, setAiUseOwnerCharsOnly] = useState(true);
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
+
+  // Room editing state
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editingRoomBackground, setEditingRoomBackground] = useState<File | null>(null);
+  const [editingRoomBackgroundPreview, setEditingRoomBackgroundPreview] = useState<string | null>(null);
+
+  // Drag and drop state
+  const [draggedRoomId, setDraggedRoomId] = useState<string | null>(null);
+  const [localRooms, setLocalRooms] = useState<Room[]>([]);
+
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const roomImageInputRef = useRef<HTMLInputElement>(null);
+  const editRoomImageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setLocalRooms([...rooms].sort((a, b) => a.sort_order - b.sort_order));
+  }, [rooms]);
 
   // Fetch world settings on open
   useEffect(() => {
@@ -111,11 +143,18 @@ export const ChatSettingsPanel = ({
   }, [activeTab, isOwner, worldId]);
 
   const fetchWorldSettings = async () => {
-    const { data } = await supabase.from("worlds").select("is_public, is_nsfw").eq("id", worldId).single();
+    const { data } = await supabase
+      .from("worlds")
+      .select("is_public, is_nsfw, ai_enabled, ai_lore, ai_use_owner_characters_only")
+      .eq("id", worldId)
+      .single();
 
     if (data) {
       setIsPublic(data.is_public);
       setIsNsfw(data.is_nsfw);
+      setAiEnabled(data.ai_enabled ?? true);
+      setAiLore(data.ai_lore || "");
+      setAiUseOwnerCharsOnly(data.ai_use_owner_characters_only ?? true);
     }
   };
 
@@ -144,11 +183,8 @@ export const ChatSettingsPanel = ({
   const handleUpdateWorldSettings = async (field: "is_public" | "is_nsfw", value: boolean) => {
     setLoadingSettings(true);
 
-    // If turning off NSFW, that's allowed
-    // If world is NSFW, 18+ must stay on (handled by not allowing toggle)
     const updateData: any = { [field]: value };
 
-    // If marking as NSFW, keep it that way
     if (field === "is_nsfw" && value) {
       updateData.is_nsfw = true;
     }
@@ -162,7 +198,6 @@ export const ChatSettingsPanel = ({
       if (field === "is_nsfw") setIsNsfw(value);
       toast({ title: "Settings updated" });
 
-      // Log the change
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action:
@@ -173,26 +208,80 @@ export const ChatSettingsPanel = ({
             : value
               ? "nsfw_enabled"
               : "nsfw_disabled",
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        actor_id: user?.id,
         details: { [field]: value },
       });
     }
     setLoadingSettings(false);
   };
 
+  const handleSaveAiSettings = async () => {
+    setSavingAiSettings(true);
+    const { error } = await supabase
+      .from("worlds")
+      .update({
+        ai_enabled: aiEnabled,
+        ai_lore: aiLore || null,
+        ai_use_owner_characters_only: aiUseOwnerCharsOnly,
+      })
+      .eq("id", worldId);
+
+    if (error) {
+      toast({ title: "Failed to save AI settings", variant: "destructive" });
+    } else {
+      toast({ title: "AI settings saved!" });
+      await supabase.from("audit_logs").insert({
+        world_id: worldId,
+        action: "ai_settings_updated",
+        actor_id: user?.id,
+        details: { ai_enabled: aiEnabled, ai_use_owner_characters_only: aiUseOwnerCharsOnly },
+      });
+    }
+    setSavingAiSettings(false);
+  };
+
+  const handleNewRoomImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewRoomImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setNewRoomImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateRoom = async () => {
-    if (!newRoomName.trim()) {
+    if (!newRoomName.trim() || !user) {
       toast({ title: "Room name is required", variant: "destructive" });
       return;
     }
 
     setCreating(true);
+    
+    let backgroundUrl = null;
+    if (newRoomImage) {
+      const fileExt = newRoomImage.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-room.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('world-images')
+        .upload(fileName, newRoomImage);
+      
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('world-images')
+          .getPublicUrl(fileName);
+        backgroundUrl = publicUrl;
+      }
+    }
+
     const { error } = await supabase.from("world_rooms").insert({
       world_id: worldId,
       name: newRoomName.trim(),
       description: newRoomDescription.trim() || null,
       is_staff_only: newRoomStaffOnly,
-      sort_order: rooms.length + 1,
+      background_url: backgroundUrl,
+      sort_order: localRooms.length + 1,
     });
 
     if (error) {
@@ -202,6 +291,8 @@ export const ChatSettingsPanel = ({
       setNewRoomName("");
       setNewRoomDescription("");
       setNewRoomStaffOnly(false);
+      setNewRoomImage(null);
+      setNewRoomImagePreview(null);
       setShowCreateRoom(false);
       onRoomCreated();
     }
@@ -209,7 +300,7 @@ export const ChatSettingsPanel = ({
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    if (rooms.length <= 1) {
+    if (localRooms.length <= 1) {
       toast({ title: "Cannot delete", description: "World must have at least one room", variant: "destructive" });
       return;
     }
@@ -221,6 +312,83 @@ export const ChatSettingsPanel = ({
       toast({ title: "Room deleted" });
       onRoomDeleted(roomId);
     }
+  };
+
+  const handleUpdateRoomBackground = async (roomId: string, remove: boolean = false) => {
+    if (!user) return;
+    
+    let backgroundUrl: string | null = null;
+    
+    if (!remove && editingRoomBackground) {
+      const fileExt = editingRoomBackground.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-room.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('world-images')
+        .upload(fileName, editingRoomBackground);
+      
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('world-images')
+          .getPublicUrl(fileName);
+        backgroundUrl = publicUrl;
+      }
+    }
+
+    const { error } = await supabase
+      .from("world_rooms")
+      .update({ background_url: backgroundUrl })
+      .eq("id", roomId);
+
+    if (error) {
+      toast({ title: "Failed to update room", variant: "destructive" });
+    } else {
+      toast({ title: remove ? "Background removed" : "Background updated" });
+      setEditingRoomId(null);
+      setEditingRoomBackground(null);
+      setEditingRoomBackgroundPreview(null);
+      onRoomCreated(); // Refresh rooms
+    }
+  };
+
+  const handleDragStart = (roomId: string) => {
+    setDraggedRoomId(roomId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetRoomId: string) => {
+    e.preventDefault();
+    if (!draggedRoomId || draggedRoomId === targetRoomId) return;
+    
+    const dragIndex = localRooms.findIndex(r => r.id === draggedRoomId);
+    const targetIndex = localRooms.findIndex(r => r.id === targetRoomId);
+    
+    if (dragIndex === -1 || targetIndex === -1) return;
+    
+    const newRooms = [...localRooms];
+    const [draggedRoom] = newRooms.splice(dragIndex, 1);
+    newRooms.splice(targetIndex, 0, draggedRoom);
+    setLocalRooms(newRooms);
+  };
+
+  const handleDragEnd = async () => {
+    if (!draggedRoomId) return;
+    
+    // Save new order to database
+    const updates = localRooms.map((room, index) => ({
+      id: room.id,
+      sort_order: index,
+    }));
+
+    for (const update of updates) {
+      await supabase
+        .from("world_rooms")
+        .update({ sort_order: update.sort_order })
+        .eq("id", update.id);
+    }
+
+    setDraggedRoomId(null);
+    toast({ title: "Room order saved" });
+    onRoomCreated(); // Refresh
   };
 
   const handlePromoteMember = async (userId: string) => {
@@ -235,7 +403,7 @@ export const ChatSettingsPanel = ({
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action: "promote_admin",
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        actor_id: user?.id,
         target_user_id: userId,
       });
     }
@@ -253,7 +421,7 @@ export const ChatSettingsPanel = ({
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action: "demote_admin",
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        actor_id: user?.id,
         target_user_id: userId,
       });
     }
@@ -267,7 +435,7 @@ export const ChatSettingsPanel = ({
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action: "kick",
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        actor_id: user?.id,
         target_user_id: userId,
       });
     }
@@ -285,7 +453,7 @@ export const ChatSettingsPanel = ({
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action: "ban",
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        actor_id: user?.id,
         target_user_id: userId,
       });
     }
@@ -305,13 +473,12 @@ export const ChatSettingsPanel = ({
     };
 
     const expiresAt = new Date(Date.now() + (durationMap[duration] || 60000)).toISOString();
-    const currentUser = (await supabase.auth.getUser()).data.user;
 
     const { error } = await supabase.from("timeouts").insert({
       user_id: userId,
       world_id: worldId,
       expires_at: expiresAt,
-      issued_by: currentUser?.id,
+      issued_by: user?.id,
       reason: `Timed out for ${duration}`,
     });
 
@@ -320,7 +487,7 @@ export const ChatSettingsPanel = ({
       await supabase.from("audit_logs").insert({
         world_id: worldId,
         action: "timeout",
-        actor_id: currentUser?.id,
+        actor_id: user?.id,
         target_user_id: userId,
         details: { duration },
       });
@@ -343,6 +510,7 @@ export const ChatSettingsPanel = ({
       nsfw_disabled: "Disabled NSFW",
       room_created: "Created Room",
       room_deleted: "Deleted Room",
+      ai_settings_updated: "AI Settings Updated",
     };
     return actionMap[action] || action.replace(/_/g, " ");
   };
@@ -446,6 +614,47 @@ export const ChatSettingsPanel = ({
                             onChange={(e) => setNewRoomDescription(e.target.value)}
                             className="min-h-[60px]"
                           />
+                          
+                          {/* Room Background Image */}
+                          <div className="space-y-2">
+                            <Label className="text-xs">Background Image</Label>
+                            <input
+                              ref={roomImageInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleNewRoomImageChange}
+                              className="hidden"
+                            />
+                            {newRoomImagePreview ? (
+                              <div className="relative">
+                                <img 
+                                  src={newRoomImagePreview} 
+                                  alt="Preview" 
+                                  className="w-full h-20 object-cover rounded-lg"
+                                />
+                                <button
+                                  onClick={() => {
+                                    setNewRoomImage(null);
+                                    setNewRoomImagePreview(null);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-black/50 rounded-full"
+                                >
+                                  <X className="w-3 h-3 text-white" />
+                                </button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => roomImageInputRef.current?.click()}
+                              >
+                                <Image className="w-4 h-4 mr-2" />
+                                Add Background
+                              </Button>
+                            )}
+                          </div>
+
                           <div className="flex items-center justify-between">
                             <Label htmlFor="staff-only" className="text-sm">
                               Staff Only
@@ -462,12 +671,31 @@ export const ChatSettingsPanel = ({
                           </div>
                         </div>
                       )}
+
+                      <p className="text-xs text-muted-foreground text-center">
+                        Drag rooms to reorder
+                      </p>
                     </>
                   )}
 
-                  {rooms.map((room) => (
-                    <div key={room.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                  {localRooms.map((room) => (
+                    <div
+                      key={room.id}
+                      draggable={isOwner}
+                      onDragStart={() => handleDragStart(room.id)}
+                      onDragOver={(e) => handleDragOver(e, room.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center gap-3 p-3 rounded-lg bg-muted/50 ${
+                        draggedRoomId === room.id ? 'opacity-50' : ''
+                      } ${isOwner ? 'cursor-move' : ''}`}
+                    >
+                      {isOwner && (
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <div 
+                        className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer"
+                        onClick={() => isOwner && setEditingRoomId(editingRoomId === room.id ? null : room.id)}
+                      >
                         {room.background_url ? (
                           <img src={room.background_url} alt={room.name} className="w-full h-full object-cover" />
                         ) : (
@@ -480,7 +708,7 @@ export const ChatSettingsPanel = ({
                         <p className="font-medium text-foreground truncate">{room.name}</p>
                         {room.is_staff_only && <span className="text-[10px] text-amber-500">Staff only</span>}
                       </div>
-                      {isOwner && rooms.length > 1 && (
+                      {isOwner && localRooms.length > 1 && (
                         <button
                           onClick={() => handleDeleteRoom(room.id)}
                           className="p-1.5 hover:bg-destructive/20 rounded text-destructive"
@@ -490,6 +718,68 @@ export const ChatSettingsPanel = ({
                       )}
                     </div>
                   ))}
+
+                  {/* Room Background Edit Panel */}
+                  {editingRoomId && isOwner && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="p-3 bg-muted rounded-lg space-y-2"
+                    >
+                      <p className="text-xs font-medium">Edit Room Background</p>
+                      <input
+                        ref={editRoomImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setEditingRoomBackground(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => setEditingRoomBackgroundPreview(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      {editingRoomBackgroundPreview ? (
+                        <img 
+                          src={editingRoomBackgroundPreview} 
+                          alt="Preview" 
+                          className="w-full h-20 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => editRoomImageInputRef.current?.click()}
+                        >
+                          <Image className="w-4 h-4 mr-2" />
+                          Choose Image
+                        </Button>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleUpdateRoomBackground(editingRoomId, true)}
+                        >
+                          Remove BG
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          disabled={!editingRoomBackground}
+                          onClick={() => handleUpdateRoomBackground(editingRoomId, false)}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               )}
 
@@ -618,6 +908,80 @@ export const ChatSettingsPanel = ({
                     )}
                   </div>
 
+                  {/* AI Settings */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      AI Settings
+                    </h3>
+                    
+                    {/* AI Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Enable Phantom AI</p>
+                        <p className="text-xs text-muted-foreground">Dynamic NPCs and stage management</p>
+                      </div>
+                      <Switch
+                        checked={aiEnabled}
+                        onCheckedChange={setAiEnabled}
+                      />
+                    </div>
+
+                    {/* AI Character Restriction */}
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Use Owner Characters Only</p>
+                        <p className="text-xs text-muted-foreground">AI won't use other users' characters</p>
+                      </div>
+                      <Switch
+                        checked={aiUseOwnerCharsOnly}
+                        onCheckedChange={setAiUseOwnerCharsOnly}
+                      />
+                    </div>
+
+                    {/* AI Lore */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-muted-foreground" />
+                        <Label className="text-sm">AI Lore & Instructions</Label>
+                      </div>
+                      <Textarea
+                        placeholder="Add custom lore or instructions for the AI to follow..."
+                        value={aiLore}
+                        onChange={(e) => setAiLore(e.target.value)}
+                        className="min-h-[120px] text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The AI will follow these rules and incorporate this lore into responses.
+                      </p>
+                    </div>
+
+                    <Button 
+                      onClick={handleSaveAiSettings} 
+                      disabled={savingAiSettings}
+                      className="w-full"
+                    >
+                      {savingAiSettings ? "Saving..." : "Save AI Settings"}
+                    </Button>
+                  </div>
+
+                  {/* OOC Commands Info */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <MessageSquareOff className="w-4 h-4" />
+                      OOC Commands
+                    </h3>
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        Use <span className="text-primary font-mono">//</span> or <span className="text-primary font-mono">OOC:</span> prefix 
+                        for out-of-character commands. The AI will interpret these as meta-instructions.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Example: <span className="text-primary font-mono">//spawn a merchant</span>
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Auto Spam Detection Info */}
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -628,21 +992,6 @@ export const ChatSettingsPanel = ({
                       <p className="text-xs text-muted-foreground">
                         Spam detection is <span className="text-green-500 font-medium">active</span>. Users sending
                         rapid messages or duplicate content will be auto-warned and timed out.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Phantom AI Info */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Dynamic AI NPCs
-                    </h3>
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground">
-                        The Phantom AI automatically creates dynamic NPCs based on context. Trigger keywords like{" "}
-                        <span className="text-primary">"Guards!"</span> or
-                        <span className="text-primary"> "Bartender"</span> to spawn characters.
                       </p>
                     </div>
                   </div>
