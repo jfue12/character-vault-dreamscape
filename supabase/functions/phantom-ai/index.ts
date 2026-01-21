@@ -475,12 +475,21 @@ MEMORIES WITH THIS CHARACTER:
 ${memories?.map(m => `- ${m.relationship_type}, Trust: ${m.trust_level}/100, Notes: ${JSON.stringify(m.memory_notes || [])}`).join('\n') || 'No prior interactions - treat them as a stranger!'}
 
 CRITICAL RULES:
-- ONLY ONE CHARACTER responds per message. Never have multiple characters speak at once.
+- You can have MULTIPLE NPCs respond in a conversation, including NPC-to-NPC dialogue!
+- NPCs can talk to each other naturally - guards can chat, servants can gossip, nobles can scheme together.
+- When NPCs talk to each other, include their responses in the same responses array - they'll appear in order.
 - NEVER use "narrator" type. Only use "dialogue" or "thought".
-- Pick the SINGLE most relevant character to respond based on context.
+- For NPC-to-NPC conversations: one NPC can say something, then another responds - this creates rich, immersive scenes.
 - Respond to character NAMES like a real person would. If someone calls out "Hey Marcus!" or says a name, that character should respond if present.
 - SPEAK IN PLAIN, NATURAL ENGLISH. No flowery prose, no overly dramatic language. Talk like a real person would - casual, direct, simple words.
 - Avoid phrases like "I perceive", "indeed", "curious fellow", "most interesting". Just say normal things like "What do you want?" or "Yeah, I heard you."
+
+🎭 NPC-TO-NPC DIALOGUE:
+- NPCs can initiate conversations with OTHER NPCs, not just respond to players.
+- A guard might gossip with another guard, a noble might argue with their servant, two merchants might haggle.
+- This creates a LIVING WORLD where NPCs have their own social dynamics.
+- When creating NPC-to-NPC dialogue, each NPC's message should be a separate entry in the responses array.
+- Example: Guard says something → Bartender responds → Guard replies (3 entries in responses array)
 
 RESPONSE FORMAT (VALID JSON ONLY):
 {
@@ -491,8 +500,11 @@ RESPONSE FORMAT (VALID JSON ONLY):
       "characterName": "Name",
       "content": "The message - make it UNIQUE and CHARACTER-APPROPRIATE",
       "type": "dialogue|thought",
-      "isNewCharacter": true/false
+      "isNewCharacter": true/false,
+      "isReplyToNPC": true/false  // Set true if this NPC is responding to another NPC
     }
+    // You can include MULTIPLE responses for NPC-to-NPC dialogue!
+    // Example: Guard1 says X, Guard2 responds, Guard1 replies back
   ],
   "newCharacter": {
     "name": "Distinctive name",
@@ -715,26 +727,45 @@ If the scene calls for drama, CREATE it!`;
     }
 
     // Insert AI messages - always use world owner as sender, match character by name
+    // Now supports MULTIPLE NPC messages for NPC-to-NPC dialogue!
     if (parsed.shouldRespond && parsed.responses?.length > 0) {
       const ownerId = world?.owner_id;
       
       if (!ownerId) {
         console.error("No world owner found, cannot insert AI messages");
       } else {
-        for (const resp of parsed.responses) {
+        // Track created characters for multi-NPC scenes
+        const createdCharacters: Map<string, string> = new Map();
+        
+        for (let i = 0; i < parsed.responses.length; i++) {
+          const resp = parsed.responses[i];
           let characterId: string | null = null;
 
           // If this is a new character, use the newly created temp character ID
           if (resp.isNewCharacter && newTempCharId) {
             characterId = newTempCharId;
-          } else {
-            // Try to match by character name to find existing AI character
-            const matchingChar = allAiCharacters.find(ai => 
-              ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
-            );
-            if (matchingChar?.characterId) {
-              characterId = matchingChar.characterId;
+            if (resp.characterName) {
+              createdCharacters.set(resp.characterName.toLowerCase(), newTempCharId);
             }
+          } else {
+            // Check if we already created this character in this batch
+            const cachedId = resp.characterName ? createdCharacters.get(resp.characterName.toLowerCase()) : null;
+            if (cachedId) {
+              characterId = cachedId;
+            } else {
+              // Try to match by character name to find existing AI character
+              const matchingChar = allAiCharacters.find(ai => 
+                ai.name?.toLowerCase() === resp.characterName?.toLowerCase()
+              );
+              if (matchingChar?.characterId) {
+                characterId = matchingChar.characterId;
+              }
+            }
+          }
+
+          // Add small delay between NPC-to-NPC messages to make dialogue feel natural
+          if (i > 0 && resp.isReplyToNPC) {
+            await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
           }
 
           // Insert the message - sender_id is always the world owner for AI messages
@@ -752,7 +783,7 @@ If the scene calls for drama, CREATE it!`;
             if (insertError) {
               console.error("Failed to insert AI message:", insertError.message, "characterId:", characterId);
             } else {
-              console.log("Inserted AI message from:", resp.characterName, "characterId:", characterId);
+              console.log(`Inserted AI message ${i + 1}/${parsed.responses.length} from:`, resp.characterName, "characterId:", characterId, resp.isReplyToNPC ? "(NPC-to-NPC)" : "");
             }
           } catch (err) {
             console.error("Error inserting AI message:", err);
