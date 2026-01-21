@@ -307,6 +307,7 @@ export type Database = {
           id: string
           identity_tags: Json | null
           is_hidden: boolean
+          is_npc: boolean
           is_private: boolean
           likes: string[] | null
           name: string
@@ -328,6 +329,7 @@ export type Database = {
           id?: string
           identity_tags?: Json | null
           is_hidden?: boolean
+          is_npc?: boolean
           is_private?: boolean
           likes?: string[] | null
           name: string
@@ -349,6 +351,7 @@ export type Database = {
           id?: string
           identity_tags?: Json | null
           is_hidden?: boolean
+          is_npc?: boolean
           is_private?: boolean
           likes?: string[] | null
           name?: string

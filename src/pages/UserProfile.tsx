@@ -72,11 +72,13 @@ export default function UserProfile() {
   const fetchUserCharacters = async () => {
     if (!userId) return;
 
+    // Only fetch user-created characters (exclude AI-generated NPCs)
     const { data, error } = await supabase
       .from('characters')
       .select('*')
       .eq('owner_id', userId)
       .eq('is_hidden', false)
+      .eq('is_npc', false) // Exclude AI-generated NPCs
       .order('created_at', { ascending: false });
 
     if (!error && data) {

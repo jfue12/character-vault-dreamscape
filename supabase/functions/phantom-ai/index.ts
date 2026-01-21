@@ -644,7 +644,8 @@ If the scene calls for drama, CREATE it!`;
           console.error("Error generating avatar:", avatarErr);
         }
 
-        // 1) Create a hidden character row (satisfies FK for messages + memory store)
+        // 1) Create a hidden NPC character row (satisfies FK for messages + memory store)
+        // IMPORTANT: is_npc = true ensures this character NEVER appears in user profiles
         const { data: createdChar, error: charError } = await supabase
           .from("characters")
           .insert({
@@ -654,6 +655,7 @@ If the scene calls for drama, CREATE it!`;
             avatar_url: generatedAvatarUrl,
             is_private: true,
             is_hidden: true,
+            is_npc: true, // Critical: marks this as an AI-generated NPC
           })
           .select("id")
           .single();

@@ -33,6 +33,20 @@ export const CharacterGallery = ({ characterId, isOwner }: CharacterGalleryProps
   }, [characterId]);
 
   const fetchImages = async () => {
+    // First verify this is not an NPC character (extra safety check)
+    const { data: charData } = await supabase
+      .from('characters')
+      .select('is_npc')
+      .eq('id', characterId)
+      .single();
+    
+    // Don't fetch gallery for NPC characters
+    if (charData?.is_npc) {
+      setImages([]);
+      setLoading(false);
+      return;
+    }
+    
     const { data, error } = await supabase
       .from('character_gallery')
       .select('*')
