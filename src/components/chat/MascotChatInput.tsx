@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image, Smile, Plus, User } from 'lucide-react';
+import { Send, Image, Smile, Plus, User, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,12 @@ interface Character {
   id: string;
   name: string;
   avatar_url: string | null;
+}
+
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
 }
 
 interface MascotChatInputProps {
@@ -24,6 +30,8 @@ interface MascotChatInputProps {
   baseProfileName?: string;
   isStaff?: boolean;
   onStyleUpdated?: () => void;
+  replyingTo?: ReplyingTo | null;
+  onClearReply?: () => void;
 }
 
 const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺', '😈', '💜'];
@@ -41,6 +49,8 @@ export const MascotChatInput = ({
   baseProfileName = 'You',
   isStaff = false,
   onStyleUpdated,
+  replyingTo,
+  onClearReply,
 }: MascotChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
@@ -114,6 +124,7 @@ export const MascotChatInput = ({
     setContent('');
     setIsExpanded(false);
     onTypingChange(false);
+    onClearReply?.();
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -267,6 +278,32 @@ export const MascotChatInput = ({
                   {emoji}
                 </button>
               ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reply Preview */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 pt-2"
+          >
+            <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg px-3 py-2">
+              <div className="w-1 h-8 bg-[#7C3AED] rounded-full" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#7C3AED] font-medium">Replying to {replyingTo.characterName}</p>
+                <p className="text-xs text-gray-500 truncate">{replyingTo.content}</p>
+              </div>
+              <button
+                onClick={onClearReply}
+                className="p-1 text-gray-500 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </motion.div>
         )}

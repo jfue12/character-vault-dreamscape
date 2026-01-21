@@ -1,33 +1,36 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Trash2, Reply } from 'lucide-react';
+
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
+}
 
 interface ChatBubbleProps {
   messageId: string;
   characterName: string;
   characterAvatar: string | null;
-  username?: string; // The @username of the sender
+  username?: string;
   content: string;
   type: 'dialogue' | 'thought' | 'narrator';
   isOwnMessage: boolean;
   timestamp?: string;
   attachmentUrl?: string | null;
-  emojiReactions?: Record<string, string[]>;
-  onReact?: (messageId: string, emoji: string) => void;
   onDelete?: (messageId: string) => void;
+  onReply?: (replyInfo: ReplyingTo) => void;
+  replyingTo?: ReplyingTo | null;
   bubbleColor?: string;
   textColor?: string;
   bubbleAlignment?: 'auto' | 'left' | 'right';
   isRead?: boolean;
   showReadReceipt?: boolean;
-  role?: 'owner' | 'admin' | 'member'; // User's role in the world
-  isAI?: boolean; // Is this an AI message
-  onAICharacterClick?: () => void; // Callback when AI character name is clicked
+  role?: 'owner' | 'admin' | 'member';
+  isAI?: boolean;
+  onAICharacterClick?: () => void;
 }
-
-// Narrative-focused reactions for storytelling
-const REACTION_EMOJIS = ['❤️', '😱', '🔥', '💔', '✨', '🎭'];
 
 export const ChatBubble = ({
   messageId,
@@ -39,9 +42,9 @@ export const ChatBubble = ({
   isOwnMessage,
   timestamp,
   attachmentUrl,
-  emojiReactions = {},
-  onReact,
   onDelete,
+  onReply,
+  replyingTo,
   bubbleColor,
   textColor,
   bubbleAlignment = 'auto',
@@ -51,16 +54,13 @@ export const ChatBubble = ({
   isAI = false,
   onAICharacterClick
 }: ChatBubbleProps) => {
-  const [showReactions, setShowReactions] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
 
-  // Determine if message should appear on right side
   const isRightAligned = bubbleAlignment === 'auto' ? isOwnMessage : bubbleAlignment === 'right';
-
-  // Check if content contains action text (wrapped in asterisks)
   const hasAction = content.includes('*');
   
-  // Parse content with asterisks for italic action text
   const parseContent = (text: string) => {
     const parts = text.split(/(\*[^*]+\*)/g);
     return parts.map((part, i) => {
@@ -74,7 +74,38 @@ export const ChatBubble = ({
       return part;
     });
   };
-  
+
+  const handleLongPressStart = () => {
+    longPressTimer.current = setTimeout(() => {
+      setShowActions(true);
+    }, 500);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleReply = () => {
+    if (onReply) {
+      onReply({
+        messageId,
+        characterName,
+        content: content.length > 50 ? content.slice(0, 50) + '...' : content
+      });
+    }
+    setShowActions(false);
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(messageId);
+    }
+    setShowActions(false);
+  };
+
   // Narrator mode - centered italic text
   if (type === 'narrator') {
     return (
@@ -82,31 +113,62 @@ export const ChatBubble = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="text-center py-4 px-8"
+        onTouchStart={handleLongPressStart}
+        onTouchEnd={handleLongPressEnd}
+        onTouchCancel={handleLongPressEnd}
+        onMouseDown={handleLongPressStart}
+        onMouseUp={handleLongPressEnd}
+        onMouseLeave={handleLongPressEnd}
       >
         <p className="text-muted-foreground italic text-sm">{content}</p>
         {timestamp && (
           <span className="text-[10px] text-muted-foreground/50">{formattedTime}</span>
         )}
+        
+        {/* Long-press Action Menu for Narrator */}
+        {showActions && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => setShowActions(false)}
+          >
+            <div 
+              className="bg-card border border-border rounded-xl p-2 shadow-xl min-w-[180px]"
+              onClick={e => e.stopPropagation()}
+            >
+              {onReply && (
+                <button
+                  onClick={handleReply}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm hover:bg-secondary rounded-lg transition-colors"
+                >
+                  <Reply className="w-4 h-4" />
+                  Reply
+                </button>
+              )}
+              {onDelete && isOwnMessage && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-destructive hover:bg-secondary rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
       </motion.div>
     );
   }
 
-  // Thought bubble - cloud style
   const isThought = type === 'thought';
   const displayContent = isThought ? content : content;
 
-  // Decorate character name
   const decoratedName = characterName.includes('Morningstar') || characterName.includes('star') 
     ? `☆${characterName}☆` 
     : characterName;
 
-  // Count reactions
-  const reactionCounts = Object.entries(emojiReactions).map(([emoji, users]) => ({
-    emoji,
-    count: users.length
-  })).filter(r => r.count > 0);
-
-  // Custom bubble styles
   const customBubbleStyle = bubbleColor && !isThought && !hasAction ? {
     backgroundColor: bubbleColor,
     color: textColor || '#FFFFFF'
@@ -117,9 +179,23 @@ export const ChatBubble = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`flex flex-col mb-3 ${isRightAligned ? 'items-end' : 'items-start'}`}
-      onMouseEnter={() => setShowReactions(true)}
-      onMouseLeave={() => setShowReactions(false)}
+      onTouchStart={handleLongPressStart}
+      onTouchEnd={handleLongPressEnd}
+      onTouchCancel={handleLongPressEnd}
+      onMouseDown={handleLongPressStart}
+      onMouseUp={handleLongPressEnd}
+      onMouseLeave={handleLongPressEnd}
     >
+      {/* Reply Preview */}
+      {replyingTo && (
+        <div className={`flex items-center gap-2 mb-1 ${isRightAligned ? 'mr-11' : 'ml-11'}`}>
+          <div className="w-0.5 h-4 bg-primary rounded-full" />
+          <span className="text-xs text-muted-foreground">
+            Replying to <span className="text-primary">{replyingTo.characterName}</span>
+          </span>
+        </div>
+      )}
+
       {/* Timestamp + Character Name + Username + Avatar Row */}
       <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className="relative">
@@ -136,7 +212,6 @@ export const ChatBubble = ({
               </div>
             )}
           </div>
-          {/* Active in Story indicator - shown for other users' messages */}
           {!isOwnMessage && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background" title="Active in Story" />
           )}
@@ -188,7 +263,6 @@ export const ChatBubble = ({
           }`}
           style={customBubbleStyle}
         >
-          {/* Thought bubble decoration */}
           {isThought && (
             <div className={`absolute -bottom-2 ${isRightAligned ? 'right-4' : 'left-4'} flex gap-0.5`}>
               <div className="w-2 h-2 rounded-full bg-muted/60 border border-muted-foreground/20" />
@@ -196,7 +270,6 @@ export const ChatBubble = ({
             </div>
           )}
           
-          {/* Attachment Image */}
           {attachmentUrl && (
             <div className="mb-2 rounded-lg overflow-hidden">
               <img 
@@ -211,48 +284,7 @@ export const ChatBubble = ({
             {isThought ? `(${parseContent(displayContent)})` : parseContent(displayContent)}
           </p>
         </div>
-
-        {/* Reaction Picker & Delete */}
-        {showReactions && (onReact || (onDelete && isOwnMessage)) && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`absolute -top-8 ${isRightAligned ? 'right-0' : 'left-0'} flex gap-0.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg`}
-          >
-            {onReact && REACTION_EMOJIS.map(emoji => (
-              <button
-                key={emoji}
-                onClick={() => onReact(messageId, emoji)}
-                className="text-sm hover:scale-125 transition-transform p-0.5"
-              >
-                {emoji}
-              </button>
-            ))}
-            {onDelete && isOwnMessage && (
-              <button
-                onClick={() => onDelete(messageId)}
-                className="text-sm hover:scale-125 transition-transform p-0.5 text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </motion.div>
-        )}
       </div>
-
-      {/* Reaction Counts */}
-      {reactionCounts.length > 0 && (
-        <div className={`flex gap-1 mt-1 ${isRightAligned ? 'ml-11' : 'mr-11'}`}>
-          {reactionCounts.map(({ emoji, count }) => (
-            <span
-              key={emoji}
-              className="flex items-center gap-0.5 text-xs bg-secondary/50 rounded-full px-1.5 py-0.5"
-            >
-              {emoji} {count}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Read Receipt for own messages */}
       {showReadReceipt && isOwnMessage && (
@@ -269,6 +301,40 @@ export const ChatBubble = ({
             </span>
           )}
         </div>
+      )}
+
+      {/* Long-press Action Menu */}
+      {showActions && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowActions(false)}
+        >
+          <div 
+            className="bg-card border border-border rounded-xl p-2 shadow-xl min-w-[180px]"
+            onClick={e => e.stopPropagation()}
+          >
+            {onReply && (
+              <button
+                onClick={handleReply}
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm hover:bg-secondary rounded-lg transition-colors"
+              >
+                <Reply className="w-4 h-4" />
+                Reply
+              </button>
+            )}
+            {onDelete && isOwnMessage && (
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-destructive hover:bg-secondary rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+          </div>
+        </motion.div>
       )}
     </motion.div>
   );

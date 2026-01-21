@@ -1,9 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image, Smile } from 'lucide-react';
+import { Send, Image, Smile, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { CharacterStylePanel } from '@/components/chat/CharacterStylePanel';
+
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
+}
 
 interface DMChatInputProps {
   onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
@@ -12,11 +18,13 @@ interface DMChatInputProps {
   friendshipId: string;
   selectedCharacterId?: string | null;
   onStyleUpdated?: () => void;
+  replyingTo?: ReplyingTo | null;
+  onClearReply?: () => void;
 }
 
 const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺'];
 
-export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, selectedCharacterId, onStyleUpdated }: DMChatInputProps) => {
+export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, selectedCharacterId, onStyleUpdated, replyingTo, onClearReply }: DMChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [messageType, setMessageType] = useState<'dialogue' | 'thought' | 'narrator'>('dialogue');
@@ -69,6 +77,7 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
     onSend(finalContent, finalType);
     setContent('');
     onTypingChange(false);
+    onClearReply?.();
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -118,6 +127,32 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
 
   return (
     <div className="p-3 pb-6">
+      {/* Reply Preview */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-2"
+          >
+            <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
+              <div className="w-1 h-8 bg-primary rounded-full" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-primary font-medium">Replying to {replyingTo.characterName}</p>
+                <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
+              </div>
+              <button
+                onClick={onClearReply}
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Emoji Quick Select */}
       <AnimatePresence>
         {showEmojis && (
