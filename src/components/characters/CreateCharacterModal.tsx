@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
     gender: '',
     species: '',
     pronouns: '',
+    bio: '',
   });
   
   const [likes, setLikes] = useState<string[]>(['']);
@@ -106,6 +108,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
         gender: formData.gender || null,
         species: formData.species || null,
         pronouns: formData.pronouns || null,
+        bio: formData.bio || null,
         avatar_url: avatarUrl,
         likes: likes.filter(Boolean),
         dislikes: dislikes.filter(Boolean),
@@ -120,7 +123,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
       });
 
       // Reset form
-      setFormData({ name: '', age: '', gender: '', species: '', pronouns: '' });
+      setFormData({ name: '', age: '', gender: '', species: '', pronouns: '', bio: '' });
       setLikes(['']);
       setDislikes(['']);
       setAvatarFile(null);
@@ -224,6 +227,21 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
                 className="bg-input border-border"
               />
             </div>
+          </div>
+
+          {/* Bio */}
+          <div className="space-y-2">
+            <Label htmlFor="bio" className="text-foreground">Bio / Background</Label>
+            <Textarea
+              id="bio"
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              placeholder="Describe your character's background, personality, social status, etc. The AI will use this to tailor interactions."
+              className="bg-input border-border min-h-[80px]"
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Tip: Include social rank (e.g., "Overlord of Hell", "Royal Princess") for AI NPCs to react appropriately.
+            </p>
           </div>
 
           {/* Likes */}

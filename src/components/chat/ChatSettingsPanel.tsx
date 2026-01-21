@@ -88,7 +88,7 @@ export const ChatSettingsPanel = ({
 }: ChatSettingsPanelProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"rooms" | "members" | "settings" | "logs">("rooms");
+  const [activeTab, setActiveTab] = useState<"rooms" | "members" | "ai" | "settings" | "logs">("rooms");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
@@ -121,6 +121,20 @@ export const ChatSettingsPanel = ({
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // AI NPCs state
+  interface TempNPC {
+    id: string;
+    name: string;
+    bio: string | null;
+    social_rank: string | null;
+    personality_traits: any;
+    is_deceased: boolean;
+    saved_character_id: string | null;
+  }
+  const [tempNPCs, setTempNPCs] = useState<TempNPC[]>([]);
+  const [loadingNPCs, setLoadingNPCs] = useState(false);
+  const [editingNPC, setEditingNPC] = useState<TempNPC | null>(null);
+
   const roomImageInputRef = useRef<HTMLInputElement>(null);
   const editRoomImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -141,6 +155,13 @@ export const ChatSettingsPanel = ({
       fetchAuditLogs();
     }
   }, [activeTab, isOwner, worldId]);
+
+  // Fetch AI NPCs when viewing AI tab
+  useEffect(() => {
+    if (activeTab === "ai" && (isOwner || isAdmin)) {
+      fetchTempNPCs();
+    }
+  }, [activeTab, isOwner, isAdmin, worldId]);
 
   const fetchWorldSettings = async () => {
     const { data } = await supabase
@@ -178,6 +199,101 @@ export const ChatSettingsPanel = ({
       setAuditLogs(data as AuditLog[]);
     }
     setLoadingLogs(false);
+  };
+
+  const fetchTempNPCs = async () => {
+    setLoadingNPCs(true);
+    const { data } = await supabase
+      .from("temp_ai_characters")
+      .select("id, name, bio, social_rank, personality_traits, is_deceased, saved_character_id")
+      .eq("world_id", worldId)
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      setTempNPCs(data as TempNPC[]);
+    }
+    setLoadingNPCs(false);
+  };
+
+  const handleKillNPC = async (npcId: string, charId: string | null) => {
+    // Mark as deceased in temp_ai_characters
+    await supabase
+      .from("temp_ai_characters")
+      .update({ is_deceased: true })
+      .eq("id", npcId);
+    
+    // Also mark the backing character as deceased
+    if (charId) {
+      await supabase
+        .from("characters")
+        .update({ is_deceased: true })
+        .eq("id", charId);
+    }
+    
+    toast({ title: "NPC marked as deceased" });
+    fetchTempNPCs();
+  };
+
+  const handleReviveNPC = async (npcId: string, charId: string | null) => {
+    await supabase
+      .from("temp_ai_characters")
+      .update({ is_deceased: false })
+      .eq("id", npcId);
+    
+    if (charId) {
+      await supabase
+        .from("characters")
+        .update({ is_deceased: false })
+        .eq("id", charId);
+    }
+    
+    toast({ title: "NPC revived!" });
+    fetchTempNPCs();
+  };
+
+  const handleDeleteNPC = async (npcId: string, charId: string | null) => {
+    // Delete temp_ai_characters record
+    await supabase
+      .from("temp_ai_characters")
+      .delete()
+      .eq("id", npcId);
+    
+    // Delete the backing character
+    if (charId) {
+      await supabase
+        .from("characters")
+        .delete()
+        .eq("id", charId);
+    }
+    
+    toast({ title: "NPC permanently deleted" });
+    fetchTempNPCs();
+  };
+
+  const handleUpdateNPC = async (npc: TempNPC) => {
+    await supabase
+      .from("temp_ai_characters")
+      .update({
+        name: npc.name,
+        bio: npc.bio,
+        social_rank: npc.social_rank,
+      })
+      .eq("id", npc.id);
+    
+    // Also update the backing character
+    if (npc.saved_character_id) {
+      await supabase
+        .from("characters")
+        .update({
+          name: npc.name,
+          bio: npc.bio,
+        })
+        .eq("id", npc.saved_character_id);
+    }
+    
+    toast({ title: "NPC updated!" });
+    setEditingNPC(null);
+    fetchTempNPCs();
   };
 
   const handleUpdateWorldSettings = async (field: "is_public" | "is_nsfw", value: boolean) => {
@@ -567,6 +683,16 @@ export const ChatSettingsPanel = ({
               >
                 Members
               </button>
+              {(isOwner || isAdmin) && (
+                <button
+                  onClick={() => setActiveTab("ai")}
+                  className={`flex-1 py-3 text-xs font-medium transition-colors ${
+                    activeTab === "ai" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  NPCs
+                </button>
+              )}
               {isOwner && (
                 <>
                   <button
@@ -856,6 +982,145 @@ export const ChatSettingsPanel = ({
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* AI NPCs Tab */}
+              {activeTab === "ai" && (isOwner || isAdmin) && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Bot className="w-4 h-4" />
+                    AI Generated NPCs
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Manage AI-generated characters in this world. Kill NPCs to stop them from responding, 
+                    or revive them using OOC commands.
+                  </p>
+
+                  {loadingNPCs ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Loading NPCs...</div>
+                  ) : tempNPCs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No AI NPCs have been generated yet
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[400px]">
+                      <div className="space-y-2">
+                        {tempNPCs.map((npc) => (
+                          <div key={npc.id} className={`p-3 bg-muted/50 rounded-lg ${npc.is_deceased ? 'opacity-50' : ''}`}>
+                            {editingNPC?.id === npc.id ? (
+                              <div className="space-y-2">
+                                <Input
+                                  value={editingNPC.name}
+                                  onChange={(e) => setEditingNPC({ ...editingNPC, name: e.target.value })}
+                                  placeholder="NPC Name"
+                                />
+                                <Textarea
+                                  value={editingNPC.bio || ''}
+                                  onChange={(e) => setEditingNPC({ ...editingNPC, bio: e.target.value })}
+                                  placeholder="NPC Bio"
+                                  className="min-h-[60px]"
+                                />
+                                <Select
+                                  value={editingNPC.social_rank || 'commoner'}
+                                  onValueChange={(v) => setEditingNPC({ ...editingNPC, social_rank: v })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="royalty">Royalty</SelectItem>
+                                    <SelectItem value="noble">Noble</SelectItem>
+                                    <SelectItem value="merchant">Merchant</SelectItem>
+                                    <SelectItem value="professional">Professional</SelectItem>
+                                    <SelectItem value="commoner">Commoner</SelectItem>
+                                    <SelectItem value="servant">Servant</SelectItem>
+                                    <SelectItem value="outcast">Outcast</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingNPC(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button size="sm" onClick={() => handleUpdateNPC(editingNPC)}>
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium text-foreground text-sm flex items-center gap-2">
+                                    {npc.name}
+                                    {npc.is_deceased && (
+                                      <span className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                                        DECEASED
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground capitalize">
+                                    {npc.social_rank || 'commoner'}
+                                  </span>
+                                </div>
+                                {npc.bio && (
+                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{npc.bio}</p>
+                                )}
+                                <div className="flex gap-1 flex-wrap">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => setEditingNPC(npc)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  {npc.is_deceased ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-xs text-green-500 hover:text-green-400"
+                                      onClick={() => handleReviveNPC(npc.id, npc.saved_character_id)}
+                                    >
+                                      Revive
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-xs text-amber-500 hover:text-amber-400"
+                                      onClick={() => handleKillNPC(npc.id, npc.saved_character_id)}
+                                    >
+                                      Kill
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteNPC(npc.id, npc.saved_character_id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+
+                  {/* OOC Commands Info for NPCs */}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">OOC Commands (Staff Only):</strong>
+                    </p>
+                    <ul className="text-xs text-muted-foreground mt-1 space-y-1">
+                      <li><span className="text-primary font-mono">//revive [name]</span> - Bring back a deceased NPC</li>
+                      <li><span className="text-primary font-mono">//kill [name]</span> - Remove an NPC from the scene</li>
+                      <li><span className="text-primary font-mono">//spawn [type]</span> - Create a new NPC</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
