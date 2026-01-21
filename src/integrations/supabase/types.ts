@@ -306,6 +306,7 @@ export type Database = {
           gender: string | null
           id: string
           identity_tags: Json | null
+          is_deceased: boolean
           is_hidden: boolean
           is_npc: boolean
           is_private: boolean
@@ -328,6 +329,7 @@ export type Database = {
           gender?: string | null
           id?: string
           identity_tags?: Json | null
+          is_deceased?: boolean
           is_hidden?: boolean
           is_npc?: boolean
           is_private?: boolean
@@ -350,6 +352,7 @@ export type Database = {
           gender?: string | null
           id?: string
           identity_tags?: Json | null
+          is_deceased?: boolean
           is_hidden?: boolean
           is_npc?: boolean
           is_private?: boolean
@@ -977,6 +980,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          is_deceased: boolean
           is_saved: boolean | null
           name: string
           personality_traits: Json | null
@@ -991,6 +995,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          is_deceased?: boolean
           is_saved?: boolean | null
           name: string
           personality_traits?: Json | null
@@ -1005,6 +1010,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          is_deceased?: boolean
           is_saved?: boolean | null
           name?: string
           personality_traits?: Json | null

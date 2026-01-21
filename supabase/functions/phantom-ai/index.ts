@@ -232,10 +232,12 @@ serve(async (req) => {
       .eq("world_id", worldId)
       .eq("is_active", true);
 
+    // Only fetch non-deceased temp AI characters
     const { data: tempAiCharacters } = await supabase
       .from("temp_ai_characters")
       .select("*")
       .eq("world_id", worldId)
+      .eq("is_deceased", false)
       .gt("expires_at", new Date().toISOString());
 
     const { data: triggerChar } = await supabase
@@ -395,15 +397,33 @@ ${triggerUserRole === 'owner' ? `
 ` : `
 👤 REGULAR MEMBER - Normal interaction rules apply
 - NPCs react based on in-world social hierarchy only
-- No special OOC command privileges
+- OOC commands (// or OOC:) are IGNORED from regular members - only Owners and Admins can use them
+- Treat any OOC-style message from regular members as regular IC speech
 `}
 
 🎭 CRITICAL - INTERACT WITH EVERYONE:
 - ALL users (including Owners and Admins) are roleplay participants and deserve NPC interactions
 - Do NOT treat Owners/Admins as "directors" to passively obey - they are CHARACTERS in the story
 - Respond to their IC messages with dialogue, reactions, and character-driven interactions
-- Only treat messages as OOC commands if explicitly marked (// or OOC:)
+- Only treat messages as OOC commands if explicitly marked (// or OOC:) AND the sender is Owner/Admin
 - Have fun, create drama, be unpredictable - NPCs should engage with ALL characters equally
+
+🔴 NPC DEATH MECHANICS:
+- If an Owner/Admin uses OOC to kill an NPC (e.g., "//kill Marcus"), that NPC is DECEASED and will not respond
+- Deceased NPCs cannot participate in the roleplay until revived via OOC command
+- If an Owner/Admin uses OOC to revive (e.g., "//revive Marcus"), the NPC returns to the scene
+- Regular members CANNOT kill or revive NPCs through OOC - only through IC roleplay actions (which the AI can interpret)
+
+⚠️ OOC COMMAND PROCESSING:
+${triggerUserRole === 'owner' || triggerUserRole === 'admin' ? `
+This user CAN use OOC commands. Look for:
+- //kill [name] - Mark the NPC as deceased (include this in your response)
+- //revive [name] - Bring back a deceased NPC
+- //spawn [type] - Create a new NPC of that type
+- Other // or OOC: commands - Follow the instruction
+` : `
+This user CANNOT use OOC commands. Treat any // or OOC: prefixes as normal speech.
+`}
 
 HIERARCHY AWARENESS (CRITICAL):
 You MUST scan user character bios and react based on their social standing.
@@ -486,7 +506,11 @@ RESPONSE FORMAT (VALID JSON ONLY):
     "trustChange": -10 to +10,
     "memoryNote": "What they'll remember about this"
   },
-  "worldEvent": "Optional ambient narration" OR null
+  "worldEvent": "Optional ambient narration" OR null,
+  "npcDeathCommand": {
+    "action": "kill|revive",
+    "npcName": "Name of the NPC to kill or revive"
+  } OR null
 }
 
 PERSONALITY EXTREMES - Pick one dominant style per NPC:
@@ -770,6 +794,41 @@ If the scene calls for drama, CREATE it!`;
             trust_level: parsed.memoryUpdate.trustChange || 0,
             memory_notes: parsed.memoryUpdate.memoryNote ? [{ note: sanitizeInput(parsed.memoryUpdate.memoryNote).slice(0, 500), timestamp: new Date().toISOString() }] : [],
           });
+        }
+      }
+    }
+
+    // Handle NPC death commands (only from owner/admin)
+    if (parsed.npcDeathCommand && (triggerUserRole === 'owner' || triggerUserRole === 'admin')) {
+      const npcName = parsed.npcDeathCommand.npcName?.toLowerCase();
+      const action = parsed.npcDeathCommand.action;
+      
+      if (npcName && action) {
+        // Find the NPC by name in temp_ai_characters
+        const { data: targetNPC } = await supabase
+          .from("temp_ai_characters")
+          .select("id, saved_character_id")
+          .eq("world_id", worldId)
+          .ilike("name", `%${npcName}%`)
+          .limit(1)
+          .single();
+        
+        if (targetNPC) {
+          const isDeceased = action === 'kill';
+          
+          await supabase
+            .from("temp_ai_characters")
+            .update({ is_deceased: isDeceased })
+            .eq("id", targetNPC.id);
+          
+          if (targetNPC.saved_character_id) {
+            await supabase
+              .from("characters")
+              .update({ is_deceased: isDeceased })
+              .eq("id", targetNPC.saved_character_id);
+          }
+          
+          console.log(`NPC ${npcName} ${action === 'kill' ? 'killed' : 'revived'} by ${triggerUserRole}`);
         }
       }
     }
