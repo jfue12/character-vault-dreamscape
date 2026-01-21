@@ -371,10 +371,14 @@ export default function RoomChat() {
         let character = m.character_id ? characterMap[m.character_id] : undefined;
         let aiCharName: string | undefined;
         
-        if (m.is_ai && m.character_id && !character) {
+        // For AI messages, try to get character name from temp_ai_characters if not in regular characters
+        if (m.is_ai && m.character_id) {
           const tempChar = tempAICharacterMap[m.character_id];
           if (tempChar) {
             aiCharName = tempChar.name;
+          } else if (character) {
+            // Use regular character name if it exists
+            aiCharName = character.name;
           }
         }
 
@@ -430,11 +434,18 @@ export default function RoomChat() {
               .from('characters')
               .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
               .eq('id', newMessage.character_id)
-              .single();
+              .maybeSingle();
+            
             if (data) {
               character = data;
-            } else if (newMessage.is_ai) {
-              // Try temp_ai_characters for AI messages
+              // If this is an AI message, set the name from regular character
+              if (newMessage.is_ai) {
+                ai_character_name = data.name;
+              }
+            }
+            
+            // For AI messages, also check temp_ai_characters
+            if (newMessage.is_ai && !ai_character_name) {
               const { data: tempChar } = await supabase
                 .from('temp_ai_characters')
                 .select('name')
@@ -860,7 +871,7 @@ export default function RoomChat() {
               const isOwnMessage = msg.sender_id === user?.id && !msg.is_ai;
               // AI messages: use ai_character_name or character name, never show "AI Character" if we have a name
               const displayName = msg.is_ai 
-                ? (msg.ai_character_name || msg.character?.name || 'AI Character')
+                ? (msg.ai_character_name || msg.character?.name || 'Unknown NPC')
                 : (msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone'));
               // Don't show username for AI messages
               const senderUsername = msg.is_ai ? undefined : (msg.sender_username || (isOwnMessage ? profile?.username : undefined));
