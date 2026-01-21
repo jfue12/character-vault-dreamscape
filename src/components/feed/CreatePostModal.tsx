@@ -46,11 +46,13 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
 
   const fetchCharacters = async () => {
     if (!user) return;
+    // Only fetch user-created characters (exclude AI-generated NPCs)
     const { data } = await supabase
       .from('characters')
       .select('id, name, avatar_url')
       .eq('owner_id', user.id)
-      .eq('is_hidden', false);
+      .eq('is_hidden', false)
+      .eq('is_npc', false); // Exclude AI-generated NPCs
     
     if (data) {
       setCharacters(data);
