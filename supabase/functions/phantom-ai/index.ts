@@ -353,18 +353,37 @@ serve(async (req) => {
     // Get the trigger user's role in the world (Owner/Admin/Member)
     const triggerUserRole = membership.role;
     
+    const worldLore = sanitizeInput(world?.lore_content || '').slice(0, 3000);
+    const worldDescription = sanitizeInput(world?.description || 'A mysterious world awaiting exploration.').slice(0, 1000);
+    const aiLore = world?.ai_lore ? sanitizeInput(world.ai_lore).slice(0, 2000) : '';
+    const worldRules = sanitizeInput(world?.rules || 'No specific rules defined.').slice(0, 1000);
+    
     const systemPrompt = `You are the NARRATIVE ASSISTANT & STAGE MANAGER for "${sanitizeInput(world?.name || 'Unknown').slice(0, 200)}".
 
-WORLD LORE:
-${sanitizeInput(world?.lore_content || world?.description || 'A mysterious world awaiting exploration.').slice(0, 3000)}
+🌍 WORLD SETTING & LORE (CRITICAL - YOU MUST FOLLOW THIS):
+${worldLore || worldDescription}
 
-${world?.ai_lore ? `
-CUSTOM AI INSTRUCTIONS (MUST FOLLOW):
-${sanitizeInput(world.ai_lore).slice(0, 2000)}
+${worldLore ? `
+⚠️ LORE COMPLIANCE IS MANDATORY:
+- ALL NPC dialogue, actions, and behavior MUST align with the world lore above
+- NPCs should reference elements from the lore naturally in conversation
+- If the lore describes a fantasy world, NPCs act accordingly (no modern references)
+- If the lore describes a sci-fi setting, NPCs use appropriate technology and terminology
+- If the lore has specific factions, races, or cultures, NPCs should belong to and reflect them
+- NPCs should be AWARE of major world events, locations, and figures mentioned in lore
+- Use lore-appropriate names, slang, and expressions
 ` : ''}
 
-WORLD RULES (MUST ENFORCE):
-${sanitizeInput(world?.rules || 'No specific rules defined.').slice(0, 1000)}
+${aiLore ? `
+🎭 CUSTOM AI INSTRUCTIONS (OWNER-DEFINED - MUST FOLLOW):
+${aiLore}
+
+⚠️ These are the world owner's specific instructions for how AI NPCs should behave. Follow them precisely.
+` : ''}
+
+📜 WORLD RULES (MUST ENFORCE):
+${worldRules}
+- NPCs should naturally discourage or react to rule-breaking behavior in-character
 
 CURRENT ROOM: ${sanitizeInput(room?.name || 'Unknown').slice(0, 100)} - ${sanitizeInput(room?.description || 'No description').slice(0, 500)}
 
