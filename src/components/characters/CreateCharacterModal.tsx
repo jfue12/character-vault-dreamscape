@@ -22,6 +22,8 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
   const [isLoading, setIsLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [backgroundPreview, setBackgroundPreview] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -42,6 +44,18 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBackgroundChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBackgroundFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBackgroundPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -83,12 +97,13 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
 
     try {
       let avatarUrl = null;
+      let backgroundUrl = null;
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(fileName, avatarFile);
 
@@ -101,6 +116,23 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
         avatarUrl = publicUrl;
       }
 
+      if (backgroundFile) {
+        const fileExt = backgroundFile.name.split('.').pop();
+        const fileName = `${user.id}/bg-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, backgroundFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        backgroundUrl = publicUrl;
+      }
+
       const { error } = await supabase.from('characters').insert({
         owner_id: user.id,
         name: formData.name,
@@ -110,6 +142,7 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
         pronouns: formData.pronouns || null,
         bio: formData.bio || null,
         avatar_url: avatarUrl,
+        background_url: backgroundUrl,
         likes: likes.filter(Boolean),
         dislikes: dislikes.filter(Boolean),
         is_hidden: false,
@@ -128,6 +161,8 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
       setDislikes(['']);
       setAvatarFile(null);
       setAvatarPreview(null);
+      setBackgroundFile(null);
+      setBackgroundPreview(null);
       
       onSuccess?.();
       onOpenChange(false);
@@ -151,6 +186,29 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Background Image Upload */}
+          <div className="space-y-2">
+            <Label className="text-foreground">Background Image</Label>
+            <label className="cursor-pointer group block">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBackgroundChange}
+                className="hidden"
+              />
+              <div className="w-full h-32 rounded-xl bg-gradient-to-br from-neon-purple/10 to-neon-pink/10 border-2 border-dashed border-primary/50 flex items-center justify-center overflow-hidden group-hover:border-primary transition-colors">
+                {backgroundPreview ? (
+                  <img src={backgroundPreview} alt="Background Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center">
+                    <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors mx-auto" />
+                    <p className="text-xs text-muted-foreground mt-1">Upload background</p>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
+
           {/* Avatar Upload */}
           <div className="flex justify-center">
             <label className="cursor-pointer group">

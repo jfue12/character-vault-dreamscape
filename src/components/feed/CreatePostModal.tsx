@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Image, Video, Loader2, Globe, Users, Lock } from 'lucide-react';
+import { X, Image, Video, Loader2, Globe, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +26,9 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingBg, setIsUploadingBg] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
       setContent('');
       setMediaUrl(null);
       setMediaType(null);
+      setBackgroundUrl(null);
     }
   }, [isOpen]);
 
@@ -97,6 +100,35 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
     setIsUploading(false);
   };
 
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({ title: 'File too large', description: 'Maximum size is 10MB', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingBg(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/bg-${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from('post-images')
+      .upload(fileName, file);
+
+    if (error) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+      setIsUploadingBg(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(fileName);
+    setBackgroundUrl(urlData.publicUrl);
+    setIsUploadingBg(false);
+  };
+
   const handleSubmit = async () => {
     if (!user || !content.trim()) return;
 
@@ -106,7 +138,8 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
       author_id: user.id,
       character_id: selectedCharacterId,
       content: content.trim(),
-      image_url: mediaUrl
+      image_url: mediaUrl,
+      background_url: backgroundUrl
     });
 
     if (error) {
@@ -120,6 +153,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
     setContent('');
     setMediaUrl(null);
     setMediaType(null);
+    setBackgroundUrl(null);
     setIsPosting(false);
     onPostCreated();
   };
@@ -221,19 +255,36 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
             )}
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 relative">
+              {/* Background preview */}
+              {backgroundUrl && (
+                <div className="absolute inset-0 overflow-hidden rounded-lg">
+                  <img 
+                    src={backgroundUrl} 
+                    alt="Background" 
+                    className="w-full h-full object-cover opacity-20"
+                  />
+                  <button
+                    onClick={() => setBackgroundUrl(null)}
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-colors z-10"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              )}
+              
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={`What's on ${displayName}'s mind?`}
-                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[120px] text-lg"
+                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[120px] text-lg relative z-10"
                 maxLength={1000}
                 autoFocus
               />
 
               {/* Media preview */}
               {mediaUrl && (
-                <div className="relative mt-3 rounded-xl overflow-hidden border border-border bg-muted">
+                <div className="relative mt-3 rounded-xl overflow-hidden border border-border bg-muted z-10">
                   {mediaType === 'video' ? (
                     <video 
                       src={mediaUrl} 
@@ -295,6 +346,22 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }: CreatePostMo
                       <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
                     ) : (
                       <Video className="w-5 h-5 text-red-500" />
+                    )}
+                  </label>
+
+                  {/* Background Upload */}
+                  <label className="p-2.5 hover:bg-muted rounded-full cursor-pointer transition-colors" title="Add background">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBackgroundUpload}
+                      className="hidden"
+                      disabled={isUploadingBg}
+                    />
+                    {isUploadingBg ? (
+                      <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />
+                    ) : (
+                      <Palette className="w-5 h-5 text-purple-500" />
                     )}
                   </label>
                 </div>

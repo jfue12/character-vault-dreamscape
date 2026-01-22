@@ -17,6 +17,7 @@ interface Post {
   id: string;
   content: string;
   image_url: string | null;
+  background_url?: string | null;
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -56,9 +57,21 @@ export const PostCard = ({ post, onLike, onDelete }: PostCardProps) => {
   const avatar = post.character?.avatar_url;
 
   return (
-    <article className="p-4 hover:bg-muted/30 transition-colors">
+    <article className="relative p-4 hover:bg-muted/30 transition-colors overflow-hidden">
+      {/* Background Image */}
+      {post.background_url && (
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={post.background_url} 
+            alt="" 
+            className="w-full h-full object-cover opacity-15"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        </div>
+      )}
+      
       {/* Header */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 relative z-10">
         {/* Avatar */}
         <button 
           onClick={() => navigate(`/user/${post.author.id}`)}

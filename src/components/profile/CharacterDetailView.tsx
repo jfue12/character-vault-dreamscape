@@ -12,6 +12,7 @@ interface Character {
   id: string;
   name: string;
   avatar_url: string | null;
+  background_url?: string | null;
   age: number | null;
   gender: string | null;
   species: string | null;
@@ -74,10 +75,22 @@ export const CharacterDetailView = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-4 px-4"
+      className="space-y-4"
     >
+      {/* Background Image Banner */}
+      {character.background_url && (
+        <div className="relative w-full h-32 rounded-xl overflow-hidden">
+          <img 
+            src={character.background_url} 
+            alt="Character background" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+        </div>
+      )}
+
       {/* 1. Large Portrait - Mascot Style (square with rounded corners) */}
-      <div className="relative mx-auto w-72 aspect-square rounded-[16px] overflow-hidden border border-border">
+      <div className={`relative mx-auto w-72 aspect-square rounded-[16px] overflow-hidden border border-border ${character.background_url ? '-mt-16' : ''}`}>
         {character.avatar_url ? (
           <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
         ) : (

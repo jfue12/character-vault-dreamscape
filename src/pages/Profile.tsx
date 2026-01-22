@@ -18,6 +18,7 @@ interface Character {
   id: string;
   name: string;
   avatar_url: string | null;
+  background_url?: string | null;
   age: number | null;
   gender: string | null;
   species: string | null;
