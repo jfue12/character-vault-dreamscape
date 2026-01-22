@@ -911,8 +911,8 @@ export default function RoomChat() {
         </div>
       </header>
 
-      {/* Room Scroller - Mobile Optimized */}
-      <div className="z-40 bg-[#000]/90 backdrop-blur-sm border-b border-[#1a1a1a] py-2 touch-action-pan-y">
+      {/* Room Scroller - Sticky below header */}
+      <div className="sticky top-14 z-40 bg-[#000]/95 backdrop-blur-sm border-b border-[#1a1a1a] py-2 touch-action-pan-y">
         <RoomScroller
           rooms={rooms}
           selectedId={currentRoom?.id || null}
