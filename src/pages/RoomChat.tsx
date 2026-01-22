@@ -59,6 +59,7 @@ interface Message {
   reply_to_id?: string | null;
   reply_to_character_name?: string | null;
   reply_to_content?: string | null;
+  edited_at?: string | null;
 }
 
 interface ReplyingTo {
@@ -315,11 +316,13 @@ export default function RoomChat() {
       const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id as string))];
       const senderIds = [...new Set(data.map(m => m.sender_id))];
       const aiMessageCharIds = [...new Set(data.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
+      const replyToIds = [...new Set(data.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
       
       let characterMap: Record<string, Character> = {};
       let tempAICharacterMap: Record<string, { name: string; bio?: string | null }> = {};
       let usernameMap: Record<string, string> = {};
       let roleMap: Record<string, 'owner' | 'admin' | 'member'> = {};
+      let replyMap: Record<string, { characterName: string; content: string }> = {};
       
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
@@ -367,6 +370,36 @@ export default function RoomChat() {
         }
       }
 
+      // Fetch reply-to messages for threading
+      if (replyToIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('messages')
+          .select('id, content, character_id')
+          .in('id', replyToIds);
+        
+        if (replyData) {
+          for (const reply of replyData) {
+            let charName = 'Someone';
+            if (reply.character_id) {
+              const char = characterMap[reply.character_id];
+              if (char) {
+                charName = char.name;
+              } else {
+                // Check temp AI characters
+                const tempChar = tempAICharacterMap[reply.character_id];
+                if (tempChar) {
+                  charName = tempChar.name;
+                }
+              }
+            }
+            replyMap[reply.id] = {
+              characterName: charName,
+              content: reply.content.length > 50 ? reply.content.slice(0, 50) + '...' : reply.content
+            };
+          }
+        }
+      }
+
       const messagesWithChars = data.map(m => {
         let character = m.character_id ? characterMap[m.character_id] : undefined;
         let aiCharName: string | undefined;
@@ -382,13 +415,18 @@ export default function RoomChat() {
           }
         }
 
+        // Get reply context
+        const replyContext = m.reply_to_id ? replyMap[m.reply_to_id] : undefined;
+
         return {
           ...m,
           type: m.type as 'dialogue' | 'thought' | 'narrator',
           character: character,
           ai_character_name: aiCharName,
           sender_username: m.is_ai ? undefined : (usernameMap[m.sender_id] || 'anonymous'),
-          sender_role: roleMap[m.sender_id] || 'member'
+          sender_role: roleMap[m.sender_id] || 'member',
+          reply_to_character_name: replyContext?.characterName,
+          reply_to_content: replyContext?.content
         };
       });
 
@@ -574,7 +612,7 @@ export default function RoomChat() {
     });
   };
 
-  const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
+  const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => {
     if (!user || !currentRoom) return;
 
     // Validate against spam
@@ -586,17 +624,21 @@ export default function RoomChat() {
       .insert({
         room_id: currentRoom.id,
         sender_id: user.id,
-        character_id: selectedCharacterId || null, // Allow null for base profile
+        character_id: selectedCharacterId || null,
         content,
         type,
         attachment_url: attachmentUrl || null,
-        emoji_reactions: {}
+        emoji_reactions: {},
+        reply_to_id: replyToId || null
       });
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
       return;
     }
+
+    // Clear reply after sending
+    setReplyingTo(null);
 
     // Trigger Phantom AI if world has AI characters
     if (hasAI && type === 'dialogue') {
@@ -611,6 +653,22 @@ export default function RoomChat() {
       if (result?.ok === false) {
         toast({ title: 'AI', description: result.error, variant: 'destructive' });
       }
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    const { error } = await supabase
+      .from('messages')
+      .update({ content: newContent, edited_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .eq('sender_id', user?.id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to edit message', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, content: newContent, edited_at: new Date().toISOString() } : m
+      ));
     }
   };
 
@@ -890,12 +948,19 @@ export default function RoomChat() {
                   timestamp={msg.created_at}
                   attachmentUrl={msg.attachment_url}
                   onReply={handleReply}
+                  onEdit={handleEditMessage}
+                  replyingTo={msg.reply_to_id && msg.reply_to_character_name ? {
+                    messageId: msg.reply_to_id,
+                    characterName: msg.reply_to_character_name,
+                    content: msg.reply_to_content || ''
+                  } : undefined}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
                   bubbleAlignment={bubbleAlign}
                   role={msg.is_ai ? undefined : msg.sender_role}
                   isAI={msg.is_ai}
                   onAICharacterClick={msg.is_ai ? () => handleAICharacterClick(msg.character_id, displayName) : undefined}
+                  isEdited={!!msg.edited_at}
                 />
               );
             })

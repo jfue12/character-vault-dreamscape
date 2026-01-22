@@ -26,6 +26,10 @@ interface Message {
   attachment_url: string | null;
   is_read: boolean;
   character?: Character;
+  reply_to_id?: string | null;
+  reply_to_character_name?: string | null;
+  reply_to_content?: string | null;
+  edited_at?: string | null;
 }
 
 interface ReplyingTo {
@@ -205,7 +209,9 @@ export default function DMChat() {
 
     if (!error && data) {
       const characterIds = [...new Set(data.filter(m => m.sender_character_id).map(m => m.sender_character_id as string))];
+      const replyToIds = [...new Set(data.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
       let characterMap: Record<string, Character> = {};
+      let replyMap: Record<string, { characterName: string; content: string }> = {};
       
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
@@ -218,10 +224,36 @@ export default function DMChat() {
         }
       }
 
-      const messagesWithChars = data.map(m => ({
-        ...m,
-        character: m.sender_character_id ? characterMap[m.sender_character_id] : undefined
-      }));
+      // Fetch reply-to messages
+      if (replyToIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('direct_messages')
+          .select('id, content, sender_character_id')
+          .in('id', replyToIds);
+        
+        if (replyData) {
+          for (const reply of replyData) {
+            let charName = 'Someone';
+            if (reply.sender_character_id && characterMap[reply.sender_character_id]) {
+              charName = characterMap[reply.sender_character_id].name;
+            }
+            replyMap[reply.id] = {
+              characterName: charName,
+              content: reply.content.length > 50 ? reply.content.slice(0, 50) + '...' : reply.content
+            };
+          }
+        }
+      }
+
+      const messagesWithChars = data.map(m => {
+        const replyContext = m.reply_to_id ? replyMap[m.reply_to_id] : undefined;
+        return {
+          ...m,
+          character: m.sender_character_id ? characterMap[m.sender_character_id] : undefined,
+          reply_to_character_name: replyContext?.characterName,
+          reply_to_content: replyContext?.content
+        };
+      });
 
       setMessages(messagesWithChars);
     }
@@ -366,7 +398,7 @@ export default function DMChat() {
     });
   }, [friendshipId, currentCharacter, user]);
 
-  const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => {
+  const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => {
     if (!user || !friendshipId) return;
 
     // Combine content based on type for DMs
@@ -382,13 +414,32 @@ export default function DMChat() {
       .insert({
         friendship_id: friendshipId,
         sender_id: user.id,
-        sender_character_id: selectedCharacterId || null, // Allow null for base profile
+        sender_character_id: selectedCharacterId || null,
         content: finalContent,
         attachment_url: attachmentUrl || null,
+        reply_to_id: replyToId || null,
       });
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+    } else {
+      setReplyingTo(null);
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    const { error } = await supabase
+      .from('direct_messages')
+      .update({ content: newContent, edited_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .eq('sender_id', user?.id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to edit message', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, content: newContent, edited_at: new Date().toISOString() } : m
+      ));
     }
   };
 
@@ -617,6 +668,13 @@ export default function DMChat() {
                   showReadReceipt={true}
                   onDelete={handleDeleteMessage}
                   onReply={handleReply}
+                  onEdit={handleEditMessage}
+                  replyingTo={msg.reply_to_id && msg.reply_to_character_name ? {
+                    messageId: msg.reply_to_id,
+                    characterName: msg.reply_to_character_name,
+                    content: msg.reply_to_content || ''
+                  } : undefined}
+                  isEdited={!!msg.edited_at}
                 />
               );
             })

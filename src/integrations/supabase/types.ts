@@ -380,9 +380,11 @@ export type Database = {
           attachment_url: string | null
           content: string
           created_at: string
+          edited_at: string | null
           friendship_id: string
           id: string
           is_read: boolean
+          reply_to_id: string | null
           sender_character_id: string | null
           sender_id: string
         }
@@ -391,9 +393,11 @@ export type Database = {
           attachment_url?: string | null
           content: string
           created_at?: string
+          edited_at?: string | null
           friendship_id: string
           id?: string
           is_read?: boolean
+          reply_to_id?: string | null
           sender_character_id?: string | null
           sender_id: string
         }
@@ -402,9 +406,11 @@ export type Database = {
           attachment_url?: string | null
           content?: string
           created_at?: string
+          edited_at?: string | null
           friendship_id?: string
           id?: string
           is_read?: boolean
+          reply_to_id?: string | null
           sender_character_id?: string | null
           sender_id?: string
         }
@@ -414,6 +420,13 @@ export type Database = {
             columns: ["friendship_id"]
             isOneToOne: false
             referencedRelation: "friendships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
             referencedColumns: ["id"]
           },
           {
@@ -536,9 +549,11 @@ export type Database = {
           character_id: string | null
           content: string
           created_at: string
+          edited_at: string | null
           emoji_reactions: Json | null
           id: string
           is_ai: boolean | null
+          reply_to_id: string | null
           room_id: string
           sender_id: string
           type: Database["public"]["Enums"]["message_type"]
@@ -550,9 +565,11 @@ export type Database = {
           character_id?: string | null
           content: string
           created_at?: string
+          edited_at?: string | null
           emoji_reactions?: Json | null
           id?: string
           is_ai?: boolean | null
+          reply_to_id?: string | null
           room_id: string
           sender_id: string
           type?: Database["public"]["Enums"]["message_type"]
@@ -564,9 +581,11 @@ export type Database = {
           character_id?: string | null
           content?: string
           created_at?: string
+          edited_at?: string | null
           emoji_reactions?: Json | null
           id?: string
           is_ai?: boolean | null
+          reply_to_id?: string | null
           room_id?: string
           sender_id?: string
           type?: Database["public"]["Enums"]["message_type"]
@@ -578,6 +597,13 @@ export type Database = {
             columns: ["character_id"]
             isOneToOne: false
             referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
