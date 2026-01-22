@@ -298,6 +298,7 @@ export type Database = {
         Row: {
           age: number | null
           avatar_url: string | null
+          background_url: string | null
           bio: string | null
           bubble_alignment: string | null
           bubble_color: string | null
@@ -321,6 +322,7 @@ export type Database = {
         Insert: {
           age?: number | null
           avatar_url?: string | null
+          background_url?: string | null
           bio?: string | null
           bubble_alignment?: string | null
           bubble_color?: string | null
@@ -344,6 +346,7 @@ export type Database = {
         Update: {
           age?: number | null
           avatar_url?: string | null
+          background_url?: string | null
           bio?: string | null
           bubble_alignment?: string | null
           bubble_color?: string | null
@@ -803,6 +806,7 @@ export type Database = {
       posts: {
         Row: {
           author_id: string
+          background_url: string | null
           character_id: string | null
           comments_count: number
           content: string
@@ -814,6 +818,7 @@ export type Database = {
         }
         Insert: {
           author_id: string
+          background_url?: string | null
           character_id?: string | null
           comments_count?: number
           content: string
@@ -825,6 +830,7 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          background_url?: string | null
           character_id?: string | null
           comments_count?: number
           content?: string

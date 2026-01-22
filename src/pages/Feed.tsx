@@ -14,6 +14,7 @@ interface Post {
   id: string;
   content: string;
   image_url: string | null;
+  background_url?: string | null;
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -63,6 +64,7 @@ export default function Feed() {
         id,
         content,
         image_url,
+        background_url,
         likes_count,
         comments_count,
         created_at,
@@ -105,6 +107,7 @@ export default function Feed() {
       id: post.id,
       content: post.content,
       image_url: post.image_url,
+      background_url: post.background_url,
       likes_count: post.likes_count,
       comments_count: post.comments_count,
       created_at: post.created_at,
@@ -124,6 +127,7 @@ export default function Feed() {
         id,
         content,
         image_url,
+        background_url,
         likes_count,
         comments_count,
         created_at,
@@ -146,6 +150,7 @@ export default function Feed() {
       id: postData.id,
       content: postData.content,
       image_url: postData.image_url,
+      background_url: postData.background_url,
       likes_count: postData.likes_count,
       comments_count: postData.comments_count,
       created_at: postData.created_at,

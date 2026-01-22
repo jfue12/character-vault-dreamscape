@@ -15,6 +15,7 @@ interface Character {
   id: string;
   name: string;
   avatar_url: string | null;
+  background_url?: string | null;
   age: number | null;
   gender: string | null;
   species: string | null;
@@ -72,6 +73,8 @@ export const EditCharacterModal = ({
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [backgroundPreview, setBackgroundPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (character) {
@@ -95,6 +98,7 @@ export const EditCharacterModal = ({
         bubble_alignment: charAny.bubble_alignment || 'auto',
       });
       setAvatarPreview(character.avatar_url);
+      setBackgroundPreview(charAny.background_url || null);
     }
   }, [character]);
 
@@ -108,6 +112,16 @@ export const EditCharacterModal = ({
     }
   };
 
+  const handleBackgroundChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBackgroundFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setBackgroundPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !character) return;
@@ -116,6 +130,7 @@ export const EditCharacterModal = ({
 
     try {
       let avatarUrl = character.avatar_url;
+      let backgroundUrl = (character as any).background_url;
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
@@ -133,6 +148,22 @@ export const EditCharacterModal = ({
         }
       }
 
+      if (backgroundFile) {
+        const fileExt = backgroundFile.name.split('.').pop();
+        const fileName = `${user.id}/${character.id}-bg-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, backgroundFile, { upsert: true });
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+          backgroundUrl = publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from('characters')
         .update({
@@ -143,6 +174,7 @@ export const EditCharacterModal = ({
           gender: formData.gender || null,
           species: formData.species || null,
           avatar_url: avatarUrl,
+          background_url: backgroundUrl,
           likes: formData.likes ? formData.likes.split(',').map(s => s.trim()).filter(Boolean) : [],
           dislikes: formData.dislikes ? formData.dislikes.split(',').map(s => s.trim()).filter(Boolean) : [],
           is_hidden: formData.is_hidden,
@@ -206,6 +238,24 @@ export const EditCharacterModal = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Background Image Upload */}
+          <div className="space-y-2">
+            <Label>Background Image</Label>
+            <label className="cursor-pointer group block">
+              <input type="file" accept="image/*" onChange={handleBackgroundChange} className="hidden" />
+              <div className="w-full h-28 rounded-xl bg-secondary border-2 border-dashed border-border group-hover:border-primary transition-colors overflow-hidden">
+                {backgroundPreview ? (
+                  <img src={backgroundPreview} alt="Background" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-xs text-muted-foreground mt-1">Upload background</span>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
+
           {/* Avatar Upload */}
           <div className="flex justify-center">
             <label className="cursor-pointer group">
