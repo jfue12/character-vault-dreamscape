@@ -305,18 +305,23 @@ export default function RoomChat() {
   };
 
   const fetchMessages = async (roomId: string) => {
+    // IMPORTANT: fetch the most recent messages.
+    // Ordering ascending + limit returns the *oldest* 100, which makes new messages
+    // appear to “disappear” after navigating away and back.
     const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('room_id', roomId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100);
 
     if (!error && data) {
-      const characterIds = [...new Set(data.filter(m => m.character_id).map(m => m.character_id as string))];
-      const senderIds = [...new Set(data.map(m => m.sender_id))];
-      const aiMessageCharIds = [...new Set(data.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
-      const replyToIds = [...new Set(data.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
+      const rows = [...data].reverse();
+
+      const characterIds = [...new Set(rows.filter(m => m.character_id).map(m => m.character_id as string))];
+      const senderIds = [...new Set(rows.map(m => m.sender_id))];
+      const aiMessageCharIds = [...new Set(rows.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
+      const replyToIds = [...new Set(rows.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
       
       let characterMap: Record<string, Character> = {};
       let tempAICharacterMap: Record<string, { name: string; bio?: string | null }> = {};
@@ -400,7 +405,7 @@ export default function RoomChat() {
         }
       }
 
-      const messagesWithChars = data.map(m => {
+      const messagesWithChars = rows.map(m => {
         let character = m.character_id ? characterMap[m.character_id] : undefined;
         let aiCharName: string | undefined;
         

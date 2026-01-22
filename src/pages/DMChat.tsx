@@ -204,12 +204,16 @@ export default function DMChat() {
       .from('direct_messages')
       .select('*')
       .eq('friendship_id', friendshipId)
-      .order('created_at', { ascending: true })
+      // Fetch newest first, then reverse for display.
+      // (Ascending + limit returns the oldest 100 and hides recent messages after navigation.)
+      .order('created_at', { ascending: false })
       .limit(100);
 
     if (!error && data) {
-      const characterIds = [...new Set(data.filter(m => m.sender_character_id).map(m => m.sender_character_id as string))];
-      const replyToIds = [...new Set(data.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
+      const rows = [...data].reverse();
+
+      const characterIds = [...new Set(rows.filter(m => m.sender_character_id).map(m => m.sender_character_id as string))];
+      const replyToIds = [...new Set(rows.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
       let characterMap: Record<string, Character> = {};
       let replyMap: Record<string, { characterName: string; content: string }> = {};
       
@@ -245,7 +249,7 @@ export default function DMChat() {
         }
       }
 
-      const messagesWithChars = data.map(m => {
+      const messagesWithChars = rows.map(m => {
         const replyContext = m.reply_to_id ? replyMap[m.reply_to_id] : undefined;
         return {
           ...m,
