@@ -183,13 +183,33 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting
+    // Rate limiting - World-level (10 per minute)
     const { data: rateLimitOk } = await supabase.rpc('check_ai_rate_limit', {
       _world_id: worldId
     });
 
     if (rateLimitOk === false) {
       return new Response(JSON.stringify({ error: 'AI rate limit exceeded. Please wait a moment.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Per-user rate limiting - Max 5 AI triggers per user per 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { count: userAiTriggerCount } = await supabase
+      .from('world_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('world_id', worldId)
+      .eq('triggered_by', triggerCharacterId)
+      .eq('event_type', 'ai_generated')
+      .gte('created_at', fiveMinutesAgo);
+
+    if ((userAiTriggerCount || 0) >= 5) {
+      return new Response(JSON.stringify({ 
+        error: 'You are relying on AI too frequently. Take a break and let others participate!',
+        cooldownMinutes: 5
+      }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
