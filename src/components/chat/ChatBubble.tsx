@@ -65,26 +65,16 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
   const formattedTime = timestamp ? format(new Date(timestamp), 'h:mm a') : '';
 
   const isRightAligned = bubbleAlignment === 'auto' ? isOwnMessage : bubbleAlignment === 'right';
-  const hasAction = content.includes('*');
   
   const parseContent = (text: string) => {
-    // Handle **bold**, *italic*, and regular text
-    // Match **bold** first, then *italic* (single asterisks that aren't part of **)
-    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+    // Handle **bold** only - asterisks and dashes are treated as regular text
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         // Bold text - keep bubble styling, just make bold
         return (
           <span key={i} className="font-bold">
             {part.slice(2, -2)}
-          </span>
-        );
-      }
-      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-        // Italic action text
-        return (
-          <span key={i} className="italic text-muted-foreground">
-            {part.slice(1, -1)}
           </span>
         );
       }
@@ -241,7 +231,7 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
     ? `☆${characterName}☆` 
     : characterName;
 
-  const customBubbleStyle = bubbleColor && !isThought && !hasAction ? {
+  const customBubbleStyle = bubbleColor && !isThought ? {
     backgroundColor: bubbleColor,
     color: textColor || '#FFFFFF'
   } : undefined;
@@ -330,11 +320,9 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
           className={`max-w-[280px] rounded-2xl px-4 py-2.5 relative ${
             isThought
               ? 'bg-muted/60 text-foreground border border-muted-foreground/20'
-              : hasAction
-                ? 'bg-muted/80 text-foreground'
-                : customBubbleStyle 
-                  ? ''
-                  : 'bg-primary text-primary-foreground'
+              : customBubbleStyle 
+                ? ''
+                : 'bg-primary text-primary-foreground'
           }`}
           style={customBubbleStyle}
         >
