@@ -218,12 +218,12 @@ export default function WorldDetail() {
 
       // Notify the world owner
       if (world && world.owner_id !== user.id) {
-        await supabase.from('notifications').insert({
-          user_id: world.owner_id,
-          type: 'world_join',
-          title: 'New Member',
-          body: `${userProfile?.username || 'Someone'} joined your world "${world.name}"`,
-          data: { world_id: worldId, joiner_id: user.id }
+        await supabase.rpc('create_notification', {
+          p_user_id: world.owner_id,
+          p_type: 'world_join',
+          p_title: 'New Member',
+          p_body: `${userProfile?.username || 'Someone'} joined your world "${world.name}"`,
+          p_data: { world_id: worldId, joiner_id: user.id }
         });
       }
 

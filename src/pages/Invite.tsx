@@ -166,12 +166,12 @@ export default function Invite() {
 
       // Notify the world owner
       if (world.owner_id !== user.id) {
-        await supabase.from('notifications').insert({
-          user_id: world.owner_id,
-          type: 'world_join',
-          title: 'New Member',
-          body: `${userProfile?.username || 'Someone'} joined your world "${world.name}" via invite link`,
-          data: { world_id: world.id, joiner_id: user.id }
+        await supabase.rpc('create_notification', {
+          p_user_id: world.owner_id,
+          p_type: 'world_join',
+          p_title: 'New Member',
+          p_body: `${userProfile?.username || 'Someone'} joined your world "${world.name}" via invite link`,
+          p_data: { world_id: world.id, joiner_id: user.id }
         });
       }
 

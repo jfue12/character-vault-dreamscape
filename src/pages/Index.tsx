@@ -175,12 +175,12 @@ export default function Index() {
       toast({ title: 'Joined!', description: 'You are now a member of this world' });
       
       if (targetWorld && targetWorld.owner_id !== user.id) {
-        await supabase.from('notifications').insert({
-          user_id: targetWorld.owner_id,
-          type: 'world_join',
-          title: 'New Member',
-          body: `${profile?.username || 'Someone'} joined your world "${targetWorld.name}"`,
-          data: { world_id: worldId, joiner_id: user.id }
+        await supabase.rpc('create_notification', {
+          p_user_id: targetWorld.owner_id,
+          p_type: 'world_join',
+          p_title: 'New Member',
+          p_body: `${profile?.username || 'Someone'} joined your world "${targetWorld.name}"`,
+          p_data: { world_id: worldId, joiner_id: user.id }
         });
       }
       

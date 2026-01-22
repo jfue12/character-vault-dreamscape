@@ -1551,8 +1551,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_message_reaction: {
+        Args: { p_emoji: string; p_message_id: string; p_user_id?: string }
+        Returns: undefined
+      }
       check_ai_rate_limit: { Args: { _world_id: string }; Returns: boolean }
       clean_expired_timeouts: { Args: never; Returns: undefined }
+      create_notification: {
+        Args: {
+          p_body?: string
+          p_data?: Json
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_world_role: {
         Args: { _user_id: string; _world_id: string }
         Returns: string
@@ -1570,6 +1584,7 @@ export type Database = {
         Args: { _user_id: string; _world_id: string }
         Returns: boolean
       }
+      use_world_invite: { Args: { p_invite_code: string }; Returns: string }
     }
     Enums: {
       message_type: "dialogue" | "thought" | "narrator"

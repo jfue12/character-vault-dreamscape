@@ -89,18 +89,18 @@ export const FriendRequestModal = ({
       }
 
       // Create notification for the addressee with friendship_id for accept/decline
-      await supabase.from('notifications').insert({
-        user_id: targetCharacter.owner_id,
-        type: 'roleplay_proposal',
-        title: 'New Roleplay Proposal',
-        body: `${requesterCharacterName} wants to start a story with you!`,
-        data: { 
+      await supabase.rpc('create_notification', {
+        p_user_id: targetCharacter.owner_id,
+        p_type: 'roleplay_proposal',
+        p_title: 'New Roleplay Proposal',
+        p_body: `${requesterCharacterName} wants to start a story with you!`,
+        p_data: { 
           requester_id: user.id,
           username: profile?.username,
           character_name: requesterCharacterName,
           friendship_id: friendshipData.id,
           starter_message: starterMessage.trim()
-        },
+        }
       });
 
       toast({
