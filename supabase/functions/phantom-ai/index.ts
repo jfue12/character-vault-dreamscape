@@ -217,17 +217,10 @@ serve(async (req) => {
       });
     }
 
-    // Get AI intensity setting (default: medium)
+    // Get AI intensity setting (default: medium) - applied AFTER determining relevance
     const aiIntensity = (world as any)?.ai_intensity || 'medium';
-    
-    // Apply intensity-based response chance
-    // Low: 30% chance to respond, Medium: 70%, High: 95%
-    const intensityChance = aiIntensity === 'low' ? 0.3 : aiIntensity === 'high' ? 0.95 : 0.7;
-    if (Math.random() > intensityChance) {
-      return new Response(JSON.stringify({ shouldRespond: false, reason: "AI intensity check - skipping this message" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Note: intensity check is now applied AFTER the AI model determines if it should respond,
+    // not before, so that directly addressed NPCs always respond
 
     const { data: room } = await supabase
       .from("world_rooms")
@@ -619,6 +612,31 @@ If the scene calls for drama, CREATE it!`;
       return new Response(JSON.stringify({ shouldRespond: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Apply AI intensity check AFTER parsing - but only for ambient/voluntary responses
+    // If the AI model decided to respond (shouldRespond: true), we apply intensity probability
+    // EXCEPT when an NPC was directly addressed (mentioned by name in the message)
+    if (parsed.shouldRespond) {
+      // Check if any NPC name was directly mentioned in the trigger message
+      const allNpcNames = [
+        ...(aiCharacters?.map(ai => (ai.character as any)?.name?.toLowerCase()) || []),
+        ...(tempAiCharacters?.map(t => t.name?.toLowerCase()) || [])
+      ].filter(Boolean);
+      
+      const lowerTrigger = sanitizedTriggerMessage.toLowerCase();
+      const wasDirectlyAddressed = allNpcNames.some(name => name && lowerTrigger.includes(name));
+      
+      // Only apply intensity randomness for ambient/not-directly-addressed responses
+      if (!wasDirectlyAddressed) {
+        const intensityChance = aiIntensity === 'low' ? 0.3 : aiIntensity === 'high' ? 0.95 : 0.7;
+        if (Math.random() > intensityChance) {
+          console.log("AI intensity check - skipping ambient response (intensity:", aiIntensity, ")");
+          return new Response(JSON.stringify({ shouldRespond: false, reason: "AI intensity check - skipping ambient response" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     // Create new temporary character if specified
