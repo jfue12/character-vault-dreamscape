@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Crown, Sparkles, User } from 'lucide-react';
@@ -15,7 +16,7 @@ interface AICharacterDetailModalProps {
   } | null;
 }
 
-export const AICharacterDetailModal = ({ isOpen, onClose, character }: AICharacterDetailModalProps) => {
+export const AICharacterDetailModal = forwardRef<HTMLDivElement, AICharacterDetailModalProps>(({ isOpen, onClose, character }, ref) => {
   if (!character) return null;
 
   const getRankIcon = (rank: string | null | undefined) => {
@@ -131,4 +132,6 @@ export const AICharacterDetailModal = ({ isOpen, onClose, character }: AICharact
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+AICharacterDetailModal.displayName = 'AICharacterDetailModal';

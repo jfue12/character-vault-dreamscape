@@ -519,6 +519,23 @@ export default function RoomChat() {
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setMessages(prev => prev.map(m => 
+            m.id === updated.id 
+              ? { ...m, content: updated.content, edited_at: updated.edited_at }
+              : m
+          ));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'DELETE',
           schema: 'public',
           table: 'messages',

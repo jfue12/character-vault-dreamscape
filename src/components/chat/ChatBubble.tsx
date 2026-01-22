@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Check, CheckCheck, Trash2, Reply, Pencil, X, CornerDownRight } from 'lucide-react';
@@ -34,7 +34,7 @@ interface ChatBubbleProps {
   isEdited?: boolean;
 }
 
-export const ChatBubble = ({
+export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
   messageId,
   characterName,
   characterAvatar,
@@ -57,7 +57,7 @@ export const ChatBubble = ({
   isAI = false,
   onAICharacterClick,
   isEdited = false
-}: ChatBubbleProps) => {
+}, ref) => {
   const [showActions, setShowActions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
@@ -452,4 +452,6 @@ export const ChatBubble = ({
       </AnimatePresence>
     </motion.div>
   );
-};
+});
+
+ChatBubble.displayName = 'ChatBubble';

@@ -326,7 +326,7 @@ export default function DMChat() {
           const updatedMessage = payload.new as any;
           setMessages(prev => prev.map(msg => 
             msg.id === updatedMessage.id 
-              ? { ...msg, is_read: updatedMessage.is_read }
+              ? { ...msg, is_read: updatedMessage.is_read, content: updatedMessage.content, edited_at: updatedMessage.edited_at }
               : msg
           ));
         }
