@@ -12,12 +12,9 @@ export type AIThinkingPhase = 'analyzing' | 'generating' | 'responding' | null;
 
 export const usePhantomAI = (worldId: string, roomId: string) => {
   const lastTriggerRef = useRef<number>(0);
-  const triggerCountRef = useRef<number>(0);
-  const cooldownMs = 8000; // 8 second cooldown between AI triggers (increased from 3s)
-  const maxTriggersPerSession = 10; // Max triggers before extended cooldown
+  const cooldownMs = 3000; // 3 second cooldown between AI triggers
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState<AIThinkingPhase>(null);
-  const [isOnCooldown, setIsOnCooldown] = useState(false);
 
   type PhantomAIResult =
     | { ok: true; data: any }
@@ -29,25 +26,10 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
     messageHistory: MessageContext[]
   ): Promise<PhantomAIResult | undefined> => {
     const now = Date.now();
-    
-    // Check session-based rate limit
-    if (triggerCountRef.current >= maxTriggersPerSession) {
-      const extendedCooldown = 60000; // 1 minute extended cooldown
-      if (now - lastTriggerRef.current < extendedCooldown) {
-        console.log('Extended cooldown active - too many AI triggers this session');
-        return { ok: false, error: 'You have triggered the AI too many times. Please wait a minute.' };
-      }
-      // Reset counter after extended cooldown
-      triggerCountRef.current = 0;
-    }
-    
-    // Check standard cooldown
     if (now - lastTriggerRef.current < cooldownMs) {
       return; // Still in cooldown
     }
-    
     lastTriggerRef.current = now;
-    triggerCountRef.current += 1;
 
     try {
       console.log('Triggering Phantom AI for world:', worldId, 'room:', roomId);
@@ -101,5 +83,5 @@ export const usePhantomAI = (worldId: string, roomId: string) => {
     }
   }, [worldId, roomId]);
 
-  return { triggerPhantomAI, isAIThinking, thinkingPhase, isOnCooldown, triggerCount: triggerCountRef.current };
+  return { triggerPhantomAI, isAIThinking, thinkingPhase };
 };
