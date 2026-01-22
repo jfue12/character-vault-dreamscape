@@ -12,7 +12,7 @@ interface ReplyingTo {
 }
 
 interface DMChatInputProps {
-  onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
+  onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => void;
   onTypingChange: (isTyping: boolean) => void;
   disabled?: boolean;
   friendshipId: string;
@@ -73,8 +73,9 @@ export const DMChatInput = ({ onSend, onTypingChange, disabled, friendshipId, se
     
     const finalType = messageType;
     const finalContent = content.trim();
+    const replyToId = replyingTo?.messageId;
     
-    onSend(finalContent, finalType);
+    onSend(finalContent, finalType, undefined, replyToId);
     setContent('');
     onTypingChange(false);
     onClearReply?.();
