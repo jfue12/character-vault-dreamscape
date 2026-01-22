@@ -1,4 +1,4 @@
-import { Globe, Hash, Rss, Home } from 'lucide-react';
+import { Globe, Hash, Rss, Home, Sparkles } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -10,6 +10,7 @@ export const BottomNav = () => {
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: Rss, label: 'Feed', path: '/feed' },
+    { icon: Sparkles, label: 'Showcase', path: '/showcase' },
     { icon: Hash, label: 'Plots', path: '/plots' },
   ];
 

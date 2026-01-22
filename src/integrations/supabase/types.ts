@@ -718,6 +718,145 @@ export type Database = {
           },
         ]
       }
+      oc_comments: {
+        Row: {
+          character_id: string | null
+          content: string
+          created_at: string
+          id: string
+          showcase_id: string
+          user_id: string
+        }
+        Insert: {
+          character_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          showcase_id: string
+          user_id: string
+        }
+        Update: {
+          character_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          showcase_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oc_comments_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oc_comments_showcase_id_fkey"
+            columns: ["showcase_id"]
+            isOneToOne: false
+            referencedRelation: "oc_showcase"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oc_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oc_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          showcase_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          showcase_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          showcase_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oc_ratings_showcase_id_fkey"
+            columns: ["showcase_id"]
+            isOneToOne: false
+            referencedRelation: "oc_showcase"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oc_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oc_showcase: {
+        Row: {
+          average_rating: number | null
+          caption: string | null
+          character_id: string
+          comment_count: number | null
+          created_at: string
+          id: string
+          rating_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_rating?: number | null
+          caption?: string | null
+          character_id: string
+          comment_count?: number | null
+          created_at?: string
+          id?: string
+          rating_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_rating?: number | null
+          caption?: string | null
+          character_id?: string
+          comment_count?: number | null
+          created_at?: string
+          id?: string
+          rating_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oc_showcase_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: true
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oc_showcase_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comments: {
         Row: {
           author_id: string
