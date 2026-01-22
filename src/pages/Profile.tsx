@@ -185,6 +185,7 @@ export default function Profile() {
             daysActive={profile?.created_at ? differenceInDays(new Date(), new Date(profile.created_at)) : 0}
             storiesCount={profile?.stories_count || 0}
             isOwnProfile={true}
+            userId={user?.id}
             onEdit={() => setIsEditModalOpen(true)}
             onArrange={handleSetActiveCharacter}
             onShare={handleShare}

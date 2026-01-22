@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Share2, Flag, UserMinus } from 'lucide-react';
+import { ChevronLeft, Share2, Flag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
+import { CharacterDetailView } from '@/components/profile/CharacterDetailView';
 
 interface Character {
   id: string;
@@ -289,81 +290,20 @@ export default function UserProfile() {
           </div>
         )}
 
-        {/* Selected Character View */}
+        {/* Selected Character View - Using CharacterDetailView with modals */}
         {selectedCharacter && (
-          <motion.div
-            key={selectedCharacter.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-5"
-          >
-            {/* 1. Large Rounded Portrait (CHARACTER image) */}
-            <div className="relative mx-auto w-56 h-56 rounded-full overflow-hidden ring-4 ring-primary/30">
-              {selectedCharacter.avatar_url ? (
-                <img 
-                  src={selectedCharacter.avatar_url} 
-                  alt={selectedCharacter.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
-                  <span className="text-7xl font-display font-bold text-primary/50">
-                    {selectedCharacter.name[0]?.toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* 2. Character Name (CHARACTER data) */}
-            <h2 className="text-2xl font-bold text-center text-foreground">
-              {selectedCharacter.name}
-            </h2>
-
-            {/* 3. User Stats Row - 4 column (USER profile data) */}
-            <div className="grid grid-cols-4 gap-2 px-4">
-              <div className="text-center">
-                <span className="font-bold text-xl text-foreground">{profile.followers_count || 0}</span>
-                <p className="text-xs text-muted-foreground">Followers</p>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-xl text-foreground">{profile.following_count || 0}</span>
-                <p className="text-xs text-muted-foreground">Following</p>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-xl text-foreground">{daysActive}</span>
-                <p className="text-xs text-muted-foreground">Days</p>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-xl text-foreground">{profile.stories_count || 0}</span>
-                <p className="text-xs text-muted-foreground">Stories</p>
-              </div>
-            </div>
-
-            {/* 4. Character Age (CHARACTER data - prominent display) */}
-            {selectedCharacter.age && (
-              <div className="flex justify-center">
-                <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/30">
-                  <span className="text-2xl font-bold text-primary">{selectedCharacter.age}</span>
-                  <span className="text-sm text-muted-foreground ml-2">years old</span>
-                </div>
-              </div>
-            )}
-
-            {/* Identity Row: Pronouns | Zodiac */}
-            <div className="flex items-center justify-center gap-3 text-sm">
-              {selectedCharacter.pronouns && (
-                <span className="text-primary font-medium">{selectedCharacter.pronouns}</span>
-              )}
-              <span className={zodiac.color}>{zodiac.emoji}</span>
-            </div>
-
-            {/* 5. Bio (CHARACTER data) */}
-            {selectedCharacter.bio && (
-              <p className="text-center text-muted-foreground px-6 text-sm leading-relaxed">
-                {selectedCharacter.bio}
-              </p>
-            )}
-          </motion.div>
+          <CharacterDetailView
+            character={selectedCharacter}
+            followersCount={profile.followers_count || 0}
+            followingCount={profile.following_count || 0}
+            daysActive={daysActive}
+            storiesCount={profile.stories_count || 0}
+            isOwnProfile={false}
+            userId={userId}
+            onFollow={handleFollow}
+            onMessage={handleMessage}
+            onShare={handleShare}
+          />
         )}
       </div>
 
