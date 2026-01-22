@@ -106,6 +106,7 @@ export const ChatSettingsPanel = ({
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiLore, setAiLore] = useState("");
   const [aiUseOwnerCharsOnly, setAiUseOwnerCharsOnly] = useState(true);
+  const [aiIntensity, setAiIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const [savingAiSettings, setSavingAiSettings] = useState(false);
 
   // Room editing state
@@ -166,7 +167,7 @@ export const ChatSettingsPanel = ({
   const fetchWorldSettings = async () => {
     const { data } = await supabase
       .from("worlds")
-      .select("is_public, is_nsfw, ai_enabled, ai_lore, ai_use_owner_characters_only")
+      .select("is_public, is_nsfw, ai_enabled, ai_lore, ai_use_owner_characters_only, ai_intensity")
       .eq("id", worldId)
       .single();
 
@@ -176,6 +177,7 @@ export const ChatSettingsPanel = ({
       setAiEnabled(data.ai_enabled ?? true);
       setAiLore(data.ai_lore || "");
       setAiUseOwnerCharsOnly(data.ai_use_owner_characters_only ?? true);
+      setAiIntensity((data as any).ai_intensity || 'medium');
     }
   };
 
@@ -339,6 +341,7 @@ export const ChatSettingsPanel = ({
         ai_enabled: aiEnabled,
         ai_lore: aiLore || null,
         ai_use_owner_characters_only: aiUseOwnerCharsOnly,
+        ai_intensity: aiIntensity,
       })
       .eq("id", worldId);
 
@@ -350,7 +353,7 @@ export const ChatSettingsPanel = ({
         world_id: worldId,
         action: "ai_settings_updated",
         actor_id: user?.id,
-        details: { ai_enabled: aiEnabled, ai_use_owner_characters_only: aiUseOwnerCharsOnly },
+        details: { ai_enabled: aiEnabled, ai_use_owner_characters_only: aiUseOwnerCharsOnly, ai_intensity: aiIntensity },
       });
     }
     setSavingAiSettings(false);
@@ -1202,6 +1205,42 @@ export const ChatSettingsPanel = ({
                         checked={aiUseOwnerCharsOnly}
                         onCheckedChange={setAiUseOwnerCharsOnly}
                       />
+                    </div>
+
+                    {/* AI Intensity */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">AI Intensity</Label>
+                      <Select
+                        value={aiIntensity}
+                        onValueChange={(value: 'low' | 'medium' | 'high') => setAiIntensity(value)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">
+                            <div className="flex items-center gap-2">
+                              <span>🌙 Low</span>
+                              <span className="text-xs text-muted-foreground">- Minimal AI responses</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="medium">
+                            <div className="flex items-center gap-2">
+                              <span>⚡ Medium</span>
+                              <span className="text-xs text-muted-foreground">- Balanced responses</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="high">
+                            <div className="flex items-center gap-2">
+                              <span>🔥 High</span>
+                              <span className="text-xs text-muted-foreground">- Very active AI</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Controls how often and how actively the AI responds to messages.
+                      </p>
                     </div>
 
                     {/* AI Lore */}

@@ -206,13 +206,25 @@ serve(async (req) => {
     // Fetch world context including AI settings
     const { data: world } = await supabase
       .from("worlds")
-      .select("name, lore_content, description, owner_id, rules, ai_enabled, ai_lore, ai_use_owner_characters_only")
+      .select("name, lore_content, description, owner_id, rules, ai_enabled, ai_lore, ai_use_owner_characters_only, ai_intensity")
       .eq("id", worldId)
       .single();
 
     // Check if AI is disabled for this world
     if (world?.ai_enabled === false) {
       return new Response(JSON.stringify({ shouldRespond: false, reason: "AI is disabled for this world" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get AI intensity setting (default: medium)
+    const aiIntensity = (world as any)?.ai_intensity || 'medium';
+    
+    // Apply intensity-based response chance
+    // Low: 30% chance to respond, Medium: 70%, High: 95%
+    const intensityChance = aiIntensity === 'low' ? 0.3 : aiIntensity === 'high' ? 0.95 : 0.7;
+    if (Math.random() > intensityChance) {
+      return new Response(JSON.stringify({ shouldRespond: false, reason: "AI intensity check - skipping this message" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -475,21 +487,20 @@ MEMORIES WITH THIS CHARACTER:
 ${memories?.map(m => `- ${m.relationship_type}, Trust: ${m.trust_level}/100, Notes: ${JSON.stringify(m.memory_notes || [])}`).join('\n') || 'No prior interactions - treat them as a stranger!'}
 
 CRITICAL RULES:
-- You can have MULTIPLE NPCs respond in a conversation, including NPC-to-NPC dialogue!
-- NPCs can talk to each other naturally - guards can chat, servants can gossip, nobles can scheme together.
-- When NPCs talk to each other, include their responses in the same responses array - they'll appear in order.
+- ONLY ONE NPC should respond at a time - pick the most relevant NPC based on who is being addressed or who would naturally respond
+- If the user mentions a specific NPC by name or role (e.g., "Hey Marcus" or "calls for the guards"), ONLY that NPC responds
+- Do NOT have multiple NPCs respond unless they are having a brief exchange between themselves
+- NPCs should NOT pile on - one response per trigger message is ideal
 - NEVER use "narrator" type. Only use "dialogue" or "thought".
-- For NPC-to-NPC conversations: one NPC can say something, then another responds - this creates rich, immersive scenes.
-- Respond to character NAMES like a real person would. If someone calls out "Hey Marcus!" or says a name, that character should respond if present.
+- Respond to character NAMES like a real person would. If someone calls out a name, ONLY that character responds.
 - SPEAK IN PLAIN, NATURAL ENGLISH. No flowery prose, no overly dramatic language. Talk like a real person would - casual, direct, simple words.
 - Avoid phrases like "I perceive", "indeed", "curious fellow", "most interesting". Just say normal things like "What do you want?" or "Yeah, I heard you."
 
-🎭 NPC-TO-NPC DIALOGUE:
-- NPCs can initiate conversations with OTHER NPCs, not just respond to players.
-- A guard might gossip with another guard, a noble might argue with their servant, two merchants might haggle.
-- This creates a LIVING WORLD where NPCs have their own social dynamics.
-- When creating NPC-to-NPC dialogue, each NPC's message should be a separate entry in the responses array.
-- Example: Guard says something → Bartender responds → Guard replies (3 entries in responses array)
+🎭 SINGLE NPC FOCUS:
+- Determine which NPC is being addressed or would naturally respond to the situation
+- If no specific NPC is addressed, pick the most relevant one based on context
+- Only allow NPC-to-NPC dialogue if it's a brief, natural exchange (max 2 messages)
+- Players should feel like they're talking to ONE character at a time, not a crowd
 
 RESPONSE FORMAT (VALID JSON ONLY):
 {

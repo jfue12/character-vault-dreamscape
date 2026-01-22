@@ -4,6 +4,8 @@ import { Share2, Image, Gamepad2, BookOpen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CharacterRelationships } from './CharacterRelationships';
 import { CharacterGallery } from './CharacterGallery';
+import { FollowersModal } from './FollowersModal';
+import { WorldsModal } from './WorldsModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface Character {
@@ -33,6 +35,7 @@ interface CharacterDetailViewProps {
   daysActive: number;
   storiesCount?: number;
   isOwnProfile?: boolean;
+  userId?: string;
   onEdit?: () => void;
   onArrange?: () => void;
   onFollow?: () => void;
@@ -47,6 +50,7 @@ export const CharacterDetailView = ({
   daysActive,
   storiesCount = 0,
   isOwnProfile = true,
+  userId,
   onEdit,
   onArrange,
   onFollow,
@@ -55,6 +59,9 @@ export const CharacterDetailView = ({
 }: CharacterDetailViewProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'info' | 'gallery' | 'rp' | 'stories' | 'comments'>('info');
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [showWorldsModal, setShowWorldsModal] = useState(false);
 
   const subNavItems = [
     { icon: Image, label: 'Gallery', key: 'gallery' as const },
@@ -139,24 +146,33 @@ export const CharacterDetailView = ({
         {character.name}
       </h2>
 
-      {/* 4. Stats Row - Inline, no boxes (Mascot style) */}
+      {/* 4. Stats Row - Inline, clickable (Mascot style) */}
       <div className="flex justify-center items-center gap-8">
-        <div className="text-center">
+        <button 
+          onClick={() => userId && setShowFollowersModal(true)}
+          className="text-center hover:opacity-80 transition-opacity"
+        >
           <span className="font-bold text-lg text-foreground">{followersCount}</span>
           <p className="text-xs text-muted-foreground">Followers</p>
-        </div>
-        <div className="text-center">
+        </button>
+        <button 
+          onClick={() => userId && setShowFollowingModal(true)}
+          className="text-center hover:opacity-80 transition-opacity"
+        >
           <span className="font-bold text-lg text-foreground">{followingCount}</span>
           <p className="text-xs text-muted-foreground">Following</p>
-        </div>
+        </button>
         <div className="text-center">
           <span className="font-bold text-lg text-foreground">{daysActive}</span>
           <p className="text-xs text-muted-foreground">Days</p>
         </div>
-        <div className="text-center">
+        <button 
+          onClick={() => userId && setShowWorldsModal(true)}
+          className="text-center hover:opacity-80 transition-opacity"
+        >
           <span className="font-bold text-lg text-foreground">{storiesCount}</span>
-          <p className="text-xs text-muted-foreground">Stories</p>
-        </div>
+          <p className="text-xs text-muted-foreground">Worlds</p>
+        </button>
       </div>
 
       {/* 5. Character Age - Standalone number centered */}
@@ -220,6 +236,29 @@ export const CharacterDetailView = ({
           <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-sm">Comments coming soon</p>
         </div>
+      )}
+
+      {/* Modals */}
+      {userId && (
+        <>
+          <FollowersModal 
+            isOpen={showFollowersModal} 
+            onClose={() => setShowFollowersModal(false)} 
+            userId={userId}
+            type="followers"
+          />
+          <FollowersModal 
+            isOpen={showFollowingModal} 
+            onClose={() => setShowFollowingModal(false)} 
+            userId={userId}
+            type="following"
+          />
+          <WorldsModal 
+            isOpen={showWorldsModal} 
+            onClose={() => setShowWorldsModal(false)} 
+            userId={userId}
+          />
+        </>
       )}
     </motion.div>
   );

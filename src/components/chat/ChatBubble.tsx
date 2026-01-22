@@ -317,11 +317,7 @@ export const ChatBubble = ({
               AI
             </span>
           )}
-          {username && (
-            <span className="text-xs text-muted-foreground">
-              @{username}
-            </span>
-          )}
+          {/* Username removed - only show character name and timestamp */}
         </div>
         <span className="text-[11px] text-muted-foreground">
           {formattedTime}
