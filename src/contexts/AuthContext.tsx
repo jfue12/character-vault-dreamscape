@@ -104,30 +104,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isMinor = calculateAge(dob) < 18;
     const redirectUrl = `${window.location.origin}/`;
 
-    const { data, error } = await supabase.auth.signUp({
+    // Pass user data as metadata - the database trigger will create the profile
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (error) return { error };
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
+        data: {
           username,
           dob: dob.toISOString().split('T')[0],
           is_minor: isMinor,
-        });
+        },
+      },
+    });
 
-      if (profileError) return { error: profileError };
-    }
-
-    return { error: null };
+    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
