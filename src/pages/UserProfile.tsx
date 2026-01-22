@@ -127,13 +127,13 @@ export default function UserProfile() {
         .eq('id', user.id)
         .single();
       
-      // Create notification for the followed user
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        type: 'follow',
-        title: 'New Follower',
-        body: `${myProfile?.username || 'Someone'} started following you!`,
-        data: { follower_id: user.id }
+      // Create notification for the followed user via RPC
+      await supabase.rpc('create_notification', {
+        p_user_id: userId,
+        p_type: 'follow',
+        p_title: 'New Follower',
+        p_body: `${myProfile?.username || 'Someone'} started following you!`,
+        p_data: { follower_id: user.id }
       });
     }
     

@@ -98,13 +98,13 @@ export const useSpamDetection = (worldId: string, userId: string, config: Partia
         }
       });
 
-      // Create notification
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        type: 'moderation',
-        title: 'You have been timed out',
-        body: `Reason: ${reason}. Duration: ${timeoutDuration}`,
-        data: { world_id: worldId, duration: timeoutDuration }
+      // Create notification via RPC (required for notifying other users)
+      await supabase.rpc('create_notification', {
+        p_user_id: userId,
+        p_type: 'moderation',
+        p_title: 'You have been timed out',
+        p_body: `Reason: ${reason}. Duration: ${timeoutDuration}`,
+        p_data: { world_id: worldId, duration: timeoutDuration }
       });
 
       toast({

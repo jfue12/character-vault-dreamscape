@@ -117,13 +117,13 @@ export const InviteFriendsModal = ({ isOpen, onClose, worldId, worldName }: Invi
 
     setInvitingIds(prev => new Set([...prev, friend.friendId]));
 
-    // Create a notification to invite them
-    const { error } = await supabase.from('notifications').insert({
-      user_id: friend.friendId,
-      type: 'world_invite',
-      title: 'World Invitation',
-      body: `${profile.username || 'Someone'} invited you to join "${worldName}"`,
-      data: { 
+    // Create a notification to invite them via RPC
+    const { error } = await supabase.rpc('create_notification', {
+      p_user_id: friend.friendId,
+      p_type: 'world_invite',
+      p_title: 'World Invitation',
+      p_body: `${profile.username || 'Someone'} invited you to join "${worldName}"`,
+      p_data: { 
         world_id: worldId, 
         inviter_id: user.id,
         world_name: worldName
