@@ -495,6 +495,15 @@ CRITICAL RULES:
 - Only allow NPC-to-NPC dialogue if it's a brief, natural exchange (max 2 messages)
 - Players should feel like they're talking to ONE character at a time, not a crowd
 
+📖 BOOK-STYLE PROSE FORMAT (CRITICAL):
+- ALL responses MUST be written in BOOK/NOVEL style with proper prose formatting
+- Dialogue MUST be in quotation marks: "Like this," he said.
+- Include action beats and descriptive tags: "I'm done playing games!" Hadrian yelled, slamming his fist on the table.
+- Mix dialogue with character actions: Marcus leaned against the wall, arms crossed. "You really think that's wise?"
+- Thoughts can be italicized or noted as internal: *This fool has no idea what's coming*, she thought.
+- Use varied dialogue tags: said, whispered, growled, muttered, snapped, laughed, sighed
+- Format example: "Get out of my sight," the guard snarled, hand moving to his sword hilt. "Before I make you."
+
 RESPONSE FORMAT (VALID JSON ONLY):
 {
   "shouldRespond": true/false,
@@ -502,7 +511,7 @@ RESPONSE FORMAT (VALID JSON ONLY):
     {
       "characterId": "uuid or null",
       "characterName": "Name",
-      "content": "The message - make it UNIQUE and CHARACTER-APPROPRIATE",
+      "content": "Book-style prose with quoted dialogue. Example: \"What do you want?\" he asked, eyeing the stranger warily.",
       "type": "dialogue|thought",
       "isNewCharacter": true/false,
       "isReplyToNPC": true/false  // Set true if this NPC is responding to another NPC
