@@ -1,9 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image, Smile } from 'lucide-react';
+import { Send, Image, Paintbrush, RefreshCw, MessageSquare, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { CharacterStylePanel } from '@/components/chat/CharacterStylePanel';
+
+interface Character {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
 
 interface ChatInputProps {
   onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
@@ -14,20 +20,35 @@ interface ChatInputProps {
   selectedCharacterId?: string | null;
   isStaff?: boolean;
   onStyleUpdated?: () => void;
+  characters?: Character[];
+  onSelectCharacter?: (id: string | null) => void;
 }
 
-const EMOJI_SHORTCUTS = ['😊', '😂', '❤️', '🔥', '✨', '👀', '💀', '🥺'];
-
-export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, selectedCharacterId, isStaff, onStyleUpdated }: ChatInputProps) => {
+export const ChatInput = ({ 
+  onSend, 
+  onTypingChange, 
+  disabled, 
+  roomId, 
+  worldId, 
+  selectedCharacterId, 
+  isStaff, 
+  onStyleUpdated,
+  characters = [],
+  onSelectCharacter,
+}: ChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [messageType, setMessageType] = useState<'dialogue' | 'thought' | 'narrator'>('dialogue');
-  const [showEmojis, setShowEmojis] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [characterStyle, setCharacterStyle] = useState<{ bubble_color?: string | null; text_color?: string | null }>({});
   const [bubbleSide, setBubbleSide] = useState<string | null>(null);
+  const [showCharacterPicker, setShowCharacterPicker] = useState(false);
+  const [showStylePanel, setShowStylePanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
 
   // Fetch character style when character changes
   useEffect(() => {
@@ -61,10 +82,9 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, s
     fetchStyles();
   }, [selectedCharacterId, isStaff, worldId, user]);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     
-    // Handle typing indicator
     onTypingChange(true);
     
     if (typingTimeoutRef.current) {
@@ -76,11 +96,10 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, s
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!content.trim() || disabled) return;
     
-    // Auto-detect thought bubbles from parentheses
     let finalType = messageType;
     let finalContent = content.trim();
     
@@ -118,7 +137,6 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, s
         .from('world-images')
         .getPublicUrl(fileName);
 
-      // Send as attachment message
       onSend(`[Image]`, 'dialogue', publicUrl);
     } catch (error) {
       console.error('Upload failed:', error);
@@ -130,150 +148,250 @@ export const ChatInput = ({ onSend, onTypingChange, disabled, roomId, worldId, s
     }
   };
 
-  const insertEmoji = (emoji: string) => {
-    setContent(prev => prev + emoji);
-    setShowEmojis(false);
+  const toggleMessageType = () => {
+    setMessageType(prev => prev === 'dialogue' ? 'narrator' : 'dialogue');
   };
 
-  const typeOptions = [
-    { type: 'dialogue' as const, label: 'Talk', icon: '💬' },
-    { type: 'thought' as const, label: 'Think', icon: '💭' },
-    { type: 'narrator' as const, label: 'Narrate', icon: '📖' },
-  ];
+  const refetchStyles = () => {
+    if (selectedCharacterId) {
+      supabase
+        .from('characters')
+        .select('bubble_color, text_color')
+        .eq('id', selectedCharacterId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
+          }
+        });
+    }
+    if (isStaff && worldId && user) {
+      supabase
+        .from('world_members')
+        .select('bubble_side')
+        .eq('world_id', worldId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setBubbleSide(data.bubble_side);
+          }
+        });
+    }
+  };
 
   return (
-    <div className="p-3 pb-6 bg-[#000] border-t border-[#1a1a1a]">
-      {/* Message Type Selector - Mascot Style: Talk, Think, Narrate */}
-      <div className="flex gap-2 mb-3 justify-center">
-        {typeOptions.map(({ type, label, icon }) => (
-          <button
-            key={type}
-            onClick={() => setMessageType(type)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
-              messageType === type
-                ? 'bg-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30'
-                : 'bg-[#0a0a0a] text-gray-400 border border-[#1a1a1a] hover:text-white hover:border-[#7C3AED]/50'
-            }`}
-          >
-            <span className="text-base">{icon}</span>
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Emoji Quick Select */}
+    <div className="bg-black/80 backdrop-blur-sm border-t border-white/10">
+      {/* Character Picker Dropdown */}
       <AnimatePresence>
-        {showEmojis && (
+        {showCharacterPicker && characters.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="flex gap-1 mb-3 p-3 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]"
+            exit={{ opacity: 0, y: 20 }}
+            className="border-b border-white/10 p-3 bg-black/90"
           >
-            {EMOJI_SHORTCUTS.map(emoji => (
-              <button
-                key={emoji}
-                onClick={() => insertEmoji(emoji)}
-                className="text-xl hover:scale-125 transition-transform p-1"
-              >
-                {emoji}
-              </button>
-            ))}
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {characters.map((char) => (
+                <button
+                  key={char.id}
+                  onClick={() => {
+                    onSelectCharacter?.(char.id);
+                    setShowCharacterPicker(false);
+                  }}
+                  className="flex flex-col items-center gap-1 min-w-[64px]"
+                >
+                  <div className={`w-14 h-14 rounded-full overflow-hidden transition-all ${
+                    selectedCharacterId === char.id
+                      ? 'ring-2 ring-primary'
+                      : 'opacity-70'
+                  }`}>
+                    {char.avatar_url ? (
+                      <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">{char.name[0]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-[10px] truncate max-w-[64px] ${
+                    selectedCharacterId === char.id ? 'text-primary font-medium' : 'text-gray-500'
+                  }`}>
+                    {char.name}
+                  </span>
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Input Form - Mascot Style */}
-      <form onSubmit={handleSubmit} className="flex gap-3 items-center">
-        {/* Photo Upload */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading || disabled}
-          className="p-2.5 text-gray-500 hover:text-[#7C3AED] transition-colors disabled:opacity-50 rounded-xl hover:bg-[#7C3AED]/10"
-        >
-          <Image className="w-5 h-5" />
-        </button>
+      {/* Style Panel Dropdown */}
+      <AnimatePresence>
+        {showStylePanel && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="border-b border-white/10 p-3 bg-black/90"
+          >
+            <CharacterStylePanel
+              characterId={selectedCharacterId || null}
+              currentBubbleColor={characterStyle.bubble_color}
+              currentTextColor={characterStyle.text_color}
+              currentBubbleSide={bubbleSide}
+              isStaff={isStaff}
+              worldId={worldId}
+              onStyleUpdated={() => {
+                onStyleUpdated?.();
+                setShowStylePanel(false);
+                refetchStyles();
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Emoji Toggle */}
-        <button
-          type="button"
-          onClick={() => setShowEmojis(!showEmojis)}
-          className="p-2.5 text-gray-500 hover:text-[#7C3AED] transition-colors rounded-xl hover:bg-[#7C3AED]/10"
-        >
-          <Smile className="w-5 h-5" />
-        </button>
+      <div className="p-3 pb-6">
+        {/* Main Input Row - Avatar + Text */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Character Avatar with Switch Icon */}
+          <button
+            onClick={() => setShowCharacterPicker(!showCharacterPicker)}
+            className="relative flex-shrink-0"
+            disabled={!onSelectCharacter || characters.length === 0}
+          >
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
+              {selectedCharacter?.avatar_url ? (
+                <img 
+                  src={selectedCharacter.avatar_url} 
+                  alt={selectedCharacter.name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">
+                    {selectedCharacter?.name?.[0] || '?'}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Switch Icon Overlay */}
+            {onSelectCharacter && characters.length > 0 && (
+              <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-black">
+                <RefreshCw className="w-3 h-3 text-white" />
+              </div>
+            )}
+          </button>
 
-        {/* Style Panel */}
-        <CharacterStylePanel
-          characterId={selectedCharacterId || null}
-          currentBubbleColor={characterStyle.bubble_color}
-          currentTextColor={characterStyle.text_color}
-          currentBubbleSide={bubbleSide}
-          isStaff={isStaff}
-          worldId={worldId}
-          onStyleUpdated={() => {
-            onStyleUpdated?.();
-            // Refetch styles
-            if (selectedCharacterId) {
-              supabase
-                .from('characters')
-                .select('bubble_color, text_color')
-                .eq('id', selectedCharacterId)
-                .maybeSingle()
-                .then(({ data }) => {
-                  if (data) {
-                    setCharacterStyle({ bubble_color: data.bubble_color, text_color: data.text_color });
-                  }
-                });
-            }
-            if (isStaff && worldId && user) {
-              supabase
-                .from('world_members')
-                .select('bubble_side')
-                .eq('world_id', worldId)
-                .eq('user_id', user.id)
-                .maybeSingle()
-                .then(({ data }) => {
-                  if (data) {
-                    setBubbleSide(data.bubble_side);
-                  }
-                });
-            }
-          }}
-        />
+          {/* Text Input Area */}
+          <div className="flex-1 min-w-0">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder={
+                messageType === 'narrator' 
+                  ? 'Describe the scene...' 
+                  : 'Say something...'
+              }
+              disabled={disabled || isUploading}
+              rows={1}
+              className="w-full bg-transparent text-white placeholder:text-gray-500 resize-none focus:outline-none text-base min-h-[44px] py-2"
+              style={{ fontSize: '16px' }}
+            />
+          </div>
 
-        <input
-          type="text"
-          value={content}
-          onChange={handleContentChange}
-          placeholder={
-            messageType === 'narrator' 
-              ? 'Describe the scene...' 
-              : messageType === 'thought'
-                ? 'What are they thinking...'
-                : 'Say something...'
-          }
-          disabled={disabled || isUploading}
-          className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C3AED] placeholder:text-gray-600"
-        />
-        
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          type="submit"
-          disabled={!content.trim() || disabled || isUploading}
-          className="w-11 h-11 rounded-xl bg-[#7C3AED] flex items-center justify-center disabled:opacity-40 shadow-lg shadow-[#7C3AED]/30"
-        >
-          <Send className="w-4 h-4 text-white" />
-        </motion.button>
-      </form>
+          {/* Side Toggle Icon */}
+          <div className="flex-shrink-0 pt-2">
+            <div className="text-gray-600">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 1l4 4-4 4" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <path d="M7 23l-4-4 4-4" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Action Bar */}
+        <div className="flex items-center gap-1">
+          {/* Message Type Toggle */}
+          <button
+            onClick={toggleMessageType}
+            className={`p-2.5 rounded-lg transition-all ${
+              messageType === 'dialogue'
+                ? 'bg-primary text-white'
+                : 'bg-muted text-gray-400'
+            }`}
+          >
+            {messageType === 'dialogue' ? (
+              <MessageSquare className="w-5 h-5" />
+            ) : (
+              <BookOpen className="w-5 h-5" />
+            )}
+          </button>
+
+          {/* Separator */}
+          <div className="w-px h-6 bg-white/20 mx-1" />
+
+          {/* Image Upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || disabled}
+            className="p-2.5 rounded-lg bg-muted text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+          >
+            <Image className="w-5 h-5" />
+          </button>
+
+          {/* GIF Button (placeholder) */}
+          <button
+            disabled
+            className="p-2.5 rounded-lg bg-muted text-gray-400 opacity-50 cursor-not-allowed"
+          >
+            <span className="text-xs font-bold">GIF</span>
+          </button>
+
+          {/* Style/Paintbrush Button */}
+          <button
+            onClick={() => setShowStylePanel(!showStylePanel)}
+            className={`p-2.5 rounded-lg transition-all ${
+              showStylePanel
+                ? 'bg-primary text-white'
+                : 'bg-muted text-gray-400 hover:text-white'
+            }`}
+          >
+            <Paintbrush className="w-5 h-5" />
+          </button>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Send Button */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => handleSubmit()}
+            disabled={!content.trim() || disabled || isUploading}
+            className="w-12 h-10 rounded-lg bg-primary flex items-center justify-center disabled:opacity-40 shadow-lg shadow-primary/30"
+          >
+            <Send className="w-5 h-5 text-white" />
+          </motion.button>
+        </div>
+      </div>
     </div>
   );
 };
