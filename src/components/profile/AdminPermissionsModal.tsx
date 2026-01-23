@@ -8,9 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface AdminPermissions {
-  can_moderate_messages: boolean;
-  can_manage_members: boolean;
-  can_manage_rooms: boolean;
+  can_moderate_messages?: boolean;
+  can_manage_members?: boolean;
+  can_manage_rooms?: boolean;
 }
 
 interface AdminPermissionsModalProps {
@@ -39,14 +39,20 @@ export const AdminPermissionsModal = ({
   onSuccess,
 }: AdminPermissionsModalProps) => {
   const { toast } = useToast();
-  const [permissions, setPermissions] = useState<AdminPermissions>(
-    currentPermissions || DEFAULT_PERMISSIONS
-  );
+  const [permissions, setPermissions] = useState<AdminPermissions>(() => ({
+    ...DEFAULT_PERMISSIONS,
+    ...currentPermissions,
+  }));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (currentPermissions) {
-      setPermissions(currentPermissions);
+      setPermissions({
+        ...DEFAULT_PERMISSIONS,
+        ...currentPermissions,
+      });
+    } else {
+      setPermissions(DEFAULT_PERMISSIONS);
     }
   }, [currentPermissions]);
 
