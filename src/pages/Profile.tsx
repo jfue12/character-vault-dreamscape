@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight, Settings2 } from 'lucide-react';
+import { LogOut, ChevronRight, Settings2, GripVertical, Check } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ import { ProfileIncompleteIndicator } from '@/components/profile/ProfileIncomple
 import { UsernameSetupModal } from '@/components/profile/UsernameSetupModal';
 import { ProfileCustomizationModal } from '@/components/profile/ProfileCustomizationModal';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 interface Character {
   id: string;
@@ -32,6 +33,7 @@ interface Character {
   identity_tags?: unknown;
   bubble_color?: string | null;
   text_color?: string | null;
+  display_order?: number;
 }
 
 export default function Profile() {
@@ -45,6 +47,7 @@ export default function Profile() {
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
+  const [isReorderMode, setIsReorderMode] = useState(false);
 
   // Check if profile is incomplete (no username or has email-like username)
   const isProfileIncomplete = !profile?.username || profile.username.includes('@');
@@ -71,7 +74,7 @@ export default function Profile() {
       .select('*')
       .eq('owner_id', user.id)
       .eq('is_npc', false) // Exclude AI-generated NPCs
-      .order('created_at', { ascending: false });
+      .order('display_order', { ascending: true });
 
     if (!error && data) {
       setCharacters(data);
@@ -109,6 +112,29 @@ export default function Profile() {
       .eq('id', user.id);
     
     toast({ title: 'Active character updated!' });
+  };
+
+  const handleReorderCharacters = async (reorderedCharacters: Character[]) => {
+    setCharacters(reorderedCharacters);
+    
+    // Update display_order in database
+    const updates = reorderedCharacters.map((char, index) => ({
+      id: char.id,
+      display_order: index,
+    }));
+
+    for (const update of updates) {
+      await supabase
+        .from('characters')
+        .update({ display_order: update.display_order })
+        .eq('id', update.id);
+    }
+    
+    toast({ title: 'Order saved!' });
+  };
+
+  const toggleReorderMode = () => {
+    setIsReorderMode(!isReorderMode);
   };
 
   const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
@@ -173,11 +199,36 @@ export default function Profile() {
 
         {/* Character Scroller */}
         <div className="mb-4">
+          {/* Reorder Toggle */}
+          {characters.length > 1 && (
+            <div className="flex items-center justify-end mb-2 px-4">
+              <Button
+                variant={isReorderMode ? "default" : "ghost"}
+                size="sm"
+                onClick={toggleReorderMode}
+                className="gap-2"
+              >
+                {isReorderMode ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <GripVertical className="w-4 h-4" />
+                    Reorder
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           <CharacterScroller
             characters={characters}
             selectedId={selectedCharacterId}
             onSelect={setSelectedCharacterId}
             onAddNew={() => setIsCreateModalOpen(true)}
+            onReorder={handleReorderCharacters}
+            isReorderMode={isReorderMode}
           />
         </div>
 
