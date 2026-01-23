@@ -13,8 +13,6 @@ import { ChatMemberList } from '@/components/chat/ChatMemberList';
 import { InviteFriendsModal } from '@/components/chat/InviteFriendsModal';
 import { ChatSettingsPanel } from '@/components/chat/ChatSettingsPanel';
 import { CreateCharacterModal } from '@/components/characters/CreateCharacterModal';
-import { AICharacterDetailModal } from '@/components/chat/AICharacterDetailModal';
-import { usePhantomAI } from '@/hooks/usePhantomAI';
 import { useSpamDetection } from '@/hooks/useSpamDetection';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -114,32 +112,18 @@ export default function RoomChat() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // Room scroller is now always visible in Mascot style
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showMemberList, setShowMemberList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
-  const [hasAI, setHasAI] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('member');
   const [showInviteFriends, setShowInviteFriends] = useState(false);
-  const [showAICharacterDetail, setShowAICharacterDetail] = useState(false);
-  const [selectedAICharacter, setSelectedAICharacter] = useState<{
-    name: string;
-    bio?: string | null;
-    personality_traits?: string[] | null;
-    social_rank?: string | null;
-    avatar_url?: string | null;
-    avatar_description?: string | null;
-  } | null>(null);
 
   // Get current character
   const currentCharacter = characters.find(c => c.id === selectedCharacterId);
 
-  // Phantom AI hook
-  const { triggerPhantomAI } = usePhantomAI(worldId || '', roomId || '');
-  
   // Spam detection hook
   const { validateMessage } = useSpamDetection(worldId || '', user?.id || '');
 
@@ -153,15 +137,8 @@ export default function RoomChat() {
     if (user && worldId) {
       fetchWorldData();
       fetchUserCharacters();
-      checkAICharacters();
     }
   }, [user, worldId]);
-
-  // Phantom AI is always enabled - it can dynamically spawn NPCs
-  const checkAICharacters = async () => {
-    // Always enable AI - it can spawn dynamic NPCs even without pre-configured characters
-    setHasAI(true);
-  };
 
   useEffect(() => {
     if (roomId && rooms.length > 0) {
@@ -180,9 +157,6 @@ export default function RoomChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, systemMessages]);
-
-  // NO JOIN/LEAVE MESSAGES ON ROOM ENTRY - Only on world join/leave
-  // Presence is tracked silently for typing indicators only
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -305,9 +279,6 @@ export default function RoomChat() {
   };
 
   const fetchMessages = async (roomId: string) => {
-    // IMPORTANT: fetch the most recent messages.
-    // Ordering ascending + limit returns the *oldest* 100, which makes new messages
-    // appear to “disappear” after navigating away and back.
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -320,11 +291,9 @@ export default function RoomChat() {
 
       const characterIds = [...new Set(rows.filter(m => m.character_id).map(m => m.character_id as string))];
       const senderIds = [...new Set(rows.map(m => m.sender_id))];
-      const aiMessageCharIds = [...new Set(rows.filter(m => m.is_ai && m.character_id).map(m => m.character_id as string))];
       const replyToIds = [...new Set(rows.filter(m => m.reply_to_id).map(m => m.reply_to_id as string))];
       
       let characterMap: Record<string, Character> = {};
-      let tempAICharacterMap: Record<string, { name: string; bio?: string | null }> = {};
       let usernameMap: Record<string, string> = {};
       let roleMap: Record<string, 'owner' | 'admin' | 'member'> = {};
       let replyMap: Record<string, { characterName: string; content: string }> = {};
@@ -337,18 +306,6 @@ export default function RoomChat() {
         
         if (charData) {
           characterMap = Object.fromEntries(charData.map(c => [c.id, c]));
-        }
-      }
-
-      // Fetch temp AI characters for AI messages that don't have character data
-      if (aiMessageCharIds.length > 0) {
-        const { data: tempCharData } = await supabase
-          .from('temp_ai_characters')
-          .select('id, name, bio')
-          .in('id', aiMessageCharIds);
-        
-        if (tempCharData) {
-          tempAICharacterMap = Object.fromEntries(tempCharData.map(c => [c.id, { name: c.name, bio: c.bio }]));
         }
       }
 
@@ -389,12 +346,6 @@ export default function RoomChat() {
               const char = characterMap[reply.character_id];
               if (char) {
                 charName = char.name;
-              } else {
-                // Check temp AI characters
-                const tempChar = tempAICharacterMap[reply.character_id];
-                if (tempChar) {
-                  charName = tempChar.name;
-                }
               }
             }
             replyMap[reply.id] = {
@@ -407,18 +358,6 @@ export default function RoomChat() {
 
       const messagesWithChars = rows.map(m => {
         let character = m.character_id ? characterMap[m.character_id] : undefined;
-        let aiCharName: string | undefined;
-        
-        // For AI messages, try to get character name from temp_ai_characters if not in regular characters
-        if (m.is_ai && m.character_id) {
-          const tempChar = tempAICharacterMap[m.character_id];
-          if (tempChar) {
-            aiCharName = tempChar.name;
-          } else if (character) {
-            // Use regular character name if it exists
-            aiCharName = character.name;
-          }
-        }
 
         // Get reply context
         const replyContext = m.reply_to_id ? replyMap[m.reply_to_id] : undefined;
@@ -427,8 +366,7 @@ export default function RoomChat() {
           ...m,
           type: m.type as 'dialogue' | 'thought' | 'narrator',
           character: character,
-          ai_character_name: aiCharName,
-          sender_username: m.is_ai ? undefined : (usernameMap[m.sender_id] || 'anonymous'),
+          sender_username: usernameMap[m.sender_id] || 'anonymous',
           sender_role: roleMap[m.sender_id] || 'member',
           reply_to_character_name: replyContext?.characterName,
           reply_to_content: replyContext?.content
@@ -468,11 +406,9 @@ export default function RoomChat() {
           const newMessage = payload.new as any;
           
           let character: Character | undefined;
-          let ai_character_name: string | undefined;
           let sender_username: string | undefined = undefined;
           
           if (newMessage.character_id) {
-            // Try regular characters first
             const { data } = await supabase
               .from('characters')
               .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
@@ -481,42 +417,22 @@ export default function RoomChat() {
             
             if (data) {
               character = data;
-              // If this is an AI message, set the name from regular character
-              if (newMessage.is_ai) {
-                ai_character_name = data.name;
-              }
-            }
-            
-            // For AI messages, also check temp_ai_characters
-            if (newMessage.is_ai && !ai_character_name) {
-              const { data: tempChar } = await supabase
-                .from('temp_ai_characters')
-                .select('name')
-                .eq('id', newMessage.character_id)
-                .maybeSingle();
-              if (tempChar) {
-                ai_character_name = tempChar.name;
-              }
             }
           }
 
-          // Only fetch sender username for non-AI messages
-          if (!newMessage.is_ai) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('username')
-              .eq('id', newMessage.sender_id)
-              .maybeSingle();
-            
-            if (profileData?.username) {
-              sender_username = profileData.username;
-            }
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', newMessage.sender_id)
+            .maybeSingle();
+          
+          if (profileData?.username) {
+            sender_username = profileData.username;
           }
 
           setMessages(prev => [...prev, { 
             ...newMessage, 
             character,
-            ai_character_name,
             sender_username
           }]);
         }
@@ -623,17 +539,6 @@ export default function RoomChat() {
     });
   }, [roomId, currentCharacter, user, profile]);
 
-  const sendSystemMessage = async (type: string) => {
-    if (!currentRoom || !user || !currentCharacter) return;
-
-    await supabase.from('system_messages').insert({
-      room_id: currentRoom.id,
-      message_type: type,
-      user_id: user.id,
-      username: currentCharacter.name
-    });
-  };
-
   const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => {
     if (!user || !currentRoom) return;
 
@@ -661,21 +566,6 @@ export default function RoomChat() {
 
     // Clear reply after sending
     setReplyingTo(null);
-
-    // Trigger Phantom AI if world has AI characters
-    if (hasAI && type === 'dialogue') {
-      const messageHistory = messages.slice(-10).map(m => ({
-        content: m.content,
-        characterName: m.character?.name || 'Unknown',
-        characterId: m.character_id || '',
-        type: m.type,
-      }));
-
-      const result = await triggerPhantomAI(content, selectedCharacterId, messageHistory);
-      if (result?.ok === false) {
-        toast({ title: 'AI', description: result.error, variant: 'destructive' });
-      }
-    }
   };
 
   const handleEditMessage = async (messageId: string, newContent: string) => {
@@ -694,79 +584,26 @@ export default function RoomChat() {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to delete message', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      toast({ title: 'Message deleted' });
+    }
+  };
+
   const handleReply = (replyInfo: ReplyingTo) => {
     setReplyingTo(replyInfo);
   };
 
   const clearReply = () => {
     setReplyingTo(null);
-  };
-
-  const handleAICharacterClick = async (characterId: string | null, characterName: string) => {
-    if (!characterId || !worldId) {
-      // Show basic info for characters without ID
-      setSelectedAICharacter({
-        name: characterName,
-        bio: null,
-        personality_traits: null,
-        social_rank: null,
-        avatar_url: null,
-        avatar_description: null
-      });
-      setShowAICharacterDetail(true);
-      return;
-    }
-
-    // Try to fetch from temp_ai_characters first
-    const { data: tempChar } = await supabase
-      .from('temp_ai_characters')
-      .select('name, bio, personality_traits, social_rank, avatar_description')
-      .eq('id', characterId)
-      .maybeSingle();
-
-    if (tempChar) {
-      setSelectedAICharacter({
-        name: tempChar.name,
-        bio: tempChar.bio,
-        personality_traits: tempChar.personality_traits as string[] | null,
-        social_rank: tempChar.social_rank,
-        avatar_url: null,
-        avatar_description: tempChar.avatar_description
-      });
-      setShowAICharacterDetail(true);
-      return;
-    }
-
-    // Try regular characters table
-    const { data: char } = await supabase
-      .from('characters')
-      .select('name, bio, avatar_url')
-      .eq('id', characterId)
-      .maybeSingle();
-
-    if (char) {
-      setSelectedAICharacter({
-        name: char.name,
-        bio: char.bio,
-        personality_traits: null,
-        social_rank: null,
-        avatar_url: char.avatar_url,
-        avatar_description: null
-      });
-      setShowAICharacterDetail(true);
-      return;
-    }
-
-    // Fallback
-    setSelectedAICharacter({
-      name: characterName,
-      bio: null,
-      personality_traits: null,
-      social_rank: null,
-      avatar_url: null,
-      avatar_description: null
-    });
-    setShowAICharacterDetail(true);
   };
 
   const handleRoomChange = (roomId: string) => {
@@ -777,7 +614,7 @@ export default function RoomChat() {
     if (!worldId || !user || userRole === 'owner') return;
 
     // Fetch username for system message before leaving
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('profiles')
       .select('username')
       .eq('id', user.id)
@@ -804,7 +641,7 @@ export default function RoomChat() {
           room_id: worldRooms[0].id,
           message_type: 'leave',
           user_id: user.id,
-          username: profile?.username || 'Someone'
+          username: profileData?.username || 'Someone'
         });
       }
 
@@ -844,7 +681,7 @@ export default function RoomChat() {
 
   const isOwner = userRole === 'owner';
   const isAdmin = userRole === 'admin';
-  const onlineMemberCount = members.filter(m => m.isOnline).length || members.length;
+  const isStaff = isOwner || isAdmin;
 
   if (loading || authLoading) {
     return (
@@ -948,15 +785,10 @@ export default function RoomChat() {
               }
               
               const msg = item as Message & { isSystem: boolean };
-              const isOwnMessage = msg.sender_id === user?.id && !msg.is_ai;
-              // AI messages: use ai_character_name or character name, never show "AI Character" if we have a name
-              const displayName = msg.is_ai 
-                ? (msg.ai_character_name || msg.character?.name || 'Unknown NPC')
-                : (msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone'));
-              // Don't show username for AI messages
-              const senderUsername = msg.is_ai ? undefined : (msg.sender_username || (isOwnMessage ? profile?.username : undefined));
-              // AI messages should always be on the left (not owner/admin)
-              const bubbleAlign = msg.is_ai ? 'left' : 'auto';
+              const isOwnMessage = msg.sender_id === user?.id;
+              const displayName = msg.character?.name || (isOwnMessage ? (profile?.username || 'You') : 'Someone');
+              const senderUsername = msg.sender_username || (isOwnMessage ? profile?.username : undefined);
+              
               return (
                 <ChatBubble
                   key={msg.id}
@@ -971,6 +803,7 @@ export default function RoomChat() {
                   attachmentUrl={msg.attachment_url}
                   onReply={handleReply}
                   onEdit={handleEditMessage}
+                  onDelete={isOwnMessage || isStaff ? handleDeleteMessage : undefined}
                   replyingTo={msg.reply_to_id && msg.reply_to_character_name ? {
                     messageId: msg.reply_to_id,
                     characterName: msg.reply_to_character_name,
@@ -978,10 +811,8 @@ export default function RoomChat() {
                   } : undefined}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
-                  bubbleAlignment={bubbleAlign}
-                  role={msg.is_ai ? undefined : msg.sender_role}
-                  isAI={msg.is_ai}
-                  onAICharacterClick={msg.is_ai ? () => handleAICharacterClick(msg.character_id, displayName) : undefined}
+                  bubbleAlignment="auto"
+                  role={msg.sender_role}
                   isEdited={!!msg.edited_at}
                 />
               );
@@ -1060,13 +891,6 @@ export default function RoomChat() {
         onLeaveWorld={handleLeaveWorld}
         onRoomCreated={handleRoomCreated}
         onRoomDeleted={handleRoomDeleted}
-      />
-
-      {/* AI Character Detail Modal */}
-      <AICharacterDetailModal
-        isOpen={showAICharacterDetail}
-        onClose={() => setShowAICharacterDetail(false)}
-        character={selectedAICharacter}
       />
     </div>
   );

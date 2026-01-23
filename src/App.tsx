@@ -21,6 +21,7 @@ import PostDetail from "./pages/PostDetail";
 import Invite from "./pages/Invite";
 import Notifications from "./pages/Notifications";
 import Showcase from "./pages/Showcase";
+import Discovery from "./pages/Discovery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/invite/:code" element={<Invite />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/showcase" element={<Showcase />} />
+              <Route path="/discover" element={<Discovery />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
