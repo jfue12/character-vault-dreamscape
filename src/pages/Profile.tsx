@@ -158,6 +158,18 @@ export default function Profile() {
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
       <div className="max-w-lg mx-auto pb-12">
+        {/* Profile Banner */}
+        {profile?.banner_url && (
+          <div className="relative w-full h-32 -mt-4 mb-4 overflow-hidden">
+            <img 
+              src={profile.banner_url} 
+              alt="Profile banner" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+          </div>
+        )}
+
         {/* Profile Incomplete Indicator */}
         {isProfileIncomplete && (
           <div className="px-2 mb-4">
@@ -301,7 +313,10 @@ export default function Profile() {
       <ProfileCustomizationModal
         isOpen={isCustomizationModalOpen}
         onClose={() => setIsCustomizationModalOpen(false)}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          // refreshProfile is called inside the modal now
+          setIsCustomizationModalOpen(false);
+        }}
         currentBio={profile?.bio}
         currentBannerUrl={profile?.banner_url}
         currentAccentColor={profile?.accent_color}
