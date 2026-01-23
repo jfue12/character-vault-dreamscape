@@ -1492,6 +1492,7 @@ export type Database = {
           id: string
           is_banned: boolean
           joined_at: string
+          muted_until: string | null
           permissions: Json | null
           role: string
           timeout_until: string | null
@@ -1504,6 +1505,7 @@ export type Database = {
           id?: string
           is_banned?: boolean
           joined_at?: string
+          muted_until?: string | null
           permissions?: Json | null
           role?: string
           timeout_until?: string | null
@@ -1516,6 +1518,7 @@ export type Database = {
           id?: string
           is_banned?: boolean
           joined_at?: string
+          muted_until?: string | null
           permissions?: Json | null
           role?: string
           timeout_until?: string | null
@@ -1735,6 +1738,10 @@ export type Database = {
         Returns: string
       }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
+      is_user_muted: {
+        Args: { _user_id: string; _world_id: string }
+        Returns: boolean
+      }
       is_user_timed_out: {
         Args: { _user_id: string; _world_id: string }
         Returns: boolean
