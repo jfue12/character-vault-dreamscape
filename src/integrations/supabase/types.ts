@@ -998,7 +998,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accent_color: string | null
           active_character_id: string | null
+          banner_url: string | null
           bio: string | null
           created_at: string
           dob: string
@@ -1007,12 +1009,15 @@ export type Database = {
           id: string
           is_minor: boolean
           nsfw_unlocked: boolean
+          social_links: Json | null
           stories_count: number | null
           updated_at: string
           username: string | null
         }
         Insert: {
+          accent_color?: string | null
           active_character_id?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           dob: string
@@ -1021,12 +1026,15 @@ export type Database = {
           id: string
           is_minor?: boolean
           nsfw_unlocked?: boolean
+          social_links?: Json | null
           stories_count?: number | null
           updated_at?: string
           username?: string | null
         }
         Update: {
+          accent_color?: string | null
           active_character_id?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           dob?: string
@@ -1035,6 +1043,7 @@ export type Database = {
           id?: string
           is_minor?: boolean
           nsfw_unlocked?: boolean
+          social_links?: Json | null
           stories_count?: number | null
           updated_at?: string
           username?: string | null
@@ -1480,6 +1489,7 @@ export type Database = {
           id: string
           is_banned: boolean
           joined_at: string
+          permissions: Json | null
           role: string
           timeout_until: string | null
           user_id: string
@@ -1491,6 +1501,7 @@ export type Database = {
           id?: string
           is_banned?: boolean
           joined_at?: string
+          permissions?: Json | null
           role?: string
           timeout_until?: string | null
           user_id: string
@@ -1502,6 +1513,7 @@ export type Database = {
           id?: string
           is_banned?: boolean
           joined_at?: string
+          permissions?: Json | null
           role?: string
           timeout_until?: string | null
           user_id?: string
@@ -1633,6 +1645,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          invite_only: boolean | null
           is_nsfw: boolean
           is_public: boolean
           lore_content: string | null
@@ -1652,6 +1665,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          invite_only?: boolean | null
           is_nsfw?: boolean
           is_public?: boolean
           lore_content?: string | null
@@ -1671,6 +1685,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          invite_only?: boolean | null
           is_nsfw?: boolean
           is_public?: boolean
           lore_content?: string | null

@@ -1,7 +1,4 @@
 project_id = "btqqmykddyjqpncnkfve"
 
-[functions.phantom-ai]
-verify_jwt = false
-
 [functions.verify-age]
 verify_jwt = false
