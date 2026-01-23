@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Link, Twitter, Instagram, Globe, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ export const ProfileCustomizationModal = ({
   currentAccentColor,
   currentSocialLinks,
 }: ProfileCustomizationModalProps) => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [bio, setBio] = useState(currentBio || '');
   const [bannerPreview, setBannerPreview] = useState<string | null>(currentBannerUrl || null);
@@ -55,6 +55,17 @@ export const ProfileCustomizationModal = ({
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(currentSocialLinks || {});
   const [saving, setSaving] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state with props when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setBio(currentBio || '');
+      setBannerPreview(currentBannerUrl || null);
+      setBannerFile(null);
+      setAccentColor(currentAccentColor || '#7C3AED');
+      setSocialLinks(currentSocialLinks || {});
+    }
+  }, [isOpen, currentBio, currentBannerUrl, currentAccentColor, currentSocialLinks]);
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,6 +114,9 @@ export const ProfileCustomizationModal = ({
 
       if (error) throw error;
 
+      // Refresh the profile data in context
+      await refreshProfile();
+      
       toast({ title: 'Profile updated!' });
       onSuccess();
       onClose();
