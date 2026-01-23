@@ -25,6 +25,7 @@ interface ChatBubbleProps {
   replyingTo?: ReplyingTo | null;
   bubbleColor?: string;
   textColor?: string;
+  nameColor?: string;
   bubbleAlignment?: 'auto' | 'left' | 'right';
   isRead?: boolean;
   showReadReceipt?: boolean;
@@ -48,6 +49,7 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
   replyingTo,
   bubbleColor,
   textColor,
+  nameColor,
   bubbleAlignment = 'auto',
   isRead = false,
   showReadReceipt = false,
@@ -302,7 +304,10 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
           )}
           
           {/* Character Name */}
-          <span className="text-sm font-semibold text-primary">
+          <span 
+            className="text-sm font-semibold"
+            style={{ color: nameColor || '#A78BFA' }}
+          >
             {decoratedName}
           </span>
           

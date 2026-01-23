@@ -313,6 +313,7 @@ export type Database = {
           is_private: boolean
           likes: string[] | null
           name: string
+          name_color: string | null
           owner_id: string
           pronouns: string | null
           species: string | null
@@ -337,6 +338,7 @@ export type Database = {
           is_private?: boolean
           likes?: string[] | null
           name: string
+          name_color?: string | null
           owner_id: string
           pronouns?: string | null
           species?: string | null
@@ -361,6 +363,7 @@ export type Database = {
           is_private?: boolean
           likes?: string[] | null
           name?: string
+          name_color?: string | null
           owner_id?: string
           pronouns?: string | null
           species?: string | null
