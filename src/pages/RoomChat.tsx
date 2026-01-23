@@ -48,10 +48,8 @@ interface Message {
   sender_id: string;
   character_id: string | null;
   created_at: string;
-  is_ai?: boolean;
   attachment_url: string | null;
   character?: Character;
-  ai_character_name?: string;
   sender_username?: string;
   sender_role?: 'owner' | 'admin' | 'member';
   reply_to_id?: string | null;

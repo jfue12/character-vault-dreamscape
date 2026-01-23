@@ -210,12 +210,6 @@ export const ManageWorldModal = ({
       // Delete world members
       await supabase.from('world_members').delete().eq('world_id', world.id);
       
-      // Delete AI characters
-      await supabase.from('ai_characters').delete().eq('world_id', world.id);
-      
-      // Delete temp AI characters
-      await supabase.from('temp_ai_characters').delete().eq('world_id', world.id);
-      
       // Delete world invites
       await supabase.from('world_invites').delete().eq('world_id', world.id);
       

@@ -29,8 +29,6 @@ interface ChatBubbleProps {
   isRead?: boolean;
   showReadReceipt?: boolean;
   role?: 'owner' | 'admin' | 'member';
-  isAI?: boolean;
-  onAICharacterClick?: () => void;
   isEdited?: boolean;
 }
 
@@ -54,8 +52,6 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
   isRead = false,
   showReadReceipt = false,
   role,
-  isAI = false,
-  onAICharacterClick,
   isEdited = false
 }, ref) => {
   const [showActions, setShowActions] = useState(false);
@@ -286,10 +282,7 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
           )}
         </div>
         <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span 
-            className={`text-sm font-medium text-primary ${isAI && onAICharacterClick ? 'cursor-pointer hover:underline' : ''}`}
-            onClick={isAI && onAICharacterClick ? onAICharacterClick : undefined}
-          >
+          <span className="text-sm font-medium text-primary">
             {decoratedName}
           </span>
           {role === 'owner' && (
@@ -300,11 +293,6 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
           {role === 'admin' && (
             <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full font-medium">
               Admin
-            </span>
-          )}
-          {isAI && (
-            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-medium">
-              AI
             </span>
           )}
           {/* Username removed - only show character name and timestamp */}
