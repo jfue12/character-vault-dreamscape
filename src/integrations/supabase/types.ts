@@ -304,6 +304,7 @@ export type Database = {
           bubble_color: string | null
           created_at: string
           dislikes: string[] | null
+          display_order: number | null
           gender: string | null
           id: string
           identity_tags: Json | null
@@ -329,6 +330,7 @@ export type Database = {
           bubble_color?: string | null
           created_at?: string
           dislikes?: string[] | null
+          display_order?: number | null
           gender?: string | null
           id?: string
           identity_tags?: Json | null
@@ -354,6 +356,7 @@ export type Database = {
           bubble_color?: string | null
           created_at?: string
           dislikes?: string[] | null
+          display_order?: number | null
           gender?: string | null
           id?: string
           identity_tags?: Json | null
