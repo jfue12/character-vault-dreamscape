@@ -294,12 +294,9 @@ export const CreateCharacterModal = ({ open, onOpenChange, onSuccess }: CreateCh
               id="bio"
               value={formData.bio}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="Describe your character's background, personality, social status, etc. The AI will use this to tailor interactions."
+              placeholder="Describe your character's background, personality, social status, etc."
               className="bg-input border-border min-h-[80px]"
             />
-            <p className="text-xs text-muted-foreground">
-              💡 Tip: Include social rank (e.g., "Overlord of Hell", "Royal Princess") for AI NPCs to react appropriately.
-            </p>
           </div>
 
           {/* Likes */}

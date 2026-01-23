@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight } from 'lucide-react';
+import { LogOut, ChevronRight, Settings2 } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,7 @@ import { CreateCharacterModal } from '@/components/characters/CreateCharacterMod
 import { EditCharacterModal } from '@/components/characters/EditCharacterModal';
 import { ProfileIncompleteIndicator } from '@/components/profile/ProfileIncompleteIndicator';
 import { UsernameSetupModal } from '@/components/profile/UsernameSetupModal';
+import { ProfileCustomizationModal } from '@/components/profile/ProfileCustomizationModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface Character {
@@ -42,8 +43,8 @@ export default function Profile() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
 
   // Check if profile is incomplete (no username or has email-like username)
   const isProfileIncomplete = !profile?.username || profile.username.includes('@');
@@ -126,8 +127,7 @@ export default function Profile() {
     <AppLayout 
       title={profile?.username ? `@${profile.username}` : 'Profile'}
       headerLeftIcon="none"
-      headerRightIcon="more"
-      onHeaderRightAction={() => setShowSettings(!showSettings)}
+      headerRightIcon="none"
       showFab
       fabOnClick={() => setIsCreateModalOpen(true)}
     >
@@ -143,24 +143,32 @@ export default function Profile() {
         )}
 
         {/* Settings Panel */}
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-2 mb-4 mx-2"
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border rounded-xl p-2 mb-4 mx-2"
+        >
+          <button
+            onClick={() => setIsCustomizationModalOpen(true)}
+            className="flex items-center justify-between w-full p-3.5 rounded-lg active:bg-muted transition-colors text-foreground touch-feedback"
           >
-            <button
-              onClick={handleSignOut}
-              className="flex items-center justify-between w-full p-3.5 rounded-lg active:bg-muted transition-colors text-destructive touch-feedback"
-            >
-              <div className="flex items-center gap-3">
-                <LogOut className="w-5 h-5" />
-                <span className="font-medium">Sign Out</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </motion.div>
-        )}
+            <div className="flex items-center gap-3">
+              <Settings2 className="w-5 h-5" />
+              <span className="font-medium">Customize Profile</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center justify-between w-full p-3.5 rounded-lg active:bg-muted transition-colors text-destructive touch-feedback"
+          >
+            <div className="flex items-center gap-3">
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Sign Out</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </motion.div>
 
 
         {/* Character Scroller */}
@@ -237,6 +245,16 @@ export default function Profile() {
         isOpen={isUsernameModalOpen}
         onClose={() => setIsUsernameModalOpen(false)}
         onSuccess={() => setIsUsernameModalOpen(false)}
+      />
+
+      <ProfileCustomizationModal
+        isOpen={isCustomizationModalOpen}
+        onClose={() => setIsCustomizationModalOpen(false)}
+        onSuccess={() => {}}
+        currentBio={profile?.bio}
+        currentBannerUrl={profile?.banner_url}
+        currentAccentColor={profile?.accent_color}
+        currentSocialLinks={profile?.social_links as any}
       />
     </AppLayout>
   );
