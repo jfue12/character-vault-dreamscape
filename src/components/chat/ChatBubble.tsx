@@ -261,10 +261,11 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
         </div>
       )}
 
-      {/* Timestamp + Character Name + Username + Avatar Row */}
-      <div className={`flex items-center gap-2 mb-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className="relative">
-          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border">
+      {/* Header Row: Avatar + Name + Badge + Timestamp */}
+      <div className={`flex items-center gap-2.5 mb-1 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* Avatar with ring */}
+        <div className="relative flex-shrink-0">
+          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/20">
             {characterAvatar ? (
               <img 
                 src={characterAvatar} 
@@ -272,52 +273,66 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-purple-900/40 flex items-center justify-center text-xs font-bold text-foreground">
+              <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center text-sm font-bold text-white">
                 {characterName[0]?.toUpperCase()}
               </div>
             )}
           </div>
-          {!isOwnMessage && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background" title="Active in Story" />
-          )}
         </div>
-        <div className={`flex items-center gap-1.5 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-sm font-medium text-primary">
-            {decoratedName}
-          </span>
+
+        {/* Name + Badge + Timestamp row */}
+        <div className={`flex items-center gap-2 ${isRightAligned ? 'flex-row-reverse' : 'flex-row'}`}>
+          {/* For right-aligned: timestamp comes first */}
+          {isRightAligned && (
+            <span className="text-xs text-gray-400">
+              {formattedTime}
+            </span>
+          )}
+          
+          {/* Role Badge */}
           {role === 'owner' && (
-            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-primary px-2 py-0.5 rounded-full font-semibold text-white">
               Owner
             </span>
           )}
           {role === 'admin' && (
-            <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-purple-600 px-2 py-0.5 rounded-full font-semibold text-white">
               Admin
             </span>
           )}
-          {/* Username removed - only show character name and timestamp */}
+          
+          {/* Character Name */}
+          <span className="text-sm font-semibold text-primary">
+            {decoratedName}
+          </span>
+          
+          {/* For left-aligned: timestamp comes after name */}
+          {!isRightAligned && (
+            <span className="text-xs text-gray-400">
+              {formattedTime}
+            </span>
+          )}
         </div>
-        <span className="text-[11px] text-muted-foreground">
-          {formattedTime}
-        </span>
       </div>
 
-      {/* Message Bubble */}
-      <div className={`flex ${isRightAligned ? 'justify-end ml-11' : 'justify-start mr-11'} relative`}>
+      {/* Message Bubble - offset from avatar */}
+      <div className={`${isRightAligned ? 'mr-12' : 'ml-12'}`}>
         <div 
-          className={`max-w-[280px] rounded-2xl px-4 py-2.5 relative ${
+          className={`inline-block max-w-[280px] rounded-2xl px-4 py-3 relative ${
             isThought
-              ? 'bg-muted/60 text-foreground border border-muted-foreground/20'
+              ? 'bg-muted/60 text-foreground border border-white/10'
               : customBubbleStyle 
                 ? ''
-                : 'bg-primary text-primary-foreground'
+                : isRightAligned
+                  ? 'bg-[#3a3a3c] text-white'
+                  : 'bg-[#2c2c2e] text-white'
           }`}
           style={customBubbleStyle}
         >
           {isThought && (
             <div className={`absolute -bottom-2 ${isRightAligned ? 'right-4' : 'left-4'} flex gap-0.5`}>
-              <div className="w-2 h-2 rounded-full bg-muted/60 border border-muted-foreground/20" />
-              <div className="w-1.5 h-1.5 rounded-full bg-muted/60 border border-muted-foreground/20" />
+              <div className="w-2 h-2 rounded-full bg-muted/60 border border-white/10" />
+              <div className="w-1.5 h-1.5 rounded-full bg-muted/60 border border-white/10" />
             </div>
           )}
           
@@ -352,7 +367,7 @@ export const ChatBubble = forwardRef<HTMLDivElement, ChatBubbleProps>(({
               </button>
             </div>
           ) : (
-            <p className="text-sm leading-relaxed">
+            <p className="text-[15px] leading-relaxed">
               {isThought ? `(${parseContent(displayContent)})` : parseContent(displayContent)}
             </p>
           )}
