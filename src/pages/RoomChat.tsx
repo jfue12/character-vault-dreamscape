@@ -710,44 +710,54 @@ export default function RoomChat() {
       )}
 
       {/* Header - Mobile Optimized */}
-      <header className="sticky top-0 z-50 bg-[#000]/95 backdrop-blur-xl border-b border-[#1a1a1a] pt-[env(safe-area-inset-top,0px)]">
+      <header className="sticky top-0 z-50 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-xl pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center justify-between px-3 h-14">
           <button 
             onClick={() => navigate('/')} 
-            className="p-2.5 -ml-1 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
+            className="p-2.5 -ml-1 text-white active:text-primary transition-colors touch-feedback rounded-xl"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           
           <div className="flex flex-col items-center flex-1 min-w-0 px-2">
-            <h1 className="font-semibold text-white truncate max-w-[180px] sm:max-w-[240px] text-sm sm:text-base">{world?.name}</h1>
-            {/* Typing Indicator in Header */}
+            {/* World Name - Prominent */}
+            <h1 className="font-bold text-white text-lg sm:text-xl truncate max-w-[220px] sm:max-w-[300px]">
+              {world?.name}
+            </h1>
+            {/* Typing Indicator or Room Name */}
             {typingUsers.length > 0 ? (
-              <span className="text-[11px] text-[#7C3AED] animate-pulse truncate max-w-[160px]">
-                {typingUsers.length === 1 
-                  ? `${typingUsers[0].name} is typing...`
-                  : `${typingUsers.length} people typing...`
-                }
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-300">
+                  {typingUsers.length === 1 
+                    ? `${typingUsers[0].name} is typing`
+                    : `${typingUsers.length} people typing`
+                  }
+                </span>
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
+              </div>
             ) : (
-              <span className="text-[11px] text-gray-500 truncate max-w-[160px]">{currentRoom?.name}</span>
+              <span className="text-xs text-gray-500">{currentRoom?.name}</span>
             )}
           </div>
 
           <div className="flex items-center gap-0.5">
             <button 
               onClick={() => setShowMemberList(true)}
-              className="p-2.5 relative text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
+              className="p-2.5 relative text-white active:text-primary transition-colors touch-feedback rounded-xl"
             >
               <Users className="w-5 h-5" />
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#7C3AED] text-white text-[10px] font-medium rounded-full flex items-center justify-center px-1">
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-primary text-white text-[10px] font-medium rounded-full flex items-center justify-center px-1">
                 {members.length}
               </span>
             </button>
             {(isOwner || isAdmin) && (
               <button 
                 onClick={() => setShowSettings(true)}
-                className="p-2.5 text-white active:text-[#7C3AED] transition-colors touch-feedback rounded-xl"
+                className="p-2.5 text-white active:text-primary transition-colors touch-feedback rounded-xl"
               >
                 <Settings className="w-5 h-5" />
               </button>
