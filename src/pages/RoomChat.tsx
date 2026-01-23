@@ -79,12 +79,18 @@ interface TypingUser {
 }
 
 interface ChatMember {
+  id?: string;
   userId: string;
   username: string;
   characterName: string;
   characterAvatar: string | null;
   role: 'owner' | 'admin' | 'member';
   isOnline?: boolean;
+  permissions?: {
+    can_moderate_messages?: boolean;
+    can_manage_members?: boolean;
+    can_manage_rooms?: boolean;
+  };
 }
 
 interface WorldMember {
@@ -216,8 +222,10 @@ export default function RoomChat() {
     const { data } = await supabase
       .from('world_members')
       .select(`
+        id,
         user_id,
         role,
+        permissions,
         profiles(username),
         active_character:characters!world_members_active_character_id_fkey(name, avatar_url)
       `)
@@ -226,12 +234,14 @@ export default function RoomChat() {
 
     if (data) {
       const processedMembers: ChatMember[] = data.map((m: any) => ({
+        id: m.id,
         userId: m.user_id,
         username: m.profiles?.username || 'Unknown',
         characterName: m.active_character?.name || m.profiles?.username || 'Unknown',
         characterAvatar: m.active_character?.avatar_url || null,
         role: m.role as 'owner' | 'admin' | 'member',
-        isOnline: onlineUsers.has(m.user_id)
+        isOnline: onlineUsers.has(m.user_id),
+        permissions: m.permissions as ChatMember['permissions'] || undefined
       }));
       setMembers(processedMembers);
     }
@@ -885,7 +895,7 @@ export default function RoomChat() {
         rooms={rooms}
         isOwner={isOwner}
         isAdmin={isAdmin}
-        members={members.map(m => ({ userId: m.userId, username: m.username, role: m.role }))}
+        members={members.map(m => ({ id: m.id, userId: m.userId, username: m.username, role: m.role, permissions: m.permissions }))}
         onLeaveWorld={handleLeaveWorld}
         onRoomCreated={handleRoomCreated}
         onRoomDeleted={handleRoomDeleted}

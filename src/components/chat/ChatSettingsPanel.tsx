@@ -15,6 +15,7 @@ import {
   Users,
   Clock,
   GripVertical,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminPermissionsModal } from "@/components/profile/AdminPermissionsModal";
 
 interface Room {
   id: string;
@@ -38,9 +40,15 @@ interface Room {
 }
 
 interface Member {
+  id?: string;
   userId: string;
   username: string;
   role: "owner" | "admin" | "member";
+  permissions?: {
+    can_moderate_messages?: boolean;
+    can_manage_members?: boolean;
+    can_manage_rooms?: boolean;
+  };
 }
 
 interface AuditLog {
@@ -112,6 +120,14 @@ export const ChatSettingsPanel = ({
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  // Admin permissions modal state
+  const [permissionsModal, setPermissionsModal] = useState<{
+    isOpen: boolean;
+    memberId: string;
+    memberUsername: string;
+    permissions?: Member['permissions'];
+  }>({ isOpen: false, memberId: '', memberUsername: '' });
 
   const roomImageInputRef = useRef<HTMLInputElement>(null);
   const editRoomImageInputRef = useRef<HTMLInputElement>(null);
@@ -752,24 +768,26 @@ export const ChatSettingsPanel = ({
               {activeTab === "members" && (
                 <div className="space-y-2">
                   {members.map((member) => (
-                    <div key={member.userId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground text-sm">@{member.username}</span>
-                        {member.role === "owner" && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                            <Crown className="w-2.5 h-2.5" />
-                            Owner
-                          </span>
-                        )}
-                        {member.role === "admin" && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
-                            <Shield className="w-2.5 h-2.5" />
-                            Admin
-                          </span>
-                        )}
+                    <div key={member.userId} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground text-sm">@{member.username}</span>
+                          {member.role === "owner" && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                              <Crown className="w-2.5 h-2.5" />
+                              Owner
+                            </span>
+                          )}
+                          {member.role === "admin" && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
+                              <Shield className="w-2.5 h-2.5" />
+                              Admin
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {isOwner && member.role !== "owner" && (
-                        <div className="flex gap-1">
+                        <div className="flex flex-wrap gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -782,6 +800,22 @@ export const ChatSettingsPanel = ({
                           >
                             {member.role === "admin" ? "Demote" : "Promote"}
                           </Button>
+                          {member.role === "admin" && member.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-purple-400 hover:text-purple-300"
+                              onClick={() => setPermissionsModal({
+                                isOpen: true,
+                                memberId: member.id!,
+                                memberUsername: member.username,
+                                permissions: member.permissions,
+                              })}
+                            >
+                              <Settings className="w-3 h-3 mr-1" />
+                              Permissions
+                            </Button>
+                          )}
                           <Select
                             onValueChange={(duration) => handleTimeoutMember(member.userId, member.username, duration)}
                           >
@@ -952,6 +986,18 @@ export const ChatSettingsPanel = ({
           </motion.div>
         </>
       )}
+      {/* Admin Permissions Modal */}
+      <AdminPermissionsModal
+        isOpen={permissionsModal.isOpen}
+        onClose={() => setPermissionsModal({ isOpen: false, memberId: '', memberUsername: '' })}
+        worldId={worldId}
+        memberId={permissionsModal.memberId}
+        memberUsername={permissionsModal.memberUsername}
+        currentPermissions={permissionsModal.permissions}
+        onSuccess={() => {
+          // Refresh is handled by parent component
+        }}
+      />
     </AnimatePresence>
   );
 };
