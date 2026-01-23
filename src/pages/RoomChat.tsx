@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RoomScroller } from '@/components/chat/RoomScroller';
 import { ChatBubble } from '@/components/chat/ChatBubble';
-import { MascotChatInput } from '@/components/chat/MascotChatInput';
+import { ChatInput } from '@/components/chat/ChatInput';
 import { SystemMessage } from '@/components/chat/SystemMessage';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { ChatMemberList } from '@/components/chat/ChatMemberList';
@@ -832,7 +832,7 @@ export default function RoomChat() {
 
       {/* Bottom Input Area - Mobile Optimized with Safe Area */}
       <div className="fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom,0px)]">
-        <MascotChatInput
+        <ChatInput
           onSend={handleSendMessage}
           onTypingChange={handleTypingChange}
           disabled={false}
