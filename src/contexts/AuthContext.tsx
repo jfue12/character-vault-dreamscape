@@ -13,6 +13,9 @@ interface Profile {
   stories_count: number;
   active_character_id: string | null;
   created_at: string;
+  banner_url: string | null;
+  accent_color: string | null;
+  social_links: unknown | null;
 }
 
 interface AuthContextType {
