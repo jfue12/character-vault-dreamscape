@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image, Paintbrush, RefreshCw, MessageSquare, BookOpen } from 'lucide-react';
+import { Send, Image, Paintbrush, RefreshCw, MessageSquare, BookOpen, Plus, User, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,8 +11,14 @@ interface Character {
   avatar_url: string | null;
 }
 
+interface ReplyingTo {
+  messageId: string;
+  characterName: string;
+  content: string;
+}
+
 interface ChatInputProps {
-  onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string) => void;
+  onSend: (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => void;
   onTypingChange: (isTyping: boolean) => void;
   disabled?: boolean;
   roomId: string;
@@ -22,6 +28,10 @@ interface ChatInputProps {
   onStyleUpdated?: () => void;
   characters?: Character[];
   onSelectCharacter?: (id: string | null) => void;
+  onCreateCharacter?: () => void;
+  baseProfileName?: string;
+  replyingTo?: ReplyingTo | null;
+  onClearReply?: () => void;
 }
 
 export const ChatInput = ({ 
@@ -35,6 +45,10 @@ export const ChatInput = ({
   onStyleUpdated,
   characters = [],
   onSelectCharacter,
+  onCreateCharacter,
+  baseProfileName = 'You',
+  replyingTo,
+  onClearReply,
 }: ChatInputProps) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
@@ -108,9 +122,11 @@ export const ChatInput = ({
       finalContent = finalContent.slice(1, -1);
     }
     
-    onSend(finalContent, finalType);
+    const replyToId = replyingTo?.messageId;
+    onSend(finalContent, finalType, undefined, replyToId);
     setContent('');
     onTypingChange(false);
+    onClearReply?.();
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -184,7 +200,7 @@ export const ChatInput = ({
     <div className="bg-black/80 backdrop-blur-sm border-t border-white/10">
       {/* Character Picker Dropdown */}
       <AnimatePresence>
-        {showCharacterPicker && characters.length > 0 && (
+        {showCharacterPicker && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -192,6 +208,29 @@ export const ChatInput = ({
             className="border-b border-white/10 p-3 bg-black/90"
           >
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {/* Base Profile Option */}
+              <button
+                onClick={() => {
+                  onSelectCharacter?.(null);
+                  setShowCharacterPicker(false);
+                }}
+                className="flex flex-col items-center gap-1 min-w-[64px]"
+              >
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                  selectedCharacterId === null
+                    ? 'ring-2 ring-primary bg-primary/30'
+                    : 'bg-muted'
+                }`}>
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <span className={`text-[10px] truncate max-w-[64px] ${
+                  selectedCharacterId === null ? 'text-primary font-medium' : 'text-gray-500'
+                }`}>
+                  {baseProfileName}
+                </span>
+              </button>
+
+              {/* Character List */}
               {characters.map((char) => (
                 <button
                   key={char.id}
@@ -221,6 +260,22 @@ export const ChatInput = ({
                   </span>
                 </button>
               ))}
+
+              {/* Add New Character */}
+              {onCreateCharacter && (
+                <button
+                  onClick={() => {
+                    setShowCharacterPicker(false);
+                    onCreateCharacter();
+                  }}
+                  className="flex flex-col items-center gap-1 min-w-[64px]"
+                >
+                  <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center">
+                    <Plus className="w-6 h-6 text-gray-500" />
+                  </div>
+                  <span className="text-[10px] text-gray-500">Add</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -252,6 +307,32 @@ export const ChatInput = ({
         )}
       </AnimatePresence>
 
+      {/* Reply Preview */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 pt-2"
+          >
+            <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+              <div className="w-1 h-8 bg-primary rounded-full" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-primary font-medium">Replying to {replyingTo.characterName}</p>
+                <p className="text-xs text-gray-500 truncate">{replyingTo.content}</p>
+              </div>
+              <button
+                onClick={onClearReply}
+                className="p-1 text-gray-500 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="p-3 pb-6">
         {/* Main Input Row - Avatar + Text */}
         <div className="flex items-start gap-3 mb-3">
@@ -259,7 +340,6 @@ export const ChatInput = ({
           <button
             onClick={() => setShowCharacterPicker(!showCharacterPicker)}
             className="relative flex-shrink-0"
-            disabled={!onSelectCharacter || characters.length === 0}
           >
             <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
               {selectedCharacter?.avatar_url ? (
@@ -268,6 +348,10 @@ export const ChatInput = ({
                   alt={selectedCharacter.name} 
                   className="w-full h-full object-cover"
                 />
+              ) : selectedCharacterId === null ? (
+                <div className="w-full h-full bg-primary/30 flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center">
                   <span className="text-white font-bold text-lg">
@@ -277,11 +361,9 @@ export const ChatInput = ({
               )}
             </div>
             {/* Switch Icon Overlay */}
-            {onSelectCharacter && characters.length > 0 && (
-              <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-black">
-                <RefreshCw className="w-3 h-3 text-white" />
-              </div>
-            )}
+            <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-black">
+              <RefreshCw className="w-3 h-3 text-white" />
+            </div>
           </button>
 
           {/* Text Input Area */}
@@ -306,18 +388,6 @@ export const ChatInput = ({
               className="w-full bg-transparent text-white placeholder:text-gray-500 resize-none focus:outline-none text-base min-h-[44px] py-2"
               style={{ fontSize: '16px' }}
             />
-          </div>
-
-          {/* Side Toggle Icon */}
-          <div className="flex-shrink-0 pt-2">
-            <div className="text-gray-600">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 1l4 4-4 4" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <path d="M7 23l-4-4 4-4" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-              </svg>
-            </div>
           </div>
         </div>
 
