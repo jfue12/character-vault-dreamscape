@@ -38,6 +38,7 @@ interface Character {
   avatar_url: string | null;
   bubble_color: string | null;
   text_color: string | null;
+  name_color: string | null;
   bubble_alignment: string | null;
 }
 
@@ -259,7 +260,7 @@ export default function RoomChat() {
 
     const { data, error } = await supabase
       .from('characters')
-      .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+      .select('id, name, avatar_url, bubble_color, text_color, name_color, bubble_alignment')
       .eq('owner_id', user.id)
       .eq('is_hidden', false);
 
@@ -309,7 +310,7 @@ export default function RoomChat() {
       if (characterIds.length > 0) {
         const { data: charData } = await supabase
           .from('characters')
-          .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+          .select('id, name, avatar_url, bubble_color, text_color, name_color, bubble_alignment')
           .in('id', characterIds);
         
         if (charData) {
@@ -419,7 +420,7 @@ export default function RoomChat() {
           if (newMessage.character_id) {
             const { data } = await supabase
               .from('characters')
-              .select('id, name, avatar_url, bubble_color, text_color, bubble_alignment')
+              .select('id, name, avatar_url, bubble_color, text_color, name_color, bubble_alignment')
               .eq('id', newMessage.character_id)
               .maybeSingle();
             
@@ -829,6 +830,7 @@ export default function RoomChat() {
                   } : undefined}
                   bubbleColor={msg.character?.bubble_color || undefined}
                   textColor={msg.character?.text_color || undefined}
+                  nameColor={(msg.character as any)?.name_color || undefined}
                   bubbleAlignment="auto"
                   role={msg.sender_role}
                   isEdited={!!msg.edited_at}
