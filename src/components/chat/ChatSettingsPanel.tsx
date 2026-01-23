@@ -589,6 +589,7 @@ export const ChatSettingsPanel = ({
         <>
           {/* Backdrop */}
           <motion.div
+            key="settings-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -598,6 +599,7 @@ export const ChatSettingsPanel = ({
 
           {/* Panel */}
           <motion.div
+            key="settings-panel"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -788,6 +790,7 @@ export const ChatSettingsPanel = ({
                   {/* Room Background Edit Panel */}
                   {editingRoomId && isOwner && (
                     <motion.div
+                      key={`room-edit-${editingRoomId}`}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
