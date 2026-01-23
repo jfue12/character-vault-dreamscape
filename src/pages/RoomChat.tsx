@@ -549,7 +549,25 @@ export default function RoomChat() {
   }, [roomId, currentCharacter, user, profile]);
 
   const handleSendMessage = async (content: string, type: 'dialogue' | 'thought' | 'narrator', attachmentUrl?: string, replyToId?: string) => {
-    if (!user || !currentRoom) return;
+    if (!user || !currentRoom || !worldId) return;
+
+    // Check if user is muted
+    const { data: memberData } = await supabase
+      .from('world_members')
+      .select('muted_until')
+      .eq('world_id', worldId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (memberData?.muted_until && new Date(memberData.muted_until) > new Date()) {
+      const remainingTime = Math.ceil((new Date(memberData.muted_until).getTime() - Date.now()) / 60000);
+      toast({ 
+        title: 'You are muted', 
+        description: `You can send messages again in ${remainingTime} minute${remainingTime > 1 ? 's' : ''}`, 
+        variant: 'destructive' 
+      });
+      return;
+    }
 
     // Validate against spam
     const isValid = await validateMessage(content);

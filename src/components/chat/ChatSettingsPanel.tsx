@@ -16,6 +16,8 @@ import {
   Clock,
   GripVertical,
   Settings,
+  VolumeX,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +109,10 @@ export const ChatSettingsPanel = ({
   const [isNsfw, setIsNsfw] = useState(false);
   const [isInviteOnly, setIsInviteOnly] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
+  const [worldDescription, setWorldDescription] = useState("");
+  const [worldRules, setWorldRules] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Room editing state
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
@@ -153,7 +159,7 @@ export const ChatSettingsPanel = ({
   const fetchWorldSettings = async () => {
     const { data } = await supabase
       .from("worlds")
-      .select("is_public, is_nsfw, invite_only")
+      .select("is_public, is_nsfw, invite_only, description, rules")
       .eq("id", worldId)
       .single();
 
@@ -161,6 +167,8 @@ export const ChatSettingsPanel = ({
       setIsPublic(data.is_public);
       setIsNsfw(data.is_nsfw);
       setIsInviteOnly(data.invite_only ?? false);
+      setWorldDescription(data.description || "");
+      setWorldRules(data.rules || "");
     }
   };
 
@@ -187,6 +195,12 @@ export const ChatSettingsPanel = ({
   };
 
   const handleUpdateWorldSettings = async (field: "is_public" | "is_nsfw" | "invite_only", value: boolean) => {
+    // NSFW cannot be disabled once enabled
+    if (field === "is_nsfw" && isNsfw && !value) {
+      toast({ title: "NSFW cannot be disabled", description: "Once enabled, this setting is permanent", variant: "destructive" });
+      return;
+    }
+
     setLoadingSettings(true);
 
     const updateData: any = { [field]: value };
@@ -220,6 +234,76 @@ export const ChatSettingsPanel = ({
       });
     }
     setLoadingSettings(false);
+  };
+
+  const handleUpdateWorldText = async (field: "description" | "rules", value: string) => {
+    const { error } = await supabase.from("worlds").update({ [field]: value }).eq("id", worldId);
+
+    if (error) {
+      toast({ title: "Failed to update", variant: "destructive" });
+    } else {
+      toast({ title: `${field === "description" ? "Description" : "Rules"} updated` });
+    }
+  };
+
+  const handleDeleteWorld = async () => {
+    if (deleteConfirmText !== worldName) {
+      toast({ title: "Name doesn't match", variant: "destructive" });
+      return;
+    }
+
+    // Delete all related data
+    await supabase.from("messages").delete().eq("room_id", worldId);
+    await supabase.from("world_rooms").delete().eq("world_id", worldId);
+    await supabase.from("world_members").delete().eq("world_id", worldId);
+    await supabase.from("world_invites").delete().eq("world_id", worldId);
+    await supabase.from("audit_logs").delete().eq("world_id", worldId);
+    await supabase.from("moderation_logs").delete().eq("world_id", worldId);
+    await supabase.from("timeouts").delete().eq("world_id", worldId);
+    
+    const { error } = await supabase.from("worlds").delete().eq("id", worldId);
+
+    if (error) {
+      toast({ title: "Failed to delete world", variant: "destructive" });
+    } else {
+      toast({ title: "World deleted" });
+      window.location.href = "/worlds";
+    }
+  };
+
+  const handleMuteMember = async (userId: string, username: string, duration: string) => {
+    const durationMap: Record<string, number> = {
+      "30s": 30 * 1000,
+      "1m": 60 * 1000,
+      "5m": 5 * 60 * 1000,
+      "15m": 15 * 60 * 1000,
+      "30m": 30 * 60 * 1000,
+      "1h": 60 * 60 * 1000,
+      "6h": 6 * 60 * 60 * 1000,
+      "12h": 12 * 60 * 60 * 1000,
+      "24h": 24 * 60 * 60 * 1000,
+    };
+
+    const mutedUntil = new Date(Date.now() + (durationMap[duration] || 60000)).toISOString();
+
+    const { error } = await supabase
+      .from("world_members")
+      .update({ muted_until: mutedUntil })
+      .eq("world_id", worldId)
+      .eq("user_id", userId);
+
+    if (!error) {
+      toast({ title: `${username} muted for ${duration}` });
+      await supabase.from("audit_logs").insert({
+        world_id: worldId,
+        action: "mute",
+        actor_id: user?.id,
+        target_user_id: userId,
+        details: { duration },
+      });
+    } else {
+      toast({ title: "Failed to mute user", variant: "destructive" });
+    }
   };
 
   const handleNewRoomImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -486,6 +570,7 @@ export const ChatSettingsPanel = ({
       ban: "Banned",
       unban: "Unbanned",
       timeout: "Timed Out",
+      mute: "Muted",
       world_made_public: "Made World Public",
       world_made_private: "Made World Private",
       nsfw_enabled: "Enabled NSFW",
@@ -835,6 +920,22 @@ export const ChatSettingsPanel = ({
                               <SelectItem value="24h">24 hours</SelectItem>
                             </SelectContent>
                           </Select>
+                          <Select
+                            onValueChange={(duration) => handleMuteMember(member.userId, member.username, duration)}
+                          >
+                            <SelectTrigger className="h-7 w-16 text-xs">
+                              <VolumeX className="w-3 h-3 mr-1" />
+                              <SelectValue placeholder="Mute" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5m">5 min</SelectItem>
+                              <SelectItem value="15m">15 min</SelectItem>
+                              <SelectItem value="30m">30 min</SelectItem>
+                              <SelectItem value="1h">1 hour</SelectItem>
+                              <SelectItem value="6h">6 hours</SelectItem>
+                              <SelectItem value="24h">24 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -861,6 +962,34 @@ export const ChatSettingsPanel = ({
               {/* Settings Tab */}
               {activeTab === "settings" && isOwner && (
                 <div className="space-y-6">
+                  {/* World Info */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      World Info
+                    </h3>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Description</Label>
+                      <Textarea
+                        placeholder="Describe your world..."
+                        value={worldDescription}
+                        onChange={(e) => setWorldDescription(e.target.value)}
+                        onBlur={() => handleUpdateWorldText("description", worldDescription)}
+                        className="min-h-[80px] text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Rules</Label>
+                      <Textarea
+                        placeholder="Set your world rules..."
+                        value={worldRules}
+                        onChange={(e) => setWorldRules(e.target.value)}
+                        onBlur={() => handleUpdateWorldText("rules", worldRules)}
+                        className="min-h-[80px] text-sm"
+                      />
+                    </div>
+                  </div>
+
                   {/* Privacy Toggle */}
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -901,19 +1030,19 @@ export const ChatSettingsPanel = ({
                       <div>
                         <p className="text-sm font-medium text-foreground">18+ Only (NSFW)</p>
                         <p className="text-xs text-muted-foreground">
-                          {isNsfw ? "Cannot be disabled while NSFW" : "Restrict to adults only"}
+                          {isNsfw ? "This setting is permanent" : "Restrict to adults only"}
                         </p>
                       </div>
                       <Switch
                         checked={isNsfw}
                         onCheckedChange={(value) => handleUpdateWorldSettings("is_nsfw", value)}
-                        disabled={loadingSettings}
+                        disabled={loadingSettings || isNsfw}
                       />
                     </div>
                     {isNsfw && (
                       <p className="text-xs text-amber-500 flex items-center gap-1">
                         <Lock className="w-3 h-3" />
-                        NSFW worlds must remain 18+ only
+                        NSFW cannot be disabled once enabled
                       </p>
                     )}
                   </div>
@@ -930,6 +1059,58 @@ export const ChatSettingsPanel = ({
                         rapid messages or duplicate content will be auto-warned and timed out.
                       </p>
                     </div>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-destructive flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Danger Zone
+                    </h3>
+                    {!showDeleteConfirm ? (
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        onClick={() => setShowDeleteConfirm(true)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete World
+                      </Button>
+                    ) : (
+                      <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg space-y-3">
+                        <p className="text-xs text-destructive font-medium">
+                          This will permanently delete this world and all its data. Type "{worldName}" to confirm.
+                        </p>
+                        <Input
+                          placeholder="Type world name..."
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setDeleteConfirmText("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1"
+                            onClick={handleDeleteWorld}
+                            disabled={deleteConfirmText !== worldName}
+                          >
+                            Delete Forever
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
